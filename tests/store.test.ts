@@ -134,17 +134,16 @@ describe('listings refresh', () => {
     const { useApp } = await import('../src/lib/store');
     const { useListings } = await import('../src/lib/listingsStore');
     useApp.getState().resetAll();
-    const { SHOWS } = await import('../src/data/shows');
-    useListings.setState({ shows: SHOWS, byId: Object.fromEntries(SHOWS.map((s) => [s.id, s])), source: 'sample', generatedAt: null, checkedAt: null, refreshing: false, error: null, ready: false });
+    useListings.setState({ shows: [], byId: {}, source: 'none', generatedAt: null, checkedAt: null, refreshing: false, error: null, ready: false });
   });
 
-  it('starts on the bundled sample and says so', async () => {
+  it('starts empty: there is no bundled sample data', async () => {
     const { useListings } = await import('../src/lib/listingsStore');
-    assert.equal(useListings.getState().source, 'sample');
-    assert.ok(useListings.getState().shows.length > 50);
+    assert.equal(useListings.getState().source, 'none');
+    assert.equal(useListings.getState().shows.length, 0);
   });
 
-  it('a good download replaces the sample and is saved for next launch', async () => {
+  it('a good download fills the list and is saved for next launch', async () => {
     const { useListings } = await import('../src/lib/listingsStore');
     globalThis.fetch = feedResponse([mk('x1', '2026-10-05'), mk('x2', '2026-10-06')], '2026-09-30T08:00:00Z');
     assert.equal(await useListings.getState().refresh({ force: true }), true);
@@ -155,7 +154,7 @@ describe('listings refresh', () => {
     assert.ok(memory.get('pull-up-listings-cache-v1'));
 
     // A later launch with no network starts from the saved copy.
-    useListings.setState({ shows: [], byId: {}, source: 'sample', generatedAt: null });
+    useListings.setState({ shows: [], byId: {}, source: 'none', generatedAt: null });
     await useListings.getState().loadCache();
     assert.equal(useListings.getState().source, 'cache');
     assert.equal(useListings.getState().shows.length, 2);
@@ -164,6 +163,8 @@ describe('listings refresh', () => {
 
   it('a failed download keeps what is already showing and records why', async () => {
     const { useListings } = await import('../src/lib/listingsStore');
+    globalThis.fetch = feedResponse([mk('x1', '2026-10-05'), mk('x2', '2026-10-06')], '2026-09-30T08:00:00Z');
+    await useListings.getState().refresh({ force: true });
     const before = useListings.getState().shows.length;
     globalThis.fetch = feedResponse([], '', false, 503);
     assert.equal(await useListings.getState().refresh({ force: true }), false);
@@ -174,7 +175,8 @@ describe('listings refresh', () => {
     }) as typeof fetch;
     await useListings.getState().refresh({ force: true });
     assert.equal(useListings.getState().error, 'offline');
-    assert.equal(useListings.getState().source, 'sample');
+    assert.equal(useListings.getState().source, 'live');
+    assert.equal(useListings.getState().shows.length, before);
   });
 
   it('an empty or unrecognised feed is not accepted', async () => {
@@ -184,7 +186,8 @@ describe('listings refresh', () => {
     assert.match(useListings.getState().error ?? '', /no usable shows/);
     globalThis.fetch = (async () => ({ ok: true, status: 200, json: async () => ({ hello: 'world' }) })) as unknown as typeof fetch;
     assert.equal(await useListings.getState().refresh({ force: true }), false);
-    assert.equal(useListings.getState().source, 'sample');
+    assert.equal(useListings.getState().source, 'none');
+    assert.equal(useListings.getState().shows.length, 0);
   });
 
   it('shows you already decided on survive a refresh that no longer lists them', async () => {
@@ -226,7 +229,7 @@ describe('listings refresh', () => {
     const { useListings } = await import('../src/lib/listingsStore');
     memory.set('pull-up-listings-cache-v1', '{not json');
     await useListings.getState().loadCache();
-    assert.equal(useListings.getState().source, 'sample');
+    assert.equal(useListings.getState().source, 'none');
     assert.equal(useListings.getState().ready, true);
   });
 });

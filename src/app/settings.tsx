@@ -91,8 +91,8 @@ export default function SettingsScreen() {
       <Text style={styles.section}>LISTINGS</Text>
       <View style={styles.card}>
         <Text style={styles.about}>
-          {source === 'sample'
-            ? `Showing ${shows.length} bundled sample listings. The live listings feed hasn't loaded yet.`
+          {source === 'none'
+            ? 'No listings downloaded yet.'
             : `${shows.length} shows${generatedAt ? `, updated ${new Date(generatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}${source === 'cache' ? ' (saved copy)' : ''}.`}
           {attribution.length ? `\n${attribution.join('\n')}` : ''}
         </Text>

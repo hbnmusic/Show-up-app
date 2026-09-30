@@ -1,12 +1,11 @@
 /**
- * The listings the app shows. Starts from the bundled sample, switches to the
- * last downloaded feed, and replaces that whenever a fresh download succeeds.
- * A failed download never removes anything.
+ * The listings the app shows. They come only from the downloaded feed: the
+ * saved copy from the last successful download is read at launch, and a fresh
+ * download replaces it. A failed download never removes anything. With no saved
+ * copy and no network the list is empty and the deck says so.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-
-import { SHOWS as SAMPLE } from '@/data/shows';
 
 import { withRetained } from './listings/merge';
 import { parseFeed } from './listings/validate';
@@ -21,7 +20,7 @@ const CACHE_KEY = 'pull-up-listings-cache-v1';
 const RECHECK_MS = 30 * 60 * 1000;
 const TIMEOUT_MS = 20_000;
 
-export type ListingsSource = 'sample' | 'cache' | 'live';
+export type ListingsSource = 'none' | 'cache' | 'live';
 
 type ListingsState = {
   shows: Show[];
@@ -42,9 +41,9 @@ type ListingsState = {
 const index = (shows: Show[]): Record<string, Show> => Object.fromEntries(shows.map((s) => [s.id, s]));
 
 export const useListings = create<ListingsState>()((set, get) => ({
-  shows: SAMPLE,
-  byId: index(SAMPLE),
-  source: 'sample',
+  shows: [],
+  byId: {},
+  source: 'none',
   generatedAt: null,
   attribution: [],
   checkedAt: null,
@@ -58,9 +57,7 @@ export const useListings = create<ListingsState>()((set, get) => ({
       const parsed = raw ? parseFeed(JSON.parse(raw)) : null;
       if (parsed && parsed.feed.shows.length > 0) {
         const { shows, generatedAt, attribution } = parsed.feed;
-        // Anything the user already decided on stays reachable even if it is only in the sample.
-        const kept = withRetained(shows, get().shows, Object.keys(useApp.getState().decisions));
-        set({ shows: kept, byId: index(kept), source: 'cache', generatedAt, attribution });
+        set({ shows, byId: index(shows), source: 'cache', generatedAt, attribution });
       }
     } catch {
       // A damaged cache is the same as no cache.

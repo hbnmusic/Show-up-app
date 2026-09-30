@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { SHOWS } from '../src/data/shows';
+import { SHOWS } from './fixtures/shows';
 import { chooseArtist, isCollaboration, namesMatch, normalizeName } from '../src/lib/deezer';
 import { buildQueue, inWhen, matchesFilters } from '../src/lib/filters';
 import { planReminders } from '../src/lib/reminderPlan';

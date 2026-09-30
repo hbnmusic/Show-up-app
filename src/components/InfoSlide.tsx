@@ -36,7 +36,7 @@ export function InfoSlide({ show, width, height }: { show: Show; width: number; 
         <Fact label="Ages" value={AGE_LABELS[show.agePolicy]} />
         <Fact label="Room" value={VENUE_TYPE_LABELS[show.venue.type]} />
       </View>
-      <Text style={styles.note}>Sample listing. Confirm details with the venue before you go.</Text>
+      <Text style={styles.note}>Details can change. Confirm with the venue before you go.</Text>
     </View>
   );
 }

@@ -244,11 +244,7 @@ export default function ShowDetail() {
         ) : null}
 
         <Text style={styles.note}>
-          {show.source.provider === 'jambase'
-            ? 'Listing from JamBase. '
-            : show.source.provider === 'manual'
-              ? 'Listing added by hand. '
-              : 'Sample listing from public calendars. '}
+          {show.source.provider === 'jambase' ? 'Listing from JamBase. ' : show.source.provider === 'manual' ? 'Listing added by hand. ' : ''}
           Times, prices and age limits can change; check the listing before you go. Previews come from Deezer and may not
           be the right artist when names are common.
         </Text>

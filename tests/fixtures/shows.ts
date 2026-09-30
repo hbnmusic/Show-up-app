@@ -1,11 +1,10 @@
 /**
- * Sample listings for the prototype.
+ * Sample listings used only by the tests (not shipped in the app).
  *
  * Bills, venues, dates and times come from public listings fetched on
  * 2026-09-29 (NYC Noise, DoNYC venue pages, JamBase). Genre tags are the
  * app's own and are approximate. Flyer art is generated in the app; no
- * promoter artwork is republished. Replace this file with a real listings
- * provider once one is chosen (see the spec's Event data contract).
+ * promoter artwork is republished.
  */
 import type { AgePolicy, Area, Genre, Price, Show, VenueType, AddressVisibility } from '@/lib/types';
 

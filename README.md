@@ -5,8 +5,8 @@ the bands on each flyer, and keep the ones you're going to in one list with
 calendar export and reminders.
 
 This is the v1 prototype from the *Show Discovery Deck — Spec v2*: the social
-layer (people, matching, crews) is deliberately left out, and listings come
-from a bundled sample file until a real source is chosen.
+layer (people, matching, crews) is deliberately left out. Listings come only
+from the JamBase feed described below; there is no bundled sample data.
 
 ## Install on an Android phone
 
@@ -43,8 +43,8 @@ previous one and keeps your Going list.
 ## Listings
 
 The app downloads `shows.json` from the `listings` release of this repo, keeps
-a saved copy for offline use, and falls back to the bundled sample if it has
-never managed a download (the deck then shows a "SAMPLE DATA" tag).
+a saved copy for offline use. On a first launch with no connection the deck
+says it couldn't load shows and offers a retry.
 
 The **Refresh listings** workflow builds that file every day from the
 [JamBase Data API](https://data.jambase.com/):
@@ -73,8 +73,7 @@ no longer has event methods.
 
 - **Listings come from JamBase**, whose free plan is non-commercial. It has no
   age policy and only broad genres, and it may not carry basement or house
-  shows. Until the feed loads, the app uses 93 bundled sample listings
-  (`src/data/shows.ts`). Flyers are generated placeholders.
+  shows. Flyers are generated placeholders.
 - **Previews use Deezer's public API**, whose terms allow non-commercial use
   only. Fine for a private prototype; replace before any public release (see
   the spec's audio section). Common band names can match the wrong artist.
@@ -92,4 +91,5 @@ npx expo start    # needs a development build: npx expo run:android
 ```
 
 Code layout: routes in `src/app`, UI in `src/components`, logic in `src/lib`,
-sample listings in `src/data/shows.ts`.
+listings pipeline in `src/lib/listings` and `scripts/fetch-listings.ts`, test
+fixtures in `tests/fixtures`.
