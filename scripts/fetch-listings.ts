@@ -105,7 +105,8 @@ async function get(page: number, since?: string) {
       throw e;
     }
     if (page === 1 && [401, 403, 404].includes(res.status)) {
-      tried.push(`${base} -> ${res.status}`);
+      const snippet = (await res.clone().text()).slice(0, 160).replace(/\s+/g, ' ');
+      tried.push(`${base} -> ${res.status} ${snippet}`);
       if (bases.indexOf(base) < bases.length - 1) {
         base = bases[bases.indexOf(base) + 1];
         continue;
@@ -120,6 +121,11 @@ async function get(page: number, since?: string) {
       continue;
     }
     if (!res.ok) throw new Error(`JamBase returned HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    const type = res.headers.get('content-type') ?? '';
+    if (!type.includes('json')) {
+      const text = (await res.text()).slice(0, 120).replace(/\s+/g, ' ');
+      throw new Error(`${base} answered ${res.status} with ${type || 'no content type'} instead of JSON: ${text}. Earlier answers: ${tried.join('; ') || 'none'}`);
+    }
     const body = (await res.json()) as { events?: unknown[]; pagination?: { totalPages?: number } };
     if (dump && page === 1) {
       fs.mkdirSync(path.dirname(dump), { recursive: true });
