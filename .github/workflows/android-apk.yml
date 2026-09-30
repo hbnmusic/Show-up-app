@@ -1,0 +1,78 @@
+name: Android APK
+
+# Builds an installable APK on every push to main (or on demand from the
+# Actions tab) and attaches it to a GitHub release named "build-N".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 1
+      EXPO_NO_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck, lint and test
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+
+      - name: Generate the Android project
+        run: npx expo prebuild --platform android --no-install
+
+      # arm64 only: covers nearly every Android phone from the last several
+      # years and roughly halves build time and APK size.
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk show-up-build-${{ github.run_number }}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: show-up-build-${{ github.run_number }}
+          path: show-up-build-${{ github.run_number }}.apk
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Show Up build ${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          files: show-up-build-${{ github.run_number }}.apk
+          body: |
+            Test build from ${{ github.sha }}.
+
+            Install on Android: open this page on your phone, tap the .apk under Assets,
+            then open the download and allow installs from your browser if asked.
+            Signed with a shared debug key, so later builds install over this one.

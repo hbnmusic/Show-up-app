@@ -1,0 +1,147 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+
+import {
+  DEFAULT_FILTERS,
+  DEFAULT_REMINDER_PREFS,
+  type Decision,
+  type Filters,
+  type ReminderPrefs,
+} from './types';
+
+export type DecisionRecord = { decision: Decision; at: number };
+export type Attendance = 'went' | 'skipped';
+
+type AppState = {
+  decisions: Record<string, DecisionRecord>;
+  /** Shows swiped this session, newest last, for Undo. */
+  history: string[];
+  filters: Filters;
+  reminderPrefs: ReminderPrefs;
+  /** Per-show reminder switch; missing means on. */
+  reminderOff: Record<string, true>;
+  /** Shows sent to the phone calendar, with the time it was done. */
+  calendarAdded: Record<string, number>;
+  attendance: Record<string, Attendance>;
+  autoplay: boolean;
+  /** Deezer artist ids the user flagged as the wrong artist, per act name. */
+  wrongArtist: Record<string, number[]>;
+  notificationsAsked: boolean;
+  hydrated: boolean;
+
+  decide: (showId: string, decision: Decision) => void;
+  clearDecision: (showId: string) => void;
+  undo: () => string | null;
+  setFilters: (f: Partial<Filters>) => void;
+  resetFilters: () => void;
+  setReminderPrefs: (p: Partial<ReminderPrefs>) => void;
+  setShowReminders: (showId: string, on: boolean) => void;
+  markCalendar: (showId: string) => void;
+  setAttendance: (showId: string, a: Attendance | null) => void;
+  setAutoplay: (on: boolean) => void;
+  flagWrongArtist: (actName: string, artistId: number) => void;
+  setNotificationsAsked: () => void;
+  resetAll: () => void;
+};
+
+const initial = {
+  decisions: {},
+  history: [],
+  filters: DEFAULT_FILTERS,
+  reminderPrefs: DEFAULT_REMINDER_PREFS,
+  reminderOff: {},
+  calendarAdded: {},
+  attendance: {},
+  autoplay: true,
+  wrongArtist: {},
+  notificationsAsked: false,
+};
+
+export const useApp = create<AppState>()(
+  persist(
+    (set, get) => ({
+      ...initial,
+      hydrated: false,
+
+      decide: (showId, decision) =>
+        set((s) => ({
+          decisions: { ...s.decisions, [showId]: { decision, at: Date.now() } },
+          history: [...s.history.filter((id) => id !== showId), showId].slice(-50),
+        })),
+
+      clearDecision: (showId) =>
+        set((s) => {
+          const decisions = { ...s.decisions };
+          delete decisions[showId];
+          return { decisions, history: s.history.filter((id) => id !== showId) };
+        }),
+
+      undo: () => {
+        const { history } = get();
+        const last = history[history.length - 1];
+        if (!last) return null;
+        get().clearDecision(last);
+        return last;
+      },
+
+      setFilters: (f) => set((s) => ({ filters: { ...s.filters, ...f } })),
+      resetFilters: () => set({ filters: DEFAULT_FILTERS }),
+
+      setReminderPrefs: (p) => set((s) => ({ reminderPrefs: { ...s.reminderPrefs, ...p } })),
+
+      setShowReminders: (showId, on) =>
+        set((s) => {
+          const reminderOff = { ...s.reminderOff };
+          if (on) delete reminderOff[showId];
+          else reminderOff[showId] = true;
+          return { reminderOff };
+        }),
+
+      markCalendar: (showId) => set((s) => ({ calendarAdded: { ...s.calendarAdded, [showId]: Date.now() } })),
+
+      setAttendance: (showId, a) =>
+        set((s) => {
+          const attendance = { ...s.attendance };
+          if (a) attendance[showId] = a;
+          else delete attendance[showId];
+          return { attendance };
+        }),
+
+      setAutoplay: (on) => set({ autoplay: on }),
+
+      flagWrongArtist: (actName, artistId) =>
+        set((s) => {
+          const key = actName.toLowerCase();
+          const list = s.wrongArtist[key] ?? [];
+          return { wrongArtist: { ...s.wrongArtist, [key]: [...new Set([...list, artistId])] } };
+        }),
+
+      setNotificationsAsked: () => set({ notificationsAsked: true }),
+
+      resetAll: () => set({ ...initial }),
+    }),
+    {
+      name: 'show-up-state-v1',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (s) => ({
+        decisions: s.decisions,
+        filters: s.filters,
+        reminderPrefs: s.reminderPrefs,
+        reminderOff: s.reminderOff,
+        calendarAdded: s.calendarAdded,
+        attendance: s.attendance,
+        autoplay: s.autoplay,
+        wrongArtist: s.wrongArtist,
+        notificationsAsked: s.notificationsAsked,
+      }),
+      onRehydrateStorage: () => () => {
+        useApp.setState({ hydrated: true });
+      },
+    },
+  ),
+);
+
+export function decisionOf(showId: string): Decision | undefined {
+  return useApp.getState().decisions[showId]?.decision;
+}
