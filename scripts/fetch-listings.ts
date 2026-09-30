@@ -26,10 +26,15 @@ function arg(name: string, fallback: string): string {
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
 
+/** Also report failures as GitHub annotations so they show on the run summary page. */
+function fail(message: string, code = 1): never {
+  console.error(process.env.GITHUB_ACTIONS ? `::error title=Listings fetch failed::${message.replace(/\r?\n/g, ' ')}` : message);
+  process.exit(code);
+}
+
 const key = process.env.JAMBASE_API_KEY;
 if (!key) {
-  console.error('Set JAMBASE_API_KEY (a JamBase Data API key).');
-  process.exit(2);
+  fail('Set JAMBASE_API_KEY (a JamBase Data API key).', 2);
 }
 
 const out = arg('out', 'listings/shows.json');
@@ -135,8 +140,7 @@ async function main() {
 
   const problem = sanityProblem(report, mode, got.truncated);
   if (problem) {
-    console.error(`Not writing ${out}: ${problem}`);
-    process.exit(1);
+    fail(`Not writing ${out}: ${problem} (seen ${report.seen}, mapped ${report.mapped}, skipped ${JSON.stringify(report.skipped)})`);
   }
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(`${out}.tmp`, JSON.stringify(feed));
@@ -145,6 +149,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(e instanceof Error ? e.message : e);
-  process.exit(1);
+  const cause = e instanceof Error && e.cause instanceof Error ? ` (${e.cause.message})` : '';
+  fail(`${e instanceof Error ? e.message : String(e)}${cause} [base ${base}]`);
 });
