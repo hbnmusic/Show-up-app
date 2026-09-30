@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Logic tests that run without a phone: `npm test`.
  */

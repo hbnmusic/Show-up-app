@@ -119,8 +119,11 @@ function StackPoster({ show, width: w, height: h, p, seed }: Props & { p: Poster
   const head = showTitle(show).toUpperCase();
   const support = supportActs(show).join(' / ').toUpperCase();
   const dp = dateParts(show);
-  const headSize = fitFont(head, inner, 3, CHAR_W.poster, h * 0.26, 34);
-  const supportSize = support ? fitFont(support, inner, 4, CHAR_W.block, 26, 12) : 0;
+  const short = h < w * 1.05;
+  const supportLines = short ? 2 : 4;
+  const headSize = fitFont(head, inner, short ? 2 : 3, CHAR_W.poster, h * (short ? 0.22 : 0.26), 30);
+  const supportSize = support ? fitFont(support, inner, supportLines, CHAR_W.block, Math.min(26, h * 0.055), 11) : 0;
+  const dateSize = Math.min(w * 0.17, h * 0.14);
   return (
     <View style={[styles.poster, { width: w, height: h, backgroundColor: p.bg }]}>
       <Halftone w={w} h={h} p={p} seed={seed} />
@@ -142,7 +145,7 @@ function StackPoster({ show, width: w, height: h, p, seed }: Props & { p: Poster
           {support ? (
             <Text
               style={[styles.block, { color: p.ink, fontSize: supportSize, lineHeight: supportSize * 1.15, marginTop: 10 }]}
-              numberOfLines={4}
+              numberOfLines={supportLines}
               adjustsFontSizeToFit
               minimumFontScale={0.6}>
               + {support}
@@ -150,7 +153,7 @@ function StackPoster({ show, width: w, height: h, p, seed }: Props & { p: Poster
           ) : null}
         </View>
         <View style={[styles.row, { alignItems: 'flex-end' }]}>
-          <Text style={[styles.posterText, { color: p.accent, fontSize: w * 0.17, lineHeight: w * 0.18 }]}>
+          <Text style={[styles.posterText, { color: p.accent, fontSize: dateSize, lineHeight: dateSize * 1.06 }]}>
             {dp.month} {dp.day}
           </Text>
           <Text
@@ -171,8 +174,10 @@ function BandPoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
   const head = showTitle(show).toUpperCase();
   const rest = supportActs(show).map((a) => a.toUpperCase());
   const dp = dateParts(show);
-  const headSize = fitFont(head, inner - 24, 2, CHAR_W.poster, h * 0.2, 30);
-  const sticker = w * 0.3;
+  const short = h < w * 1.05;
+  const headSize = fitFont(head, inner - 24, 2, CHAR_W.poster, h * (short ? 0.15 : 0.2), 26);
+  const sticker = Math.min(w * 0.3, h * 0.24);
+  const maxRest = short ? 2 : 4;
   return (
     <View style={[styles.poster, { width: w, height: h, backgroundColor: p.bg }]}>
       <Stripes w={w} h={h} p={p} seed={seed} />
@@ -206,13 +211,13 @@ function BandPoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
             </Text>
           </View>
         </View>
-        {rest.slice(0, 4).map((a) => (
+        {rest.slice(0, maxRest).map((a) => (
           <Text key={a} style={[styles.block, { color: p.ink, fontSize: 17, lineHeight: 22 }]} numberOfLines={1}>
             {a}
           </Text>
         ))}
-        {rest.length > 4 ? (
-          <Text style={[styles.mono, { color: p.ink }]}>+ {rest.length - 4} MORE</Text>
+        {rest.length > maxRest ? (
+          <Text style={[styles.mono, { color: p.ink }]}>+ {rest.length - maxRest} MORE</Text>
         ) : null}
         <View style={[styles.rule, { backgroundColor: p.ink, marginTop: 14 }]} />
         <View style={[styles.row, { marginTop: 8 }]}>
@@ -233,7 +238,9 @@ function ZinePoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
   const dp = dateParts(show);
   const acts = show.acts.length ? [...show.acts].sort((a, b) => a.order - b.order).map((a) => a.name) : [showTitle(show)];
   const head = acts[0].toUpperCase();
-  const headSize = fitFont(head, inner, 2, CHAR_W.poster, h * 0.17, 28);
+  const short = h < w * 1.05;
+  const headSize = fitFont(head, inner, 2, CHAR_W.poster, h * 0.17, 26);
+  const monthSize = Math.min(44, h * 0.1);
   return (
     <View style={[styles.poster, { width: w, height: h, backgroundColor: p.bg }]}>
       <Grain w={w} h={h} p={p} seed={seed} />
@@ -254,7 +261,9 @@ function ZinePoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
       </Text>
       <View style={{ flex: 1, padding: pad, justifyContent: 'space-between' }}>
         <View>
-          <Text style={[styles.posterText, { color: p.ink, fontSize: 44, lineHeight: 46 }]}>{dp.month}</Text>
+          <Text style={[styles.posterText, { color: p.ink, fontSize: monthSize, lineHeight: monthSize * 1.05 }]}>
+            {dp.month}
+          </Text>
           <Text style={[styles.mono, { color: p.ink }]}>
             {dp.weekday} · {dp.time}
           </Text>
@@ -267,7 +276,7 @@ function ZinePoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
             minimumFontScale={0.5}>
             {head}
           </Text>
-          {acts.slice(1, 5).map((a) => (
+          {acts.slice(1, short ? 3 : 5).map((a) => (
             <View key={a}>
               <View style={[styles.rule, { backgroundColor: p.ink, marginVertical: 6 }]} />
               <Text style={[styles.block, { color: p.ink, fontSize: 16 }]} numberOfLines={1}>
