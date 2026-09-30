@@ -33,7 +33,10 @@ function fail(message: string, code = 1): never {
 }
 
 // Tolerate a key pasted with spaces, quotes or a "Bearer " prefix.
-const key = process.env.JAMBASE_API_KEY?.trim().replace(/^["']|["']$/g, '').trim().replace(/^Bearer\s+/i, '');
+// Invisible characters (zero-width spaces and the like) sneak in when copying; keys are plain ASCII.
+const key = process.env.JAMBASE_API_KEY?.replace(/[^\x21-\x7e]/g, '')
+  .replace(/^["']|["']$/g, '')
+  .replace(/^Bearer/i, '');
 if (!key) {
   fail('Set JAMBASE_API_KEY (a JamBase Data API key).', 2);
 }
