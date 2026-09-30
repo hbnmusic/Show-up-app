@@ -12,6 +12,13 @@ name: Refresh listings
 on:
   schedule:
     - cron: '17 9 * * *'
+  # Also run when the fetch code or this workflow changes, so a fix is tried right away.
+  push:
+    branches: [main]
+    paths:
+      - scripts/fetch-listings.ts
+      - src/lib/listings/**
+      - .github/workflows/refresh-listings.yml
   workflow_dispatch:
     inputs:
       mode:
