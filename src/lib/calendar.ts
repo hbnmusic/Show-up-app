@@ -15,7 +15,7 @@ export async function addToCalendar(show: Show): Promise<boolean> {
     `Lineup: ${fullBill(show) || show.title || ''}`,
     `${priceLabel(show)} · ${AGE_LABELS[show.agePolicy]}`,
     show.ticketUrl ? `Listing: ${show.ticketUrl}` : '',
-    `Open in Show Up: showup://show/${show.id}`,
+    `Open in Pull Up: pullup://show/${show.id}`,
   ]
     .filter(Boolean)
     .join('\n');

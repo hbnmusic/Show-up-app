@@ -31,7 +31,7 @@ export default function SettingsScreen() {
   };
 
   const confirmReset = () =>
-    Alert.alert('Reset Show Up?', 'This clears your Going list, passes, filters and settings on this phone.', [
+    Alert.alert('Reset Pull Up?', 'This clears your Going list, passes, filters and settings on this phone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',
@@ -58,7 +58,7 @@ export default function SettingsScreen() {
       <Text style={styles.section}>REMINDERS</Text>
       {!allowed && Platform.OS !== 'web' ? (
         <Pressable style={styles.banner} onPress={askPermission}>
-          <Text style={styles.bannerText}>Notifications are off for Show Up. Tap to turn them on.</Text>
+          <Text style={styles.bannerText}>Notifications are off for Pull Up. Tap to turn them on.</Text>
         </Pressable>
       ) : null}
       <View style={styles.card}>

@@ -171,7 +171,7 @@ export default function ShowDetail() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowLabel}>Reminders</Text>
                 <Text style={styles.rowDetail}>
-                  {notifOk ? 'Uses your defaults in Settings' : 'Notifications are off for Show Up in Android settings'}
+                  {notifOk ? 'Uses your defaults in Settings' : 'Notifications are off for Pull Up in Android settings'}
                 </Text>
               </View>
               <Switch

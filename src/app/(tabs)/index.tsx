@@ -86,7 +86,7 @@ export default function ShowsScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.logo}>
-          SHOW UP<Text style={{ color: C.accent }}>.</Text>
+          PULL UP<Text style={{ color: C.accent }}>.</Text>
         </Text>
         <Pressable
           onPress={() => router.push('/settings')}

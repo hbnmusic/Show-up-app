@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "Show Up",
-    "slug": "show-up",
+    "name": "Pull Up",
+    "slug": "pull-up",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "showup",
+    "scheme": "pullup",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0C0B0A",
     "ios": {
-      "bundleIdentifier": "com.hbnmusic.showup",
+      "bundleIdentifier": "com.hbnmusic.pullup",
       "supportsTablet": false
     },
     "android": {
-      "package": "com.hbnmusic.showup",
+      "package": "com.hbnmusic.pullup",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0C0B0A",

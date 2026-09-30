@@ -55,21 +55,21 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
 
       - name: Name the APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk show-up-build-${{ github.run_number }}.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk pull-up-build-${{ github.run_number }}.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: show-up-build-${{ github.run_number }}
-          path: show-up-build-${{ github.run_number }}.apk
+          name: pull-up-build-${{ github.run_number }}
+          path: pull-up-build-${{ github.run_number }}.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Show Up build ${{ github.run_number }}
+          name: Pull Up build ${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           prerelease: true
-          files: show-up-build-${{ github.run_number }}.apk
+          files: pull-up-build-${{ github.run_number }}.apk
           body: |
             Test build from ${{ github.sha }}.
 
