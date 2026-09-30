@@ -44,3 +44,8 @@ example
 
 # local exports
 dist-android/
+
+# Listings feed output (published to a release, not committed)
+listings/shows.json
+listings/shows.json.tmp
+listings/raw-sample.json

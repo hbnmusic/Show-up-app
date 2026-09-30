@@ -3,19 +3,20 @@ import { Tabs } from 'expo-router/js-tabs';
 import { useMemo } from 'react';
 
 import { C, F } from '@/constants/theme';
-import { SHOWS_BY_ID } from '@/data/shows';
+import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
 import { sameDay } from '@/lib/time';
 
 export default function TabsLayout() {
   const decisions = useApp((s) => s.decisions);
+  const byId = useListings((s) => s.byId);
   const tonightCount = useMemo(() => {
     const now = new Date();
     return Object.entries(decisions).filter(([id, d]) => {
-      const s = SHOWS_BY_ID[id];
+      const s = byId[id];
       return d.decision === 'going' && s && sameDay(new Date(s.startsAt), now) && s.status !== 'cancelled';
     }).length;
-  }, [decisions]);
+  }, [decisions, byId]);
 
   return (
     <Tabs

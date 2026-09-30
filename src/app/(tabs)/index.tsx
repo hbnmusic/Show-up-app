@@ -10,12 +10,12 @@ import { AudioBar } from '@/components/AudioBar';
 import { Chip } from '@/components/Chip';
 import { Deck, type DeckHandle } from '@/components/Deck';
 import { C, F } from '@/constants/theme';
-import { SHOWS } from '@/data/shows';
 import { useAppActive, useNow } from '@/hooks/useNow';
 import { useDeckAudio } from '@/hooks/useDeckAudio';
 import { recordDecision } from '@/lib/decide';
 import { useDeckState } from '@/lib/deckState';
 import { activeFilterCount, buildQueue, WHEN_LABELS } from '@/lib/filters';
+import { useListings } from '@/lib/listingsStore';
 import { playableActs, usePreviewStore } from '@/lib/previews';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
@@ -26,6 +26,8 @@ export default function ShowsScreen() {
   const focused = useIsFocused();
   const active = useAppActive();
   const decisionsRec = useApp((s) => s.decisions);
+  const allShows = useListings((s) => s.shows);
+  const listingsSource = useListings((s) => s.source);
   const filters = useApp((s) => s.filters);
   const setFilters = useApp((s) => s.setFilters);
   const resetFilters = useApp((s) => s.resetFilters);
@@ -43,8 +45,8 @@ export default function ShowsScreen() {
   }, [decisionsRec]);
 
   const queue = useMemo(
-    () => buildQueue(SHOWS, filters, decisions, now, pinnedId),
-    [filters, decisions, now, pinnedId],
+    () => buildQueue(allShows, filters, decisions, now, pinnedId),
+    [allShows, filters, decisions, now, pinnedId],
   );
   const top = queue[0];
   useEffect(() => {
@@ -85,9 +87,12 @@ export default function ShowsScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.logo}>
-          PULL UP<Text style={{ color: C.accent }}>.</Text>
-        </Text>
+        <View style={styles.logoRow}>
+          <Text style={styles.logo}>
+            PULL UP<Text style={{ color: C.accent }}>.</Text>
+          </Text>
+          {listingsSource === 'sample' ? <Text style={styles.sampleTag}>SAMPLE DATA</Text> : null}
+        </View>
         <Pressable
           onPress={() => router.push('/settings')}
           hitSlop={12}
@@ -240,7 +245,7 @@ function EmptyDeck(p: { filtered: boolean; when: string; onWiden: () => void; on
       <Text style={styles.emptyBody}>
         {p.filtered || canWiden
           ? `Showing ${WHEN_LABELS[p.when as keyof typeof WHEN_LABELS].toLowerCase()}.`
-          : 'Sample listings were added Sep 29. New shows will appear here as listings are added.'}
+          : 'New shows appear here as listings are refreshed.'}
       </Text>
       {canWiden ? (
         <Pressable style={styles.emptyButton} onPress={p.onWiden}>
@@ -268,6 +273,8 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     paddingBottom: 4,
   },
+  logoRow: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  sampleTag: { fontFamily: F.monoBold, color: C.warn, fontSize: 10, letterSpacing: 1.2 },
   logo: { fontFamily: F.poster, color: C.text, fontSize: 28, letterSpacing: 1 },
   chipRow: { gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
   deckArea: { flex: 1 },

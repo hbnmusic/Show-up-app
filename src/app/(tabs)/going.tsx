@@ -7,10 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FlyerThumb } from '@/components/FlyerArt';
 import { C, F } from '@/constants/theme';
-import { SHOWS_BY_ID } from '@/data/shows';
 import { useNow } from '@/hooks/useNow';
 import { recordDecision, removeDecision } from '@/lib/decide';
 import { byStart } from '@/lib/filters';
+import { useListings } from '@/lib/listingsStore';
 import { AGE_LABELS, placeLabel, priceLabel, showTitle, supportActs, timeLabel } from '@/lib/showText';
 import { useApp } from '@/lib/store';
 import { addDays, formatDay, relativeDay, sameDay, startOfDay } from '@/lib/time';
@@ -28,6 +28,7 @@ function isPast(s: Show, now: Date): boolean {
 export default function GoingScreen() {
   const now = useNow();
   const decisions = useApp((s) => s.decisions);
+  const byId = useListings((s) => s.byId);
   const reminderOff = useApp((s) => s.reminderOff);
   const calendarAdded = useApp((s) => s.calendarAdded);
   const attendance = useApp((s) => s.attendance);
@@ -35,12 +36,16 @@ export default function GoingScreen() {
   const [removed, setRemoved] = useState<Show | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { upcoming, past, passed } = useMemo(() => {
+  const { upcoming, past, passed, unlisted } = useMemo(() => {
     const going: Show[] = [];
     const passedList: Show[] = [];
+    const missing: string[] = [];
     for (const [id, r] of Object.entries(decisions)) {
-      const s = SHOWS_BY_ID[id];
-      if (!s) continue;
+      const s = byId[id];
+      if (!s) {
+        if (r.decision === 'going') missing.push(id);
+        continue;
+      }
       if (r.decision === 'going') going.push(s);
       else passedList.push(s);
     }
@@ -49,8 +54,9 @@ export default function GoingScreen() {
       upcoming: going.filter((s) => !isPast(s, now)),
       past: going.filter((s) => isPast(s, now)).reverse(),
       passed: passedList.filter((s) => !isPast(s, now)).sort(byStart),
+      unlisted: missing,
     };
-  }, [decisions, now]);
+  }, [decisions, byId, now]);
 
   const sections = useMemo(() => {
     if (tab === 'past') return past.length ? [{ title: '', data: past }] : [];
@@ -115,13 +121,27 @@ export default function GoingScreen() {
           section.title ? <Text style={styles.sectionTitle}>{section.title.toUpperCase()}</Text> : null
         }
         ListEmptyComponent={<Empty tab={tab} />}
+        ListFooterComponent={
+          tab === 'upcoming' && unlisted.length > 0 ? (
+            <View style={styles.unlisted}>
+              <Text style={styles.unlistedText}>
+                {unlisted.length === 1
+                  ? '1 saved show is no longer in the listings.'
+                  : `${unlisted.length} saved shows are no longer in the listings.`}
+              </Text>
+              <Pressable onPress={() => unlisted.forEach((id) => removeDecision(id))} hitSlop={8}>
+                <Text style={styles.toastUndoLight}>Clear</Text>
+              </Pressable>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => {
           const row = (
             <ShowRow
               show={item}
               now={now}
               tab={tab}
-              reminders={!reminderOff[item.id]}
+              reminders={!reminderOff[item.id] && item.status !== 'cancelled'}
               inCalendar={!!calendarAdded[item.id]}
               attendance={attendance[item.id]}
             />
@@ -183,7 +203,12 @@ function ShowRow(p: {
     <Pressable style={styles.row} onPress={() => router.push(`/show/${s.id}`)} accessibilityRole="button">
       <FlyerThumb show={s} size={64} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.rowWhen} numberOfLines={1}>
+        {s.status !== 'scheduled' ? (
+          <Text style={styles.rowFlag} numberOfLines={1}>
+            {s.status === 'cancelled' ? 'CANCELLED' : 'CHANGED · CHECK LISTING'}
+          </Text>
+        ) : null}
+        <Text style={[styles.rowWhen, s.status === 'cancelled' && styles.struck]} numberOfLines={1}>
           {p.tab === 'upcoming' ? relativeDay(start, p.now) : formatDay(start)} · {timeLabel(s)}
         </Text>
         <Text style={styles.rowTitle} numberOfLines={1}>
@@ -290,6 +315,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: C.bg,
   },
+  rowFlag: { fontFamily: F.monoBold, color: C.danger, fontSize: 10, letterSpacing: 1 },
+  struck: { textDecorationLine: 'line-through' },
   rowWhen: { fontFamily: F.uiBold, color: C.accent, fontSize: 12 },
   rowTitle: { fontFamily: F.uiBold, color: C.text, fontSize: 16 },
   rowMore: { fontFamily: F.uiRegular, color: C.muted, fontSize: 13 },
@@ -324,6 +351,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
+  unlisted: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 18, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: C.line, backgroundColor: C.surface },
+  unlistedText: { fontFamily: F.uiRegular, color: C.muted, fontSize: 13, flex: 1 },
+  toastUndoLight: { fontFamily: F.uiBold, color: C.accent, fontSize: 13 },
   toastText: { fontFamily: F.ui, color: C.bg, fontSize: 14, flex: 1 },
   toastUndo: { fontFamily: F.uiBold, color: C.accent, fontSize: 14 },
 });

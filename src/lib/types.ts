@@ -112,3 +112,11 @@ export const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
   beforeDoors: true,
   dayBefore: false,
 };
+
+export const AREAS: readonly Area[] = ['Brooklyn', 'Queens', 'Manhattan', 'North Jersey'];
+
+export const ALL_GENRES: readonly Genre[] = [
+  'Punk', 'Hardcore', 'Screamo', 'Emo', 'Post-Punk', 'Darkwave', 'Industrial', 'Garage', 'Indie Rock',
+  'Shoegaze', 'Noise Rock', 'Metal', 'Sludge & Doom', 'Psych', 'Folk', 'Pop', 'Experimental',
+  'Jazz & Improv', 'Club & Techno', 'Soul & Gospel',
+];

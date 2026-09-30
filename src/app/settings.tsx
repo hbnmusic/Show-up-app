@@ -2,7 +2,7 @@ import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, View, P
 import { useEffect, useState } from 'react';
 
 import { C, F } from '@/constants/theme';
-import { SHOWS } from '@/data/shows';
+import { useListings } from '@/lib/listingsStore';
 import { ensureNotificationPermission, notificationsAllowed, syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
 import type { ReminderPrefs } from '@/lib/types';
@@ -13,6 +13,7 @@ export default function SettingsScreen() {
   const autoplay = useApp((s) => s.autoplay);
   const setAutoplay = useApp((s) => s.setAutoplay);
   const [allowed, setAllowed] = useState(true);
+  const { shows, source, generatedAt, attribution, refreshing, error } = useListings();
 
   useEffect(() => {
     notificationsAllowed().then(setAllowed);
@@ -87,12 +88,32 @@ export default function SettingsScreen() {
         These apply to every show you mark going. Turn reminders off for a single show from its detail page.
       </Text>
 
+      <Text style={styles.section}>LISTINGS</Text>
+      <View style={styles.card}>
+        <Text style={styles.about}>
+          {source === 'sample'
+            ? `Showing ${shows.length} bundled sample listings. The live listings feed hasn't loaded yet.`
+            : `${shows.length} shows${generatedAt ? `, updated ${new Date(generatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}${source === 'cache' ? ' (saved copy)' : ''}.`}
+          {attribution.length ? `\n${attribution.join('\n')}` : ''}
+        </Text>
+        {error ? <Text style={styles.listError}>Last refresh failed: {error}</Text> : null}
+        <View style={styles.divider} />
+        <Pressable
+          style={styles.refreshRow}
+          disabled={refreshing}
+          onPress={() => useListings.getState().refresh({ force: true }).then(async (ok) => {
+              if (ok) await syncReminders();
+            })}
+          accessibilityRole="button">
+          <Text style={[styles.label, refreshing && { color: C.faint }]}>{refreshing ? 'Refreshing…' : 'Refresh listings now'}</Text>
+        </Pressable>
+      </View>
+
       <Text style={styles.section}>ABOUT THIS BUILD</Text>
       <View style={styles.card}>
         <Text style={styles.about}>
-          Prototype with {SHOWS.length} sample listings from public NYC and North Jersey calendars, gathered Sep 29,
-          2026. Flyers are generated placeholders. Previews come from the Deezer public API, which allows non-commercial
-          use only.
+          Prototype. Flyers are generated placeholders, not promoter artwork. Genre tags come from the listings
+          provider and are broad. Previews come from the Deezer public API, which allows non-commercial use only.
         </Text>
       </View>
 
@@ -134,6 +155,8 @@ const styles = StyleSheet.create({
   banner: { backgroundColor: '#3A2A0A', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.warn },
   bannerText: { fontFamily: F.ui, color: C.warn, fontSize: 13 },
   about: { fontFamily: F.uiRegular, color: C.muted, fontSize: 13, lineHeight: 19, padding: 14 },
+  listError: { fontFamily: F.uiRegular, color: C.warn, fontSize: 12, paddingHorizontal: 14, paddingBottom: 12 },
+  refreshRow: { paddingHorizontal: 14, paddingVertical: 14 },
   reset: { marginTop: 20, alignItems: 'center', padding: 12 },
   resetText: { fontFamily: F.ui, color: C.danger, fontSize: 14 },
 });

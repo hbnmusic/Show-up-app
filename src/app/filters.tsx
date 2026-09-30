@@ -5,8 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
 import { C, F } from '@/constants/theme';
-import { SHOWS } from '@/data/shows';
 import { buildQueue, WHEN_LABELS } from '@/lib/filters';
+import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
 import type { AgeFilter, Area, Decision, Genre, PriceFilter, VenueType, WhenFilter } from '@/lib/types';
 
@@ -29,13 +29,6 @@ const AGES: { value: AgeFilter; label: string }[] = [
   { value: '18_plus', label: '18+ or all ages' },
 ];
 
-/** Genres in the listings, most common first. */
-const GENRES: Genre[] = (() => {
-  const counts = new Map<Genre, number>();
-  for (const s of SHOWS) for (const g of s.genres) counts.set(g, (counts.get(g) ?? 0) + 1);
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([g]) => g);
-})();
-
 function toggle<T>(list: T[], v: T): T[] {
   return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 }
@@ -46,6 +39,13 @@ export default function FiltersScreen() {
   const setFilters = useApp((s) => s.setFilters);
   const resetFilters = useApp((s) => s.resetFilters);
   const decisionsRec = useApp((s) => s.decisions);
+  const allShows = useListings((s) => s.shows);
+  // Genres present in the listings, most common first.
+  const genreList = useMemo(() => {
+    const counts = new Map<Genre, number>();
+    for (const sh of allShows) for (const g of sh.genres) counts.set(g, (counts.get(g) ?? 0) + 1);
+    return [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([g]) => g);
+  }, [allShows]);
   const scroll = useRef<ScrollView>(null);
   const [genreY, setGenreY] = useState<number | null>(null);
 
@@ -56,8 +56,8 @@ export default function FiltersScreen() {
   const count = useMemo(() => {
     const d: Record<string, Decision> = {};
     for (const [id, r] of Object.entries(decisionsRec)) d[id] = r.decision;
-    return buildQueue(SHOWS, filters, d, new Date()).length;
-  }, [filters, decisionsRec]);
+    return buildQueue(allShows, filters, d, new Date()).length;
+  }, [allShows, filters, decisionsRec]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
@@ -89,7 +89,7 @@ export default function FiltersScreen() {
         </Section>
         <View onLayout={(e) => setGenreY(e.nativeEvent.layout.y)}>
           <Section title="Genre" hint={filters.genres.length ? `${filters.genres.length} picked` : 'Any'}>
-            {GENRES.map((g) => (
+            {[...new Set([...genreList, ...filters.genres])].map((g) => (
               <Chip
                 key={g}
                 label={g}

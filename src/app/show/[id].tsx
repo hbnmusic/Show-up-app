@@ -19,9 +19,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FlyerArt } from '@/components/FlyerArt';
 import { C, F } from '@/constants/theme';
-import { SHOWS_BY_ID } from '@/data/shows';
 import { addToCalendar } from '@/lib/calendar';
 import { recordDecision, removeDecision } from '@/lib/decide';
+import { useListings } from '@/lib/listingsStore';
 import { resolveShow, useShowPreviews, type ActPreview } from '@/lib/previews';
 import { notificationsAllowed, syncReminders } from '@/lib/reminders';
 import {
@@ -37,7 +37,7 @@ import { formatDay } from '@/lib/time';
 
 export default function ShowDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const show = id ? SHOWS_BY_ID[id] : undefined;
+  const show = useListings((s) => (id ? s.byId[id] : undefined));
   const decision = useApp((s) => (id ? s.decisions[id]?.decision : undefined));
   const remindersOn = useApp((s) => (id ? !s.reminderOff[id] : true));
   const calendarAt = useApp((s) => (id ? s.calendarAdded[id] : undefined));
@@ -85,6 +85,7 @@ export default function ShowDetail() {
   };
 
   const going = decision === 'going';
+  const cancelled = show.status === 'cancelled';
   const toggleGoing = async () => {
     if (going) await removeDecision(show.id);
     else await recordDecision(show.id, 'going');
@@ -133,7 +134,9 @@ export default function ShowDetail() {
         </View>
         <View style={{ gap: 3 }}>
           {show.status !== 'scheduled' ? (
-            <Text style={styles.changed}>{show.status === 'cancelled' ? 'CANCELLED' : 'CHANGED'}</Text>
+            <Text style={styles.changed}>
+              {show.status === 'cancelled' ? 'CANCELLED' : 'DATE OR VENUE CHANGED · CHECK THE LISTING'}
+            </Text>
           ) : null}
           <Text style={styles.title}>{showTitle(show)}</Text>
           <Text style={styles.line}>
@@ -151,13 +154,20 @@ export default function ShowDetail() {
 
         <Pressable
           onPress={toggleGoing}
-          style={[styles.primary, going && styles.primaryOn]}
+          disabled={cancelled && !going}
+          style={[styles.primary, going && styles.primaryOn, cancelled && !going && { opacity: 0.35 }]}
           accessibilityRole="button">
           <Ionicons name={going ? 'checkmark' : 'heart'} size={18} color={going ? C.text : C.accentInk} />
-          <Text style={[styles.primaryText, going && { color: C.text }]}>{going ? 'Going · tap to undo' : "I'm going"}</Text>
+          <Text style={[styles.primaryText, going && { color: C.text }]}>
+            {going ? 'Going · tap to undo' : cancelled ? 'Cancelled' : "I'm going"}
+          </Text>
         </Pressable>
 
-        {going ? (
+        {going && cancelled ? (
+          <Text style={styles.note}>This show was cancelled, so reminders are off. Tap above to remove it from Going.</Text>
+        ) : null}
+
+        {going && !cancelled ? (
           <View style={styles.card}>
             <Row
               icon="calendar-outline"
@@ -222,7 +232,7 @@ export default function ShowDetail() {
         {show.ticketUrl ? (
           <Pressable style={styles.secondary} onPress={() => Linking.openURL(show.ticketUrl!)}>
             <Ionicons name="open-outline" size={16} color={C.text} />
-            <Text style={styles.secondaryText}>Open listing</Text>
+            <Text style={styles.secondaryText}>{show.source.provider === 'jambase' ? 'View on JamBase' : 'Open listing'}</Text>
           </Pressable>
         ) : null}
 
@@ -234,8 +244,13 @@ export default function ShowDetail() {
         ) : null}
 
         <Text style={styles.note}>
-          Sample listing gathered Sep 29 from public listings. Genre tags are approximate. Previews come from Deezer and
-          may not be the right artist when names are common.
+          {show.source.provider === 'jambase'
+            ? 'Listing from JamBase. '
+            : show.source.provider === 'manual'
+              ? 'Listing added by hand. '
+              : 'Sample listing from public calendars. '}
+          Times, prices and age limits can change; check the listing before you go. Previews come from Deezer and may not
+          be the right artist when names are common.
         </Text>
       </ScrollView>
     </SafeAreaView>

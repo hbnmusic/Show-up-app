@@ -55,6 +55,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint src tests",
+    "listings": "tsx scripts/fetch-listings.ts",
     "test": "TZ=America/New_York tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },

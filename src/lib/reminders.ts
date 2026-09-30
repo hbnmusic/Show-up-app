@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { SHOWS_BY_ID } from '@/data/shows';
+import { getShow } from './listingsStore';
 import { planReminders } from './reminderPlan';
 import { useApp } from './store';
 
@@ -72,7 +72,7 @@ async function doSync() {
   const now = new Date();
   for (const [id, rec] of Object.entries(decisions)) {
     if (rec.decision !== 'going' || reminderOff[id]) continue;
-    const show = SHOWS_BY_ID[id];
+    const show = getShow(id);
     if (!show) continue;
     for (const r of planReminders(show, reminderPrefs, now)) {
       await Notifications.scheduleNotificationAsync({

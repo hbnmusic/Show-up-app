@@ -17,6 +17,7 @@ import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { C } from '@/constants/theme';
+import { useListings } from '@/lib/listingsStore';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
 
@@ -53,6 +54,7 @@ export default function RootLayout() {
     SpaceMono_700Bold,
   });
   const hydrated = useApp((s) => s.hydrated);
+  const listingsReady = useListings((s) => s.ready);
 
   useNotificationRouting();
 
@@ -64,17 +66,27 @@ export default function RootLayout() {
     }).catch(() => {});
   }, []);
 
-  // Rebuild reminders on launch and whenever the app comes back to the front.
+  // Read the saved listings once the saved decisions are loaded.
   useEffect(() => {
-    if (!hydrated) return;
-    syncReminders();
-    const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') syncReminders();
-    });
-    return () => sub.remove();
+    if (hydrated) useListings.getState().loadCache();
   }, [hydrated]);
 
-  const ready = fontsLoaded && hydrated;
+  // On launch and whenever the app returns to the front: look for fresh listings
+  // (at most every 30 minutes), then rebuild reminders so changed times are picked up.
+  useEffect(() => {
+    if (!hydrated || !listingsReady) return;
+    const run = async () => {
+      await syncReminders();
+      if (await useListings.getState().refresh()) await syncReminders();
+    };
+    run();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') run();
+    });
+    return () => sub.remove();
+  }, [hydrated, listingsReady]);
+
+  const ready = fontsLoaded && hydrated && listingsReady;
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
