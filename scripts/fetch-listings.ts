@@ -138,6 +138,7 @@ async function get(page: number, since?: string) {
 async function main() {
   const since = mode === 'incremental' ? previous!.feed.generatedAt.replace(/\.\d+Z$/, '').replace(/Z$/, '') : undefined;
   console.log(`Key: ${key!.slice(0, 9)}... (${key!.length} characters)`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Key shape::starts ${key!.slice(0, 9)}, ${key!.length} characters, raw secret ${process.env.JAMBASE_API_KEY!.length} characters`);
   console.log(`Mode ${mode}; ${from} to ${to}; ${radius} mi around ${lat},${lng}${since ? `; changed since ${since} UTC` : ''}`);
   const got = await collect((p) => get(p, since), budget);
 
