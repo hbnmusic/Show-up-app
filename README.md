@@ -23,7 +23,7 @@ previous one and keeps your Going list.
 
 ## What's in v1
 
-- **Deck** — swipe right for Going, left to pass, up for details. Tap the right
+- **Deck** — swipe right for Going, left to pass, spread two fingers (or tap the show info) for details. Tap the right
   or left half of a flyer to move between the poster and the info slide. Undo
   brings back the last card.
 - **Previews** — the top card autoplays a 30-second preview of the headliner

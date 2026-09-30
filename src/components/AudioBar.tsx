@@ -50,7 +50,7 @@ export function AudioBar(p: AudioBarProps) {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.muted}>No preview yet</Text>
-          <Text style={styles.small}>Swipe up for the full lineup</Text>
+          <Text style={styles.small}>Spread two fingers for the full lineup</Text>
         </View>
       </View>
     );

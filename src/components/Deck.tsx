@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -107,6 +107,7 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
   const tx = useSharedValue(startX);
   const ty = useSharedValue(0);
   const fade = useSharedValue(1);
+  const zoom = useSharedValue(1);
   const [slide, setSlide] = useState(0);
   const slides = 2;
 
@@ -140,6 +141,8 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
 
   const pan = Gesture.Pan()
     .enabled(isTop)
+    // Two fingers are a pinch, never a swipe.
+    .maxPointers(1)
     .activeOffsetX([-10, 10])
     .activeOffsetY([-14, 14])
     .onUpdate((e) => {
@@ -150,7 +153,6 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
     .onEnd((e) => {
       const right = e.translationX > threshold || (e.velocityX > 900 && e.translationX > 40);
       const left = e.translationX < -threshold || (e.velocityX < -900 && e.translationX < -40);
-      const up = e.translationY < -110 && Math.abs(e.translationY) > Math.abs(e.translationX) * 1.3;
       if (right || left) {
         const dir = right ? 1 : -1;
         drag.value = dir;
@@ -160,11 +162,25 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
         });
         return;
       }
-      if (up) scheduleOnRN(open);
       tx.value = withSpring(0, { damping: 18, stiffness: 180 });
       ty.value = withSpring(0, { damping: 18, stiffness: 180 });
       drag.value = withSpring(0);
     });
+
+  // Spread two fingers apart to open the full details. Opening only when the
+  // fingers lift lets someone who spreads by accident pinch back to cancel.
+  const pinch = Gesture.Pinch()
+    .enabled(isTop)
+    .onUpdate((e) => {
+      zoom.value = Math.max(1, Math.min(1.2, e.scale));
+    })
+    .onEnd((e) => {
+      const opened = e.scale > 1.3;
+      zoom.value = withSpring(1, { damping: 18, stiffness: 180 });
+      if (opened) scheduleOnRN(open);
+    });
+
+  const gestures = Gesture.Simultaneous(pan, pinch);
 
   const tap = Gesture.Tap()
     .enabled(isTop)
@@ -182,6 +198,7 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
           { translateX: tx.value },
           { translateY: ty.value * 0.4 },
           { rotate: `${(tx.value / width) * 10}deg` },
+          { scale: zoom.value },
         ],
       };
     }
@@ -208,7 +225,7 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
 
   const start = new Date(show.startsAt);
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={gestures}>
       <Animated.View
         style={[styles.card, { width, height: p.cardH }, cardStyle]}
         accessible={isTop}
@@ -244,7 +261,7 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
           </View>
         </GestureDetector>
         {p.audio}
-        <View style={styles.info}>
+        <Pressable style={styles.info} onPress={open} accessibilityRole="button" accessibilityLabel="Show details">
           <Text style={styles.when} numberOfLines={1}>
             {relativeDay(start)} · {timeLabel(show)}
           </Text>
@@ -254,7 +271,7 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
           <Text style={styles.meta} numberOfLines={1}>
             {priceLabel(show)} · {AGE_LABELS[show.agePolicy]} · {VENUE_TYPE_LABELS[show.venue.type]}
           </Text>
-        </View>
+        </Pressable>
         <View style={styles.chips}>
           {show.genres.slice(0, 3).map((g) => (
             <View key={g} style={styles.chip}>
