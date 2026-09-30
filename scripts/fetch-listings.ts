@@ -32,7 +32,8 @@ function fail(message: string, code = 1): never {
   process.exit(code);
 }
 
-const key = process.env.JAMBASE_API_KEY;
+// Tolerate a key pasted with spaces, quotes or a "Bearer " prefix.
+const key = process.env.JAMBASE_API_KEY?.trim().replace(/^["']|["']$/g, '').trim().replace(/^Bearer\s+/i, '');
 if (!key) {
   fail('Set JAMBASE_API_KEY (a JamBase Data API key).', 2);
 }
@@ -51,6 +52,8 @@ const bases = process.env.JAMBASE_BASE_URL
   ? [process.env.JAMBASE_BASE_URL]
   : ['https://api.data.jambase.com/v3', 'https://data.jambase.com/v3'];
 let base = bases[0];
+/** What each address answered on the first page, for the error message. */
+const tried: string[] = [];
 
 function readJson(file: string): unknown {
   try {
@@ -101,11 +104,17 @@ async function get(page: number, since?: string) {
       }
       throw e;
     }
-    if (res.status === 404 && page === 1 && bases.indexOf(base) < bases.length - 1) {
-      base = bases[bases.indexOf(base) + 1];
-      continue;
+    if (page === 1 && [401, 403, 404].includes(res.status)) {
+      tried.push(`${base} -> ${res.status}`);
+      if (bases.indexOf(base) < bases.length - 1) {
+        base = bases[bases.indexOf(base) + 1];
+        continue;
+      }
     }
-    if (res.status === 401 || res.status === 403) throw new Error(`JamBase refused the key (HTTP ${res.status}).`);
+    if (res.status === 401 || res.status === 403) {
+      const body = (await res.text()).slice(0, 200).replace(/\s+/g, ' ');
+      throw new Error(`JamBase refused the key (HTTP ${res.status}). Tried: ${tried.join('; ')}. Response: ${body}`);
+    }
     if ((res.status === 429 || res.status >= 500) && attempt < 2) {
       await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
       continue;
@@ -122,6 +131,7 @@ async function get(page: number, since?: string) {
 
 async function main() {
   const since = mode === 'incremental' ? previous!.feed.generatedAt.replace(/\.\d+Z$/, '').replace(/Z$/, '') : undefined;
+  console.log(`Key: ${key!.slice(0, 9)}... (${key!.length} characters)`);
   console.log(`Mode ${mode}; ${from} to ${to}; ${radius} mi around ${lat},${lng}${since ? `; changed since ${since} UTC` : ''}`);
   const got = await collect((p) => get(p, since), budget);
 
