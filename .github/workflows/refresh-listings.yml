@@ -73,7 +73,8 @@ jobs:
         run: |
           MODE="${{ inputs.mode }}"
           if [ -z "$MODE" ] || [ "$MODE" = "auto" ]; then
-            if [ "$(date -u +%u)" = "1" ]; then MODE=full; else MODE=incremental; fi
+            # A code change re-reads everything so the fix reaches old listings too.
+            if [ "${{ github.event_name }}" = "push" ] || [ "$(date -u +%u)" = "1" ]; then MODE=full; else MODE=incremental; fi
           fi
           npx tsx scripts/fetch-listings.ts --mode "$MODE" --budget 80 --dump-sample listings/raw-sample.json
 

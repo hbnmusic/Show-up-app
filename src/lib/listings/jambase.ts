@@ -36,6 +36,19 @@ export type MapOptions = {
   maxCapacity: number;
 };
 
+/** JamBase often leaves capacity blank for big rooms, so the obvious ones are named. Matched as a substring of the lower-cased venue name. */
+const BIG_VENUES = [
+  'barclays center', 'madison square garden', 'prudential center', 'metlife stadium', 'ubs arena', 'citi field',
+  'yankee stadium', 'radio city', 'forest hills stadium', 'kings theatre', 'brooklyn paramount', 'beacon theatre',
+  'terminal 5', 'brooklyn steel', 'hammerstein ballroom', 'playstation theater', 'nycb live', 'nassau coliseum',
+  'carnegie hall', 'lincoln center', 'new jersey performing arts center', 'njpac', 'st. george theatre', 'apollo theater',
+];
+
+export function isBigVenue(name: string): boolean {
+  const n = name.toLowerCase();
+  return BIG_VENUES.some((v) => n.includes(v));
+}
+
 export const DEFAULT_MAP_OPTIONS = { maxCapacity: 1500 } as const;
 
 export type MapResult = { show: Show } | { skip: SkipReason };
@@ -144,7 +157,7 @@ export function mapJamBaseEvent(ev: unknown, opts: MapOptions): MapResult {
   if (!area) return { skip: 'outside-areas' };
 
   const capacity = num(venue.maximumAttendeeCapacity);
-  if (capacity != null && capacity > opts.maxCapacity) return { skip: 'large-venue' };
+  if ((capacity != null && capacity > opts.maxCapacity) || isBigVenue(venueName)) return { skip: 'large-venue' };
 
   const startRaw = str(ev.startDate);
   if (!startRaw) return { skip: 'no-date' };

@@ -123,6 +123,14 @@ describe('reminders', () => {
     assert.equal(r[0].kind, 'dayBefore');
   });
 
+  it('does not call a start time "doors" when the listing has no door time', () => {
+    const noDoors = { ...show, doorsAt: undefined };
+    const r = planReminders(noDoors, DEFAULT_REMINDER_PREFS, new Date('2026-10-01T10:00:00-04:00'));
+    const before = r.find((x) => x.kind === 'beforeDoors')!;
+    assert.match(before.title, /^Starts in 1 hour/);
+    assert.doesNotMatch(r.map((x) => x.body + x.title).join(' '), /doors/i);
+  });
+
   it('skips before-doors when the time is TBA', () => {
     const tba = SHOWS.find((s) => s.timeTba)!;
     const r = planReminders(tba, DEFAULT_REMINDER_PREFS, new Date(new Date(tba.startsAt).getTime() - 3 * 86400_000));

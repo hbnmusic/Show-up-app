@@ -125,6 +125,13 @@ describe('JamBase mapper', () => {
     assert.equal(skipped(unknown), 'mapped');
   });
 
+  it('skips known big rooms even when capacity is missing', () => {
+    const ev = concert();
+    (ev.location as Record<string, unknown>).name = 'Barclays Center';
+    delete (ev.location as Record<string, unknown>).maximumAttendeeCapacity;
+    assert.equal(skipped(ev), 'large-venue');
+  });
+
   it('keeps a named night with no performers', () => {
     assert.equal(mapped(concert({ performer: [], 'x-customTitle': 'Avant Radio Festival' })).title, 'Avant Radio Festival');
   });

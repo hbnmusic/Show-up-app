@@ -33,7 +33,8 @@ export function planReminders(s: Show, prefs: ReminderPrefs, now: Date): Planned
 
   const name = s.title && s.acts.length === 0 ? s.title : headliner(s);
   const where = `${s.venue.name}, ${s.venue.neighborhood}`;
-  const when = s.timeTba ? 'time TBA' : `doors ${formatTime(doors)}`;
+  // Some listings give only a start time; do not call it doors.
+  const when = s.timeTba ? 'time TBA' : s.doorsAt ? `doors ${formatTime(doors)}` : `starts ${formatTime(doors)}`;
   const out: PlannedReminder[] = [];
 
   if (prefs.dayBefore) {
@@ -53,7 +54,7 @@ export function planReminders(s: Show, prefs: ReminderPrefs, now: Date): Planned
     out.push({
       kind: 'beforeDoors',
       at,
-      title: `Doors in 1 hour at ${s.venue.name}`,
+      title: s.doorsAt ? `Doors in 1 hour at ${s.venue.name}` : `Starts in 1 hour at ${s.venue.name}`,
       body: `${lineupShort(s)} · ${s.venue.neighborhood}`,
     });
   }
