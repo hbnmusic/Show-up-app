@@ -32,6 +32,7 @@ import {
   showTitle,
   timeLabel,
 } from '@/lib/showText';
+import { useDeckState } from '@/lib/deckState';
 import { useApp } from '@/lib/store';
 import { formatDay } from '@/lib/time';
 
@@ -48,6 +49,11 @@ export default function ShowDetail() {
   const [notifOk, setNotifOk] = useState(true);
   const { width } = useWindowDimensions();
   const flyerW = Math.min(width - 32, 460);
+
+  useEffect(
+    () => () => useDeckState.setState({ deckDetails: false, detailsPlaying: false }),
+    [],
+  );
 
   useEffect(() => {
     if (show) resolveShow(show);
@@ -79,6 +85,7 @@ export default function ShowDetail() {
       setPlayingAct(null);
       return;
     }
+    useDeckState.setState({ detailsPlaying: true });
     player.replace({ uri: p.track.previewUrl });
     player.play();
     setPlayingAct(name);

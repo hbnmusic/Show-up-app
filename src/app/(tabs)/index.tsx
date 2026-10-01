@@ -54,7 +54,10 @@ export default function ShowsScreen() {
     useDeckState.setState({ pinnedId: top?.id ?? null });
   }, [top?.id]);
 
-  const audio = useDeckAudio(top, queue.slice(1, 3), focused && active);
+  const deckDetails = useDeckState((s) => s.deckDetails);
+  const detailsPlaying = useDeckState((s) => s.detailsPlaying);
+  // The details screen opened from the deck covers it, so keep the preview going unless the user plays something there.
+  const audio = useDeckAudio(top, queue.slice(1, 3), (focused || (deckDetails && !detailsPlaying)) && active);
   const previewsByShow = usePreviewStore((s) => s.byShow);
 
   // Fade the preview out as the card is dragged toward a decision.
@@ -138,7 +141,10 @@ export default function ShowsScreen() {
             drag={drag}
             enterFrom={enterFrom}
             onDecide={onDecide}
-            onOpen={(s) => router.push(`/show/${s.id}`)}
+            onOpen={(s) => {
+              useDeckState.setState({ deckDetails: true, detailsPlaying: false });
+              router.push(`/show/${s.id}`);
+            }}
             renderAudio={(show, isTop) => {
               if (isTop) {
                 return (
