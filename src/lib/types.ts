@@ -1,7 +1,6 @@
 export type VenueType = 'basement' | 'house' | 'diy' | 'venue';
 export type AddressVisibility = 'public' | 'neighborhood_only' | 'on_request';
 export type AgePolicy = 'all_ages' | '18_plus' | '21_plus' | 'unknown';
-export type Area = 'Brooklyn' | 'Queens' | 'Manhattan' | 'North Jersey';
 export type ShowStatus = 'scheduled' | 'cancelled' | 'moved';
 
 export type Genre =
@@ -30,7 +29,12 @@ export type Venue = {
   name: string;
   type: VenueType;
   neighborhood: string;
-  area: Area;
+  /** Borough or town, shown in listings. */
+  area: string;
+  /** Which feed city this venue belongs to (see metros.ts). Missing in older feeds, which were NYC only. */
+  metro: string;
+  lat?: number;
+  lng?: number;
   /** City/state line used for calendar locations, e.g. "Brooklyn, NY". */
   city: string;
   address?: string;
@@ -83,9 +87,14 @@ export type WhenFilter = 'tonight' | 'tomorrow' | 'weekend' | 'week' | 'month' |
 export type PriceFilter = 'any' | 'free' | 'under10' | 'under20';
 export type AgeFilter = 'any' | 'all_ages' | '18_plus';
 
+/** The place the deck is centered on: the phone's location or a chosen city. */
+export type Place = { label: string; lat: number; lng: number; metro?: string; source: 'device' | 'city' };
+
 export type Filters = {
   when: WhenFilter;
-  areas: Area[];
+  /** null = no location limit (shows everything in the feed). */
+  place: Place | null;
+  radiusMi: number;
   venueTypes: VenueType[];
   genres: Genre[];
   price: PriceFilter;
@@ -94,7 +103,8 @@ export type Filters = {
 
 export const DEFAULT_FILTERS: Filters = {
   when: 'week',
-  areas: [],
+  place: null,
+  radiusMi: 25,
   venueTypes: [],
   genres: [],
   price: 'any',
@@ -113,7 +123,7 @@ export const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
   dayBefore: false,
 };
 
-export const AREAS: readonly Area[] = ['Brooklyn', 'Queens', 'Manhattan', 'North Jersey'];
+export const RADIUS_OPTIONS = [5, 10, 15, 25] as const;
 
 export const ALL_GENRES: readonly Genre[] = [
   'Punk', 'Hardcore', 'Screamo', 'Emo', 'Post-Punk', 'Darkwave', 'Industrial', 'Garage', 'Indie Rock',

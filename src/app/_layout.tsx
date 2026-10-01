@@ -17,6 +17,7 @@ import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { C } from '@/constants/theme';
+import { initPlace } from '@/lib/location';
 import { useListings } from '@/lib/listingsStore';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
@@ -65,6 +66,11 @@ export default function RootLayout() {
       interruptionMode: 'doNotMix',
     }).catch(() => {});
   }, []);
+
+  // First launch: centre the deck on the phone's location (falls back to New York).
+  useEffect(() => {
+    if (hydrated) initPlace();
+  }, [hydrated]);
 
   // Read the saved listings once the saved decisions are loaded.
   useEffect(() => {

@@ -1,6 +1,6 @@
 /**
- * Fetch upcoming NYC / North Jersey shows from JamBase and write the feed
- * the app downloads.
+ * Fetch upcoming shows for each city in src/lib/metros.ts from JamBase and
+ * write the one feed the app downloads.
  *
  *   JAMBASE_API_KEY=... npx tsx scripts/fetch-listings.ts --mode full
  *
@@ -9,17 +9,21 @@
  *   --out listings/shows.json
  *   --manual listings/manual.json   hand-kept listings merged in
  *   --days 60                 how far ahead to look (free plan allows about 6 months)
- *   --lat 40.7128 --lng -74.006 --radius 25   search circle in miles
+ *   --metros nyc,la,chi       which cities to fetch (default: all)
  *   --max-capacity 1500       skip bigger venues
- *   --budget 60               most API calls this run may make (free plan: 1,000 a month)
+ *   --budget 60               most API calls one city may use in a run
+ *   --monthly-cap 900         stop fetching once this many calls are spent this month (free plan: 1,000)
  *   --dump-sample listings/raw-sample.json   save the first raw page for inspection
  */
 /// <reference types="node" />
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { buildFeed, collect, sanityProblem } from '../src/lib/listings/pipeline';
-import { parseFeed } from '../src/lib/listings/validate';
+import { ATTRIBUTION, buildFeed, collect, sanityProblem } from '../src/lib/listings/pipeline';
+import { dedupeShows, sortByStart, stillRelevant } from '../src/lib/listings/merge';
+import { parseFeed, type Feed } from '../src/lib/listings/validate';
+import { METROS, type Metro } from '../src/lib/metros';
+import type { Show } from '../src/lib/types';
 
 function arg(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
@@ -45,10 +49,11 @@ const out = arg('out', 'listings/shows.json');
 const manualPath = arg('manual', 'listings/manual.json');
 const days = Number(arg('days', '60'));
 const budget = Number(arg('budget', '60'));
+const monthlyCap = Number(arg('monthly-cap', '900'));
 const maxCapacity = Number(arg('max-capacity', '1500'));
-const lat = arg('lat', '40.7128');
-const lng = arg('lng', '-74.006');
-const radius = arg('radius', '25');
+const wanted = arg('metros', METROS.map((m) => m.id).join(',')).split(',').map((x) => x.trim());
+const metros = METROS.filter((m) => wanted.includes(m.id));
+if (metros.length === 0) fail(`--metros matched nothing (known: ${METROS.map((m) => m.id).join(', ')})`, 2);
 const dump = process.argv.includes('--dump-sample') ? arg('dump-sample', 'listings/raw-sample.json') : null;
 
 const bases = process.env.JAMBASE_BASE_URL
@@ -72,23 +77,19 @@ if (requested !== 'full' && requested !== 'incremental') {
   console.error('--mode must be full or incremental');
   process.exit(2);
 }
-let mode: 'full' | 'incremental' = requested;
-if (mode === 'incremental' && !previous?.feed.generatedAt) mode = 'full';
 
 const now = new Date();
-const dayET = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d);
-const from = dayET(now);
-const to = dayET(new Date(now.getTime() + days * 86400_000));
+const dayIn = (d: Date, tz: string) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
 
-async function get(page: number, since?: string) {
+async function get(metro: Metro, page: number, since?: string) {
   const q = new URLSearchParams({
     eventType: 'concert',
-    geoLatitude: lat,
-    geoLongitude: lng,
-    geoRadiusAmount: radius,
+    geoLatitude: String(metro.lat),
+    geoLongitude: String(metro.lng),
+    geoRadiusAmount: String(metro.radiusMi),
     geoRadiusUnits: 'mi',
-    eventDateFrom: from,
-    eventDateTo: to,
+    eventDateFrom: dayIn(now, metro.tz),
+    eventDateTo: dayIn(new Date(now.getTime() + days * 86400_000), metro.tz),
     sort: 'eventDate',
     perPage: '100',
     page: String(page),
@@ -131,41 +132,92 @@ async function get(page: number, since?: string) {
     }
     const body = (await res.json()) as { events?: unknown[]; pagination?: { totalPages?: number } };
     if (dump && page === 1) {
-      fs.mkdirSync(path.dirname(dump), { recursive: true });
-      fs.writeFileSync(dump, JSON.stringify({ base, query: q.toString(), body: { ...body, events: (body.events ?? []).slice(0, 5) } }, null, 2));
+      const file = dump.replace(/\.json$/, `.${metro.id}.json`);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify({ base, query: q.toString(), body: { ...body, events: (body.events ?? []).slice(0, 5) } }, null, 2));
     }
     return { events: body.events ?? [], totalPages: body.pagination?.totalPages ?? 1 };
   }
 }
 
+function warn(message: string) {
+  console.warn(process.env.GITHUB_ACTIONS ? `::warning title=Listings::${message.replace(/\r?\n/g, ' ')}` : `Warning: ${message}`);
+}
+
 async function main() {
-  const since = mode === 'incremental' ? previous!.feed.generatedAt.replace(/\.\d+Z$/, '').replace(/Z$/, '') : undefined;
   console.log(`Key: ${key!.slice(0, 9)}... (${key!.length} characters)`);
   if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Key shape::starts ${key!.slice(0, 9)}, ${key!.length} characters, raw secret ${process.env.JAMBASE_API_KEY!.length} characters`);
-  console.log(`Mode ${mode}; ${from} to ${to}; ${radius} mi around ${lat},${lng}${since ? `; changed since ${since} UTC` : ''}`);
-  const got = await collect((p) => get(p, since), budget);
+
+  const month = now.toISOString().slice(0, 7);
+  let spent = previous?.feed.usage?.month === month ? previous.feed.usage.calls : 0;
+  console.log(`Calls already used this month: ${spent} (cap ${monthlyCap})`);
 
   const manualRaw = readJson(manualPath);
-  const { feed, report } = buildFeed(got.events, {
-    mode,
-    now,
-    maxCapacity,
-    manual: Array.isArray(manualRaw) ? manualRaw : [],
-    previous: previous?.feed.shows,
-  });
+  const manual = Array.isArray(manualRaw) ? manualRaw : [];
+  const before = previous?.feed.shows ?? [];
+  const results: Show[] = [];
+  const failures: string[] = [];
+  let succeeded = 0;
+  let total = 0;
 
-  console.log(`API calls: ${got.calls} (budget ${budget}); pages ${got.calls}/${got.totalPages}${got.truncated ? ' TRUNCATED' : ''}`);
-  console.log(`Seen ${report.seen}, mapped ${report.mapped}, manual ${report.manual}, feed now ${report.total} (was ${report.previousTotal})`);
-  console.log('Skipped:', Object.keys(report.skipped).length ? report.skipped : 'none');
-
-  const problem = sanityProblem(report, mode, got.truncated);
-  if (problem) {
-    fail(`Not writing ${out}: ${problem} (seen ${report.seen}, mapped ${report.mapped}, skipped ${JSON.stringify(report.skipped)})`);
+  for (const metro of metros) {
+    const mine = before.filter((s) => s.venue.metro === metro.id && s.source.provider !== 'manual');
+    // A city that has never been fetched needs a full read, whatever mode was asked for.
+    const mode: 'full' | 'incremental' = requested === 'full' || mine.length === 0 || !previous?.feed.generatedAt ? 'full' : 'incremental';
+    const since = mode === 'incremental' ? previous!.feed.generatedAt.replace(/\.\d+Z$/, '').replace(/Z$/, '') : undefined;
+    const allowed = Math.min(budget, monthlyCap - spent);
+    if (allowed <= 0) {
+      warn(`${metro.name}: monthly call cap reached (${spent}/${monthlyCap}); keeping the previous listings.`);
+      results.push(...mine);
+      continue;
+    }
+    console.log(`\n${metro.name}: ${mode}; ${dayIn(now, metro.tz)} + ${days} days; ${metro.radiusMi} mi around ${metro.lat},${metro.lng}${since ? `; changed since ${since} UTC` : ''}`);
+    try {
+      const got = await collect((p) => get(metro, p, since), allowed);
+      spent += got.calls;
+      const { feed, report } = buildFeed(got.events, { mode, now, maxCapacity, manual, previous: mine, metro: metro.id });
+      console.log(`  API calls: ${got.calls} (allowed ${allowed}); pages ${got.calls}/${got.totalPages}${got.truncated ? ' TRUNCATED' : ''}`);
+      console.log(`  Seen ${report.seen}, mapped ${report.mapped}, manual ${report.manual}, now ${report.total} (was ${report.previousTotal})`);
+      console.log('  Skipped:', Object.keys(report.skipped).length ? report.skipped : 'none');
+      // A full read that ran out of calls still holds the nearest dates; that is worth keeping for a new city
+      // but not for one that already had a complete listing.
+      const problem = sanityProblem(report, mode, got.truncated && mine.length > 0);
+      if (problem) throw new Error(`${problem} (seen ${report.seen}, mapped ${report.mapped}, skipped ${JSON.stringify(report.skipped)})`);
+      if (got.truncated) warn(`${metro.name}: the call limit ended the read at page ${got.calls} of ${got.totalPages}; later dates are missing. Lower --days or raise --budget.`);
+      results.push(...feed.shows);
+      total += feed.shows.length;
+      succeeded++;
+    } catch (e) {
+      const cause = e instanceof Error && e.cause instanceof Error ? ` (${e.cause.message})` : '';
+      const msg = `${metro.name}: ${e instanceof Error ? e.message : String(e)}${cause}`;
+      failures.push(msg);
+      warn(`${msg}. Keeping the previous listings for this city.`);
+      results.push(...mine);
+    }
   }
+
+  // Cities that were not asked for this run stay as they were.
+  const asked = new Set(metros.map((m) => m.id as string));
+  for (const s of before) if (!asked.has(s.venue.metro) && s.source.provider !== 'manual' && stillRelevant(s, now)) results.push(s);
+
+  if (succeeded === 0 && failures.length === 0) {
+    console.log('Nothing fetched (monthly call cap reached); the published feed is unchanged.');
+    return;
+  }
+  if (succeeded === 0) fail(`No city could be refreshed. ${failures.join(' | ')} [base ${base}]`);
+
+  const feed: Feed = {
+    version: 1,
+    generatedAt: now.toISOString(),
+    attribution: ATTRIBUTION,
+    shows: sortByStart(dedupeShows(results)),
+    usage: { month, calls: spent },
+  };
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(`${out}.tmp`, JSON.stringify(feed));
   fs.renameSync(`${out}.tmp`, out);
-  console.log(`Wrote ${out}`);
+  const per = Object.fromEntries(METROS.map((m) => [m.id, feed.shows.filter((s) => s.venue.metro === m.id).length]));
+  console.log(`\nWrote ${out}: ${feed.shows.length} shows ${JSON.stringify(per)}; ${spent} calls used this month; ${succeeded}/${metros.length} cities refreshed (${total} fresh)`);
 }
 
 main().catch((e) => {

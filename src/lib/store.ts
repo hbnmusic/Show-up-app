@@ -28,6 +28,8 @@ type AppState = {
   /** Deezer artist ids the user flagged as the wrong artist, per act name. */
   wrongArtist: Record<string, number[]>;
   notificationsAsked: boolean;
+  /** The location prompt has been shown once. */
+  placeAsked: boolean;
   hydrated: boolean;
 
   decide: (showId: string, decision: Decision) => void;
@@ -42,6 +44,7 @@ type AppState = {
   setAutoplay: (on: boolean) => void;
   flagWrongArtist: (actName: string, artistId: number) => void;
   setNotificationsAsked: () => void;
+  markPlaceAsked: () => void;
   resetAll: () => void;
 };
 
@@ -56,6 +59,7 @@ const initial = {
   autoplay: true,
   wrongArtist: {},
   notificationsAsked: false,
+  placeAsked: false,
 };
 
 export const useApp = create<AppState>()(
@@ -86,7 +90,8 @@ export const useApp = create<AppState>()(
       },
 
       setFilters: (f) => set((s) => ({ filters: { ...s.filters, ...f } })),
-      resetFilters: () => set({ filters: DEFAULT_FILTERS }),
+      // Reset keeps the place: it is where the person is, not a preference to clear.
+      resetFilters: () => set((s) => ({ filters: { ...DEFAULT_FILTERS, place: s.filters.place } })),
 
       setReminderPrefs: (p) => set((s) => ({ reminderPrefs: { ...s.reminderPrefs, ...p } })),
 
@@ -118,6 +123,7 @@ export const useApp = create<AppState>()(
         }),
 
       setNotificationsAsked: () => set({ notificationsAsked: true }),
+      markPlaceAsked: () => set({ placeAsked: true }),
 
       resetAll: () => set({ ...initial }),
     }),
@@ -134,7 +140,14 @@ export const useApp = create<AppState>()(
         autoplay: s.autoplay,
         wrongArtist: s.wrongArtist,
         notificationsAsked: s.notificationsAsked,
+        placeAsked: s.placeAsked,
       }),
+      // Filters saved by older builds have no place and carry an obsolete `areas` list.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<AppState>;
+        const { areas: _areas, ...saved } = (p.filters ?? {}) as Record<string, unknown>;
+        return { ...current, ...p, filters: { ...DEFAULT_FILTERS, ...saved } as Filters };
+      },
       onRehydrateStorage: () => () => {
         useApp.setState({ hydrated: true });
       },

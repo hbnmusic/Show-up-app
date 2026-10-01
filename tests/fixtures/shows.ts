@@ -6,13 +6,13 @@
  * app's own and are approximate. Flyer art is generated in the app; no
  * promoter artwork is republished.
  */
-import type { AgePolicy, Area, Genre, Price, Show, VenueType, AddressVisibility } from '@/lib/types';
+import type { AgePolicy, Genre, Price, Show, VenueType, AddressVisibility } from '@/lib/types';
 
 type VenueDef = {
   name: string;
   type: VenueType;
   neighborhood: string;
-  area: Area;
+  area: string;
   city: string;
   addressVisibility?: AddressVisibility;
   /** Age policy the venue listed on other nights; used when a listing gave none. */
@@ -101,6 +101,7 @@ function show(
       type: v.type,
       neighborhood: v.neighborhood,
       area: v.area,
+      metro: 'nyc',
       city: v.city,
       addressVisibility: v.addressVisibility ?? 'public',
     },

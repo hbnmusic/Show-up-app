@@ -3,7 +3,7 @@
  * a cached copy). Anything malformed is dropped rather than allowed to crash
  * a screen that assumes the Show type.
  */
-import { ALL_GENRES, AREAS, type AgePolicy, type Genre, type Show } from '../types';
+import { ALL_GENRES, type AgePolicy, type Genre, type Show } from '../types';
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -20,7 +20,7 @@ export function cleanShow(raw: unknown): Show | null {
   if (!validDate(raw.startsAt)) return null;
   const v = raw.venue;
   if (!isObj(v) || typeof v.name !== 'string' || !v.name) return null;
-  if (!AREAS.includes(v.area as never)) return null;
+  if (typeof v.area !== 'string' || !v.area) return null;
   if (!Array.isArray(raw.acts)) return null;
   const acts = raw.acts
     .filter((a): a is Obj => isObj(a) && typeof a.name === 'string' && a.name.length > 0)
@@ -44,7 +44,11 @@ export function cleanShow(raw: unknown): Show | null {
       name: v.name,
       type: VENUE_TYPES.includes(v.type as string) ? (v.type as Show['venue']['type']) : 'venue',
       neighborhood: str(v.neighborhood) ?? (v.area as string),
-      area: v.area as Show['venue']['area'],
+      area: v.area,
+      // Feeds from before multi-city support were NYC only.
+      metro: str(v.metro) ?? 'nyc',
+      lat: typeof v.lat === 'number' && Number.isFinite(v.lat) ? v.lat : undefined,
+      lng: typeof v.lng === 'number' && Number.isFinite(v.lng) ? v.lng : undefined,
       city: str(v.city) ?? (v.area as string),
       address: str(v.address),
       addressVisibility: VISIBILITY.includes(v.addressVisibility as string)
@@ -78,6 +82,8 @@ export type Feed = {
   /** Provider credit lines the app must show. */
   attribution: string[];
   shows: Show[];
+  /** JamBase calls spent this calendar month, so the refresh job can stay under the plan limit. */
+  usage?: { month: string; calls: number };
 };
 
 /** Parse a downloaded feed. Returns null when it is not a feed at all. */
@@ -96,8 +102,10 @@ export function parseFeed(raw: unknown): { feed: Feed; dropped: number } | null 
     shows.push(s);
   }
   const attribution = Array.isArray(raw.attribution) ? raw.attribution.filter((x): x is string => typeof x === 'string') : [];
+  const u = isObj(raw.usage) ? raw.usage : null;
+  const usage = u && typeof u.month === 'string' && typeof u.calls === 'number' ? { month: u.month, calls: u.calls } : undefined;
   return {
-    feed: { version: 1, generatedAt: typeof raw.generatedAt === 'string' ? raw.generatedAt : '', attribution, shows },
+    feed: { version: 1, generatedAt: typeof raw.generatedAt === 'string' ? raw.generatedAt : '', attribution, shows, usage },
     dropped,
   };
 }

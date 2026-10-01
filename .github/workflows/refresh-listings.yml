@@ -1,14 +1,15 @@
 name: Refresh listings
 
-# Fetches upcoming NYC / North Jersey shows from JamBase and publishes the feed
+# Fetches upcoming shows for New York, Los Angeles and Chicago from JamBase and publishes the feed
 # the app downloads (release "listings", file shows.json).
 #
 # Needs one repository secret: JAMBASE_API_KEY (Settings > Secrets and
 # variables > Actions). Without it this workflow does nothing.
 #
 # Budget: the free JamBase plan allows 1,000 calls a month. A full fetch reads
-# every page of the next 60 days (weekly); the other days only ask for shows
-# that changed since the last run (usually 1-3 calls).
+# every page of the next 60 days for each city (weekly); the other days only ask
+# for shows that changed since the last run. The script keeps a running count in
+# the feed itself and stops fetching at 900 calls a month.
 on:
   schedule:
     - cron: '17 9 * * *'
@@ -73,10 +74,11 @@ jobs:
         run: |
           MODE="${{ inputs.mode }}"
           if [ -z "$MODE" ] || [ "$MODE" = "auto" ]; then
-            # A code change re-reads everything so the fix reaches old listings too.
-            if [ "${{ github.event_name }}" = "push" ] || [ "$(date -u +%u)" = "1" ]; then MODE=full; else MODE=incremental; fi
+            # Only the weekly run re-reads everything. A push that changes the fetch code runs incremental
+            # (a city missing from the feed is still read in full) so edits do not burn the monthly calls.
+            if [ "${{ github.event_name }}" = "schedule" ] && [ "$(date -u +%u)" = "1" ]; then MODE=full; else MODE=incremental; fi
           fi
-          npx tsx scripts/fetch-listings.ts --mode "$MODE" --budget 80 --dump-sample listings/raw-sample.json
+          npx tsx scripts/fetch-listings.ts --mode "$MODE" --budget 70 --monthly-cap 900 --dump-sample listings/raw-sample.json
 
       - name: Publish the feed
         if: steps.key.outputs.have == 'true'
@@ -91,6 +93,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: listings-raw-sample
-          path: listings/raw-sample.json
+          path: listings/raw-sample.*.json
           retention-days: 3
           if-no-files-found: ignore

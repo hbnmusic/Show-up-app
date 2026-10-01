@@ -8,10 +8,11 @@ import { C, F } from '@/constants/theme';
 import { buildQueue, WHEN_LABELS } from '@/lib/filters';
 import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
-import type { AgeFilter, Area, Decision, Genre, PriceFilter, VenueType, WhenFilter } from '@/lib/types';
+import { cityPlace, detectPlace } from '@/lib/location';
+import { METROS } from '@/lib/metros';
+import { RADIUS_OPTIONS, type AgeFilter, type Decision, type Genre, type PriceFilter, type VenueType, type WhenFilter } from '@/lib/types';
 
 const WHEN: WhenFilter[] = ['tonight', 'tomorrow', 'weekend', 'week', 'month', 'all'];
-const AREAS: Area[] = ['Brooklyn', 'Queens', 'Manhattan', 'North Jersey'];
 const VENUES: { value: VenueType; label: string }[] = [
   { value: 'house', label: 'House & basement' },
   { value: 'diy', label: 'DIY spaces' },
@@ -40,6 +41,28 @@ export default function FiltersScreen() {
   const resetFilters = useApp((s) => s.resetFilters);
   const decisionsRec = useApp((s) => s.decisions);
   const allShows = useListings((s) => s.shows);
+  const ageKnown = useMemo(() => allShows.some((s) => s.agePolicy !== 'unknown'), [allShows]);
+  const [locNote, setLocNote] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  const useMyLocation = async () => {
+    setLocating(true);
+    setLocNote(null);
+    const r = await detectPlace();
+    setLocating(false);
+    if (!r.ok) {
+      setLocNote(
+        r.reason === 'denied'
+          ? 'Location is off for Pull Up. Turn it on in your phone settings, or pick a city.'
+          : "Couldn't get a location fix. Pick a city instead.",
+      );
+      return;
+    }
+    setFilters({ place: r.place });
+    if (!r.covered) {
+      setLocNote(`You're ${Math.round(r.miles)} miles from ${r.nearest.name}, the closest city with listings, so that is what you're seeing.`);
+    }
+  };
   // Genres present in the listings, most common first.
   const genreList = useMemo(() => {
     const counts = new Map<Genre, number>();
@@ -48,10 +71,12 @@ export default function FiltersScreen() {
   }, [allShows]);
   const scroll = useRef<ScrollView>(null);
   const [genreY, setGenreY] = useState<number | null>(null);
+  const [whereY, setWhereY] = useState<number | null>(null);
 
   useEffect(() => {
     if (focus === 'genre' && genreY != null) scroll.current?.scrollTo({ y: genreY - 8, animated: true });
-  }, [focus, genreY]);
+    if (focus === 'where' && whereY != null) scroll.current?.scrollTo({ y: whereY - 8, animated: true });
+  }, [focus, genreY, whereY]);
 
   const count = useMemo(() => {
     const d: Record<string, Decision> = {};
@@ -67,16 +92,31 @@ export default function FiltersScreen() {
             <Chip key={w} label={WHEN_LABELS[w]} on={filters.when === w} onPress={() => setFilters({ when: w })} />
           ))}
         </Section>
-        <Section title="Where">
-          {AREAS.map((a) => (
+        <View onLayout={(e) => setWhereY(e.nativeEvent.layout.y)}>
+          <Section title="Where" hint={locNote ?? (filters.place ? `Within ${filters.radiusMi} miles of ${filters.place.label}` : undefined)}>
             <Chip
-              key={a}
-              label={a}
-              on={filters.areas.includes(a)}
-              onPress={() => setFilters({ areas: toggle(filters.areas, a) })}
+              label={locating ? 'Locating…' : 'Near me'}
+              on={filters.place?.source === 'device'}
+              onPress={useMyLocation}
             />
-          ))}
-        </Section>
+            {METROS.map((m) => (
+              <Chip
+                key={m.id}
+                label={m.name}
+                on={filters.place?.source === 'city' && filters.place.metro === m.id}
+                onPress={() => {
+                  setLocNote(null);
+                  setFilters({ place: cityPlace(m) });
+                }}
+              />
+            ))}
+          </Section>
+          <Section title="Distance" hint="Listings cover about 25 miles around each city">
+            {RADIUS_OPTIONS.map((r) => (
+              <Chip key={r} label={`${r} mi`} on={filters.radiusMi === r} onPress={() => setFilters({ radiusMi: r })} />
+            ))}
+          </Section>
+        </View>
         <Section title="Venue type">
           {VENUES.map((v) => (
             <Chip
@@ -104,11 +144,13 @@ export default function FiltersScreen() {
             <Chip key={p.value} label={p.label} on={filters.price === p.value} onPress={() => setFilters({ price: p.value })} />
           ))}
         </Section>
-        <Section title="Age" hint="Shows with no listed age policy only appear under Any">
-          {AGES.map((a) => (
-            <Chip key={a.value} label={a.label} on={filters.age === a.value} onPress={() => setFilters({ age: a.value })} />
-          ))}
-        </Section>
+        {ageKnown ? (
+          <Section title="Age" hint="Shows with no listed age policy only appear under Any">
+            {AGES.map((a) => (
+              <Chip key={a.value} label={a.label} on={filters.age === a.value} onPress={() => setFilters({ age: a.value })} />
+            ))}
+          </Section>
+        ) : null}
       </ScrollView>
       <View style={styles.footer}>
         <Pressable onPress={resetFilters} hitSlop={8} accessibilityRole="button">

@@ -13,6 +13,8 @@ export type ArtistCandidate = {
   fans: number;
   albums: number;
   link?: string;
+  /** Artist photo (Deezer's largest size). */
+  picture?: string;
 };
 
 export type Track = {
@@ -98,6 +100,7 @@ export async function searchArtists(name: string, signal?: AbortSignal): Promise
     fans: Number(a.nb_fan ?? 0),
     albums: Number(a.nb_album ?? 0),
     link: a.link,
+    picture: typeof (a.picture_xl ?? a.picture_big) === 'string' ? a.picture_xl ?? a.picture_big : undefined,
   }));
 }
 

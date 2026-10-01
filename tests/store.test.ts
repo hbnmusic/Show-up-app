@@ -26,7 +26,7 @@ import type { Show } from '../src/lib/types';
 const mk = (id: string, day: string, name = id): Show => ({
   id,
   startsAt: `${day}T20:00:00-04:00`,
-  venue: { name: 'Room', type: 'venue', neighborhood: 'Greenpoint', area: 'Brooklyn', city: 'Brooklyn, NY', addressVisibility: 'public' },
+  venue: { name: 'Room', type: 'venue', neighborhood: 'Greenpoint', area: 'Brooklyn', metro: 'nyc', city: 'Brooklyn, NY', addressVisibility: 'public' },
   acts: [{ name, order: 0 }],
   genres: [],
   price: {},

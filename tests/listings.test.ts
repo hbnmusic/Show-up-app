@@ -259,7 +259,7 @@ describe('feed validation', () => {
       version: 1,
       generatedAt: '2026-09-30T00:00:00Z',
       attribution: ['x'],
-      shows: [good, { ...good }, { id: 'bad' }, null, { ...good, id: 'b2', startsAt: 'nope' }, { ...good, id: 'b3', venue: { ...good.venue, area: 'Mars' } }],
+      shows: [good, { ...good }, { id: 'bad' }, null, { ...good, id: 'b2', startsAt: 'nope' }, { ...good, id: 'b3', venue: { ...good.venue, area: '' } }],
     })!;
     assert.equal(res.feed.shows.length, 1);
     assert.equal(res.dropped, 5);
@@ -280,3 +280,74 @@ describe('feed validation', () => {
     assert.deepEqual(again.feed.shows[0].acts, good.acts);
   });
 });
+
+describe('multi-city', () => {
+  const inCity = (locality: string, region: string, tz: string, lat: number, lng: number, name = 'Zebulon') =>
+    concert({
+      identifier: `jambase:${locality}-1`,
+      location: {
+        name,
+        maximumAttendeeCapacity: 300,
+        address: {
+          addressLocality: locality,
+          addressRegion: { name: region, alternateName: region },
+          'x-timezone': tz,
+        },
+        geo: { latitude: lat, longitude: lng },
+      },
+      startDate: '2026-10-10T20:00:00',
+    });
+
+  it('maps a Los Angeles venue with its own metro, coordinates and time zone', () => {
+    const r = mapJamBaseEvent(inCity('Los Angeles', 'CA', 'America/Los_Angeles', 34.12, -118.26), { ...OPTS, metro: 'la' });
+    assert.ok('show' in r);
+    if (!('show' in r)) return;
+    assert.equal(r.show.venue.metro, 'la');
+    assert.equal(r.show.venue.area, 'Los Angeles');
+    assert.equal(r.show.venue.lat, 34.12);
+    assert.equal(r.show.startsAt, '2026-10-10T20:00:00-07:00');
+  });
+
+  it('maps a Chicago venue and uses Central time', () => {
+    const r = mapJamBaseEvent(inCity('Chicago', 'IL', 'America/Chicago', 41.9, -87.7, 'Empty Bottle'), { ...OPTS, metro: 'chi' });
+    assert.ok('show' in r);
+    if (!('show' in r)) return;
+    assert.equal(r.show.venue.metro, 'chi');
+    assert.equal(r.show.startsAt, '2026-10-10T20:00:00-05:00');
+  });
+
+  it('skips big LA and Chicago rooms by name', () => {
+    const la = mapJamBaseEvent(inCity('Inglewood', 'CA', 'America/Los_Angeles', 33.95, -118.34, 'Kia Forum'), { ...OPTS, metro: 'la' });
+    const chi = mapJamBaseEvent(inCity('Chicago', 'IL', 'America/Chicago', 41.88, -87.67, 'United Center'), { ...OPTS, metro: 'chi' });
+    assert.deepEqual(la, { skip: 'large-venue' });
+    assert.deepEqual(chi, { skip: 'large-venue' });
+  });
+
+  it('keeps NYC rules for NYC only', () => {
+    const nj = inCity('Asbury Park', 'NJ', 'America/New_York', 40.22, -74.01);
+    assert.deepEqual(mapJamBaseEvent(nj, { ...OPTS, metro: 'nyc' }), { skip: 'outside-areas' });
+    assert.ok('show' in mapJamBaseEvent(nj, { ...OPTS, metro: 'la' }));
+  });
+
+  it('old feeds without a metro are treated as NYC, and usage survives parsing', () => {
+    const old = { ...(concertShow() as object) };
+    const s = cleanShow({ ...old, venue: { name: 'Room', area: 'Brooklyn' } });
+    assert.equal(s?.venue.metro, 'nyc');
+    const parsed = parseFeed({ version: 1, generatedAt: 'x', shows: [], usage: { month: '2026-10', calls: 42 } });
+    assert.deepEqual(parsed?.feed.usage, { month: '2026-10', calls: 42 });
+  });
+
+  it('manual listings only join their own city', () => {
+    const manual = { ...(concertShow() as object), id: 'm1' };
+    const mk = (metro: 'nyc' | 'la') =>
+      buildFeed([], { mode: 'incremental', now: new Date('2026-10-01T00:00:00Z'), manual: [manual], metro }).feed.shows.length;
+    assert.equal(mk('nyc'), 1);
+    assert.equal(mk('la'), 0);
+  });
+});
+
+function concertShow(): Show {
+  const r = mapJamBaseEvent(concert(), OPTS);
+  if (!('show' in r)) throw new Error('fixture failed to map');
+  return r.show;
+}

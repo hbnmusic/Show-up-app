@@ -12,6 +12,8 @@ export type ActPreview =
       artistId: number;
       confidence: Confidence;
       track: Track;
+      /** Artist photo from the catalog match, used on the card. */
+      picture?: string;
     }
   | {
       status: 'none';
@@ -83,6 +85,7 @@ async function resolveAct(name: string, rejected: number[]): Promise<ActResult> 
       artistId: match.artist.id,
       confidence: match.confidence,
       track,
+      picture: match.artist.picture,
     };
   } catch {
     return { status: 'none', actName: name, reason: 'error' };

@@ -1,4 +1,5 @@
 import type { Decision, Filters, Genre, Show, VenueType, WhenFilter } from './types';
+import { distanceMi } from './metros';
 import { addDays, startOfDay } from './time';
 
 /** A show stays in the deck until 3 hours after it starts. */
@@ -62,6 +63,15 @@ export function priceOk(s: Show, price: Filters['price']): boolean {
   }
 }
 
+/** Inside the chosen circle. A venue without coordinates counts if it is in the same city feed. */
+export function placeOk(s: Show, f: Filters): boolean {
+  const p = f.place;
+  if (!p) return true;
+  const { lat, lng } = s.venue;
+  if (lat != null && lng != null) return distanceMi(p.lat, p.lng, lat, lng) <= f.radiusMi;
+  return !p.metro || s.venue.metro === p.metro;
+}
+
 export function ageOk(s: Show, age: Filters['age']): boolean {
   switch (age) {
     case 'any':
@@ -90,7 +100,7 @@ export function matchesFilters(s: Show, f: Filters, now: Date): boolean {
   return (
     isUpcoming(s, now) &&
     inWhen(s, f.when, now) &&
-    (f.areas.length === 0 || f.areas.includes(s.venue.area)) &&
+    placeOk(s, f) &&
     venueTypeOk(s.venue.type, f.venueTypes) &&
     genreOk(s.genres, f.genres) &&
     priceOk(s, f.price) &&
@@ -130,7 +140,7 @@ export function buildQueue(
 export function activeFilterCount(f: Filters, defaults: Filters): number {
   let n = 0;
   if (f.when !== defaults.when) n++;
-  if (f.areas.length) n++;
+  if (f.radiusMi !== defaults.radiusMi) n++;
   if (f.venueTypes.length) n++;
   if (f.genres.length) n++;
   if (f.price !== 'any') n++;

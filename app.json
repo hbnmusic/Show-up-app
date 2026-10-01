@@ -57,7 +57,13 @@
           "defaultChannel": "show-reminders"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Pull Up uses your location once to show concerts near you. It is not stored on a server."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

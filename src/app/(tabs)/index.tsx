@@ -29,10 +29,13 @@ export default function ShowsScreen() {
   const allShows = useListings((s) => s.shows);
   const listingsRefreshing = useListings((s) => s.refreshing);
   const listingsError = useListings((s) => s.error);
-  const filters = useApp((s) => s.filters);
+  const stored = useApp((s) => s.filters);
   const setFilters = useApp((s) => s.setFilters);
   const resetFilters = useApp((s) => s.resetFilters);
   const history = useApp((s) => s.history);
+  // The age filter only means something once some listing says what its age policy is.
+  const ageKnown = useMemo(() => allShows.some((s) => s.agePolicy !== 'unknown'), [allShows]);
+  const filters = useMemo(() => (ageKnown || stored.age === 'any' ? stored : { ...stored, age: 'any' as const }), [stored, ageKnown]);
   const deckRef = useRef<DeckHandle>(null);
   const drag = useSharedValue(0);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -111,6 +114,11 @@ export default function ShowsScreen() {
             onPress={() => router.push('/filters')}
             icon={<Ionicons name="options-outline" size={15} color={C.text} />}
           />
+          <Chip
+            label={filters.place ? `${filters.place.source === 'device' ? 'Near me' : filters.place.label} · ${filters.radiusMi} mi` : 'Location'}
+            onPress={() => router.push({ pathname: '/filters', params: { focus: 'where' } })}
+            icon={<Ionicons name="location-outline" size={15} color={C.text} />}
+          />
           <Chip label="Tonight" on={filters.when === 'tonight'} onPress={() => toggleWhen('tonight')} />
           <Chip label="This weekend" on={filters.when === 'weekend'} onPress={() => toggleWhen('weekend')} />
           <Chip
@@ -118,11 +126,13 @@ export default function ShowsScreen() {
             on={filters.price === 'free'}
             onPress={() => setFilters({ price: filters.price === 'free' ? 'any' : 'free' })}
           />
-          <Chip
-            label="All ages"
-            on={filters.age === 'all_ages'}
-            onPress={() => setFilters({ age: filters.age === 'all_ages' ? 'any' : 'all_ages' })}
-          />
+          {ageKnown ? (
+            <Chip
+              label="All ages"
+              on={filters.age === 'all_ages'}
+              onPress={() => setFilters({ age: filters.age === 'all_ages' ? 'any' : 'all_ages' })}
+            />
+          ) : null}
           <Chip
             label={filters.genres.length ? `Genre · ${filters.genres.length}` : 'Genre'}
             on={filters.genres.length > 0}
@@ -178,10 +188,15 @@ export default function ShowsScreen() {
             }}
           />
         ) : null}
-        {size.w > 0 && allShows.length === 0 ? (
+        {size.w > 0 && !filters.place ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>Finding shows near you…</Text>
+          </View>
+        ) : null}
+        {size.w > 0 && filters.place && allShows.length === 0 ? (
           <NoListings loading={listingsRefreshing} error={listingsError} />
         ) : null}
-        {size.w > 0 && allShows.length > 0 && queue.length === 0 ? (
+        {size.w > 0 && filters.place && allShows.length > 0 && queue.length === 0 ? (
           <EmptyDeck
             filtered={nFilters > 0}
             when={filters.when}

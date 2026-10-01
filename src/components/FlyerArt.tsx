@@ -3,11 +3,14 @@
  * flyer images; until then every show gets a stable, xerox-style poster built
  * from its bill, date and venue.
  */
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, G, Line, Pattern, Rect } from 'react-native-svg';
 
 import { F, hash, paletteFor, seeded, type PosterPalette } from '@/constants/theme';
+import { useShowPreviews } from '@/lib/previews';
 import { headliner, showTitle, supportActs } from '@/lib/showText';
 import { MONTHS, WEEKDAYS, formatTime } from '@/lib/time';
 import type { Show } from '@/lib/types';
@@ -294,9 +297,64 @@ function ZinePoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
   );
 }
 
+/** The headliner's catalog photo, when the match is a confident one. */
+function useHeadlinerPhoto(show: Show): string | undefined {
+  const previews = useShowPreviews(show.id);
+  const first = previews?.acts.find((a) => a.order === Math.min(...show.acts.map((x) => x.order)));
+  return first && first.status === 'found' && first.confidence === 'high' ? first.picture : undefined;
+}
+
+/** Layout D: the artist's photo behind the date and bill. Used when no promoter flyer exists. */
+function PhotoPoster({ show, width: w, height: h, photo, p }: Props & { photo: string; p: PosterPalette }) {
+  const pad = Math.round(w * 0.07);
+  const dp = dateParts(show);
+  const acts = show.acts.length ? [...show.acts].sort((a, b) => a.order - b.order).map((a) => a.name) : [showTitle(show)];
+  const headSize = fitFont(acts[0].toUpperCase(), w - pad * 2, 2, CHAR_W.poster, h * 0.15, 24);
+  return (
+    <View style={[styles.poster, { width: w, height: h, backgroundColor: p.bg }]}>
+      <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      <LinearGradient
+        colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.88)']}
+        locations={[0, 0.35, 1]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={{ flex: 1, padding: pad, justifyContent: 'space-between' }}>
+        <View>
+          <Text style={[styles.posterText, { color: '#fff', fontSize: Math.min(40, h * 0.09) }]}>
+            {dp.month} {dp.day}
+          </Text>
+          <Text style={[styles.mono, { color: '#fff' }]}>
+            {dp.weekday} · {dp.time}
+          </Text>
+        </View>
+        <View>
+          <Text
+            style={[styles.posterText, { color: '#fff', fontSize: headSize, lineHeight: headSize * 1.03 }]}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}>
+            {acts[0].toUpperCase()}
+          </Text>
+          {acts.length > 1 ? (
+            <Text style={[styles.block, { color: '#fff', fontSize: 14, marginTop: 4 }]} numberOfLines={1}>
+              {acts.slice(1, 4).join(' · ').toUpperCase()}
+            </Text>
+          ) : null}
+          <Text style={[styles.mono, { color: p.accent, marginTop: 8 }]} numberOfLines={1}>
+            {show.venue.name.toUpperCase()} — {show.venue.neighborhood.toUpperCase()}
+          </Text>
+          <Text style={[styles.mono, { color: 'rgba(255,255,255,0.55)', fontSize: 9, marginTop: 6 }]}>PHOTO VIA DEEZER</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function FlyerArtImpl({ show, width, height }: Props) {
   const seed = hash(show.id);
+  const photo = useHeadlinerPhoto(show);
   const p = paletteFor(show.id, show.genres);
+  if (photo) return <PhotoPoster show={show} width={width} height={height} photo={photo} p={p} />;
   const variant = seed % 3;
   if (variant === 0) return <StackPoster show={show} width={width} height={height} p={p} seed={seed} />;
   if (variant === 1) return <BandPoster show={show} width={width} height={height} p={p} seed={seed} />;

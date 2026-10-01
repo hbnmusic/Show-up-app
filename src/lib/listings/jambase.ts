@@ -7,7 +7,8 @@
  * fetch script reports what it skipped and why so a first real run shows
  * quickly if a field is shaped differently than expected.
  */
-import type { Area, Genre, Price, Show } from '../types';
+import type { Genre, Price, Show } from '../types';
+import { DEFAULT_METRO, type MetroId } from '../metros';
 import { isDateOnly, localToIso } from './tz';
 
 type Obj = Record<string, unknown>;
@@ -34,6 +35,8 @@ export type MapOptions = {
   fetchedAt: string;
   /** Skip venues that hold more than this many people (arenas, stadiums). */
   maxCapacity: number;
+  /** Which city feed this event was fetched for. Defaults to NYC. */
+  metro?: MetroId;
 };
 
 /** JamBase often leaves capacity blank for big rooms, so the obvious ones are named. Matched as a substring of the lower-cased venue name. */
@@ -42,6 +45,14 @@ const BIG_VENUES = [
   'yankee stadium', 'radio city', 'forest hills stadium', 'kings theatre', 'brooklyn paramount', 'beacon theatre',
   'terminal 5', 'brooklyn steel', 'hammerstein ballroom', 'playstation theater', 'nycb live', 'nassau coliseum',
   'carnegie hall', 'lincoln center', 'new jersey performing arts center', 'njpac', 'st. george theatre', 'apollo theater',
+  // Los Angeles
+  'crypto.com arena', 'sofi stadium', 'hollywood bowl', 'kia forum', 'the forum', 'greek theatre', 'walt disney concert hall',
+  'dodger stadium', 'rose bowl', 'microsoft theater', 'hollywood palladium', 'shrine auditorium', 'pantages', 'the wiltern',
+  'peacock theater', 'honda center', 'bmo stadium', 'intuit dome', 'the theatre at ace hotel', 'orpheum theatre', 'pechanga arena',
+  // Chicago
+  'united center', 'soldier field', 'wrigley field', 'rate field', 'allstate arena', 'rosemont theatre', 'credit union 1 arena',
+  'huntington bank pavilion', 'auditorium theatre', 'chicago theatre', 'riviera theatre', 'aragon ballroom', 'salt shed',
+  'radius chicago', 'wintrust arena', 'northerly island', 'ravinia', 'tinley park', 'hollywood casino amphitheatre',
 ];
 
 export function isBigVenue(name: string): boolean {
@@ -78,8 +89,17 @@ const QUEENS = [
 ];
 const MANHATTAN = ['new york', 'new york city', 'manhattan', 'nyc'];
 
-/** Map a JamBase locality/region to the app's four areas, or null if it is elsewhere. */
-export function areaFor(locality: string | undefined, region: string | undefined, lat: number | undefined): Area | null {
+/**
+ * The town or borough to show for a venue, or null when it should be left out.
+ * NYC keeps its borough logic (and drops central New Jersey); other cities use the locality as given.
+ */
+export function placeFor(metro: MetroId, locality: string | undefined, region: string | undefined, lat: number | undefined): string | null {
+  if (metro === 'nyc') return areaFor(locality, region, lat);
+  return locality ?? null;
+}
+
+/** Map a NYC-area JamBase locality/region to a borough or North Jersey, or null if it is elsewhere. */
+export function areaFor(locality: string | undefined, region: string | undefined, lat: number | undefined): string | null {
   const city = (locality ?? '').toLowerCase();
   const reg = (region ?? '').toUpperCase();
   if (reg === 'NJ' || reg === 'NEW JERSEY') {
@@ -153,7 +173,8 @@ export function mapJamBaseEvent(ev: unknown, opts: MapOptions): MapResult {
     ? str(address.addressRegion.alternateName) ?? str(address.addressRegion.name)
     : str(address.addressRegion);
   const locality = str(address.addressLocality);
-  const area = areaFor(locality, region, num(geo.latitude));
+  const metro = opts.metro ?? DEFAULT_METRO.id;
+  const area = placeFor(metro, locality, region, num(geo.latitude));
   if (!area) return { skip: 'outside-areas' };
 
   const capacity = num(venue.maximumAttendeeCapacity);
@@ -194,6 +215,9 @@ export function mapJamBaseEvent(ev: unknown, opts: MapOptions): MapResult {
         type: 'venue',
         neighborhood: area === 'Manhattan' ? 'Manhattan' : locality ?? area,
         area,
+        metro,
+        lat: num(geo.latitude),
+        lng: num(geo.longitude),
         city: [locality ?? area, region].filter(Boolean).join(', '),
         address: str(address.streetAddress),
         addressVisibility: 'public',

@@ -7,9 +7,10 @@ import { describe, it } from 'node:test';
 
 import { SHOWS } from './fixtures/shows';
 import { chooseArtist, isCollaboration, namesMatch, normalizeName } from '../src/lib/deezer';
-import { buildQueue, inWhen, matchesFilters } from '../src/lib/filters';
+import { buildQueue, inWhen, matchesFilters, placeOk } from '../src/lib/filters';
+import { distanceMi, nearestMetro } from '../src/lib/metros';
 import { planReminders } from '../src/lib/reminderPlan';
-import { DEFAULT_FILTERS, DEFAULT_REMINDER_PREFS, type Show } from '../src/lib/types';
+import { DEFAULT_FILTERS, DEFAULT_REMINDER_PREFS, type Filters, type Show } from '../src/lib/types';
 
 const byId = (id: string) => {
   const s = SHOWS.find((x) => x.id === id);
@@ -76,13 +77,40 @@ describe('filters', () => {
     assert.equal(matchesFilters(unknown, { ...DEFAULT_FILTERS, when: 'all' }, now), true);
   });
 
-  it('area and genre filters narrow the deck', () => {
-    const q = buildQueue(SHOWS, { ...DEFAULT_FILTERS, when: 'all', areas: ['Queens'], genres: ['Metal'] }, {}, now);
+  it('genre filter narrows the deck', () => {
+    const q = buildQueue(SHOWS, { ...DEFAULT_FILTERS, when: 'all', genres: ['Metal'] }, {}, now);
     assert.ok(q.length > 0);
-    for (const s of q) {
-      assert.equal(s.venue.area, 'Queens');
-      assert.ok(s.genres.includes('Metal'));
-    }
+    for (const s of q) assert.ok(s.genres.includes('Metal'));
+  });
+
+  it('place and radius keep shows inside the circle', () => {
+    const base = SHOWS.find((s) => s.venue.area === 'Brooklyn')!;
+    const at = (lat: number, lng: number, metro = 'nyc'): Show => ({ ...base, venue: { ...base.venue, lat, lng, metro } });
+    const brooklyn = at(40.7295, -73.9545);
+    const newark = at(40.7357, -74.1724);
+    const la = at(34.0522, -118.2437, 'la');
+    const noCoords = { ...base, venue: { ...base.venue, lat: undefined, lng: undefined } };
+    const f = (radiusMi: number): Filters => ({
+      ...DEFAULT_FILTERS,
+      when: 'all',
+      radiusMi,
+      place: { label: 'New York', lat: 40.7128, lng: -74.006, metro: 'nyc', source: 'city' },
+    });
+    assert.equal(placeOk(brooklyn, f(5)), true);
+    assert.equal(placeOk(newark, f(5)), false);
+    assert.equal(placeOk(newark, f(15)), true);
+    assert.equal(placeOk(la, f(25)), false);
+    // No coordinates: falls back to the city feed the venue belongs to.
+    assert.equal(placeOk(noCoords, f(5)), true);
+    assert.equal(placeOk({ ...noCoords, venue: { ...noCoords.venue, metro: 'la' } }, f(25)), false);
+    // No place chosen: everything passes.
+    assert.equal(placeOk(la, { ...DEFAULT_FILTERS }), true);
+  });
+
+  it('finds the nearest covered city', () => {
+    assert.equal(nearestMetro(34.1, -118.3).metro.id, 'la');
+    assert.equal(nearestMetro(41.9, -87.7).metro.id, 'chi');
+    assert.ok(distanceMi(40.7128, -74.006, 34.0522, -118.2437) > 2400);
   });
 
   it('past shows drop out of the deck three hours after start', () => {

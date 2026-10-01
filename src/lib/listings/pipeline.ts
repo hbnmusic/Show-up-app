@@ -4,6 +4,7 @@
  * checks that stop a bad fetch from replacing a good feed.
  */
 import type { Show } from '../types';
+import type { MetroId } from '../metros';
 import { DEFAULT_MAP_OPTIONS, mapJamBaseEvent, type SkipReason } from './jambase';
 import { dedupeShows, mergeFeed, sortByStart, stillRelevant } from './merge';
 import { cleanShow, type Feed } from './validate';
@@ -36,6 +37,8 @@ export type BuildOptions = {
   /** Listings maintained by hand (DIY nights JamBase does not carry). */
   manual?: unknown[];
   previous?: Show[];
+  /** City the events were fetched for; defaults to NYC. */
+  metro?: MetroId;
 };
 
 export type Report = {
@@ -52,7 +55,7 @@ export function buildFeed(rawEvents: unknown[], o: BuildOptions): { feed: Feed; 
   const skipped: Report['skipped'] = {};
   const mapped: Show[] = [];
   for (const ev of rawEvents) {
-    const r = mapJamBaseEvent(ev, { fetchedAt, maxCapacity: o.maxCapacity ?? DEFAULT_MAP_OPTIONS.maxCapacity });
+    const r = mapJamBaseEvent(ev, { fetchedAt, metro: o.metro, maxCapacity: o.maxCapacity ?? DEFAULT_MAP_OPTIONS.maxCapacity });
     if ('show' in r) mapped.push(r.show);
     else skipped[r.skip] = (skipped[r.skip] ?? 0) + 1;
   }
@@ -61,7 +64,7 @@ export function buildFeed(rawEvents: unknown[], o: BuildOptions): { feed: Feed; 
 
   const manual = (o.manual ?? [])
     .map(cleanShow)
-    .filter((s): s is Show => !!s && stillRelevant(s, o.now))
+    .filter((s): s is Show => !!s && stillRelevant(s, o.now) && s.venue.metro === (o.metro ?? 'nyc'))
     .map((s) => ({ ...s, id: s.id.startsWith('manual-') ? s.id : `manual-${s.id}`, source: { ...s.source, provider: 'manual' } }));
   const shows = sortByStart(dedupeShows([...merged, ...manual]));
 
