@@ -125,11 +125,13 @@ describe('JamBase mapper', () => {
     assert.equal(skipped(unknown), 'mapped');
   });
 
-  it('skips known big rooms even when capacity is missing', () => {
+  it('keeps arenas and stadiums unless a capacity limit is set', () => {
     const ev = concert();
     (ev.location as Record<string, unknown>).name = 'Barclays Center';
-    delete (ev.location as Record<string, unknown>).maximumAttendeeCapacity;
-    assert.equal(skipped(ev), 'large-venue');
+    (ev.location as Record<string, unknown>).maximumAttendeeCapacity = 19000;
+    const r = mapJamBaseEvent(ev, { fetchedAt: OPTS.fetchedAt });
+    assert.ok('show' in r);
+    assert.deepEqual(mapJamBaseEvent(ev, OPTS), { skip: 'large-venue' });
   });
 
   it('keeps a named night with no performers', () => {
@@ -314,13 +316,6 @@ describe('multi-city', () => {
     if (!('show' in r)) return;
     assert.equal(r.show.venue.metro, 'chi');
     assert.equal(r.show.startsAt, '2026-10-10T20:00:00-05:00');
-  });
-
-  it('skips big LA and Chicago rooms by name', () => {
-    const la = mapJamBaseEvent(inCity('Inglewood', 'CA', 'America/Los_Angeles', 33.95, -118.34, 'Kia Forum'), { ...OPTS, metro: 'la' });
-    const chi = mapJamBaseEvent(inCity('Chicago', 'IL', 'America/Chicago', 41.88, -87.67, 'United Center'), { ...OPTS, metro: 'chi' });
-    assert.deepEqual(la, { skip: 'large-venue' });
-    assert.deepEqual(chi, { skip: 'large-venue' });
   });
 
   it('keeps NYC rules for NYC only', () => {

@@ -1,6 +1,6 @@
 # Pull Up
 
-Swipe through upcoming NYC and North Jersey shows, hear a 30-second preview of
+Swipe through upcoming shows in about 45 US and Canadian metro areas, hear a 30-second preview of
 the bands on each flyer, and keep the ones you're going to in one list with
 calendar export and reminders.
 
@@ -42,8 +42,9 @@ previous one and keeps your Going list.
 
 ## Listings
 
-The app downloads `shows.json` from the `listings` release of this repo, keeps
-a saved copy for offline use. On a first launch with no connection the deck
+The app downloads one file per city (`shows-<city>.json`, cities listed in
+`src/lib/metros.ts`) from the `listings` release of this repo, only for the city
+it is centered on, and keeps a saved copy of each for offline use. On a first launch with no connection the deck
 says it couldn't load shows and offers a retry.
 
 The **Refresh listings** workflow builds that file every day from the
@@ -55,11 +56,14 @@ The **Refresh listings** workflow builds that file every day from the
 3. Actions > Refresh listings > Run workflow > `full`.
 
 The free plan allows 1,000 calls a month and requires attribution (the app
-shows it in Settings and on each listing). A full fetch reads every page of the
-next 60 days and runs on Mondays; other days only ask for shows that changed.
-The script skips venues over 1,500 capacity, events outside Brooklyn, Queens,
-Manhattan and North Jersey, and festivals, and refuses to publish an empty or
-much smaller feed. Run it by hand with `JAMBASE_API_KEY=... npm run listings`.
+shows it in Settings and on each listing). Each run refreshes only the cities
+that are due, most overdue first: large markets daily, others every four days.
+A new city is read in full, then again every 28 days to extend the date window;
+in between it only asks for shows changed since its last sync. `state.json` in
+the release keeps a running monthly call count, and the job stops at 900. Every
+venue size is kept, and the script refuses to publish an empty or much smaller
+feed for a city that already had listings. Run it by hand with
+`JAMBASE_API_KEY=... npm run listings -- --metros nyc,la`.
 
 `listings/manual.json` holds listings you add yourself (DIY nights JamBase
 won't carry), in the same shape as `src/lib/types.ts` `Show`; they are merged

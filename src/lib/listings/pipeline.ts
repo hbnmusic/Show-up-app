@@ -5,7 +5,7 @@
  */
 import type { Show } from '../types';
 import type { MetroId } from '../metros';
-import { DEFAULT_MAP_OPTIONS, mapJamBaseEvent, type SkipReason } from './jambase';
+import { mapJamBaseEvent, type SkipReason } from './jambase';
 import { dedupeShows, mergeFeed, sortByStart, stillRelevant } from './merge';
 import { cleanShow, type Feed } from './validate';
 
@@ -55,7 +55,7 @@ export function buildFeed(rawEvents: unknown[], o: BuildOptions): { feed: Feed; 
   const skipped: Report['skipped'] = {};
   const mapped: Show[] = [];
   for (const ev of rawEvents) {
-    const r = mapJamBaseEvent(ev, { fetchedAt, metro: o.metro, maxCapacity: o.maxCapacity ?? DEFAULT_MAP_OPTIONS.maxCapacity });
+    const r = mapJamBaseEvent(ev, { fetchedAt, metro: o.metro, maxCapacity: o.maxCapacity });
     if ('show' in r) mapped.push(r.show);
     else skipped[r.skip] = (skipped[r.skip] ?? 0) + 1;
   }

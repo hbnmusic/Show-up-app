@@ -8,7 +8,7 @@ import { describe, it } from 'node:test';
 import { SHOWS } from './fixtures/shows';
 import { chooseArtist, isCollaboration, namesMatch, normalizeName } from '../src/lib/deezer';
 import { buildQueue, inWhen, matchesFilters, placeOk } from '../src/lib/filters';
-import { distanceMi, nearestMetro } from '../src/lib/metros';
+import { distanceMi, METROS, nearestMetro, normalizeSearch } from '../src/lib/metros';
 import { planReminders } from '../src/lib/reminderPlan';
 import { DEFAULT_FILTERS, DEFAULT_REMINDER_PREFS, type Filters, type Show } from '../src/lib/types';
 
@@ -105,6 +105,15 @@ describe('filters', () => {
     assert.equal(placeOk({ ...noCoords, venue: { ...noCoords.venue, metro: 'la' } }, f(25)), false);
     // No place chosen: everything passes.
     assert.equal(placeOk(la, { ...DEFAULT_FILTERS }), true);
+  });
+
+  it('covers the big US and Canadian markets, with unique ids', () => {
+    const ids = METROS.map((m) => m.id);
+    assert.equal(new Set(ids).size, ids.length);
+    for (const want of ['nyc', 'la', 'chi', 'tor', 'mtl', 'van', 'sf', 'atl', 'hou']) assert.ok(ids.includes(want), want);
+    assert.ok(METROS.length >= 40);
+    assert.equal(nearestMetro(49.25, -123.1).metro.id, 'van');
+    assert.equal(normalizeSearch('Montréal'), 'montreal');
   });
 
   it('finds the nearest covered city', () => {

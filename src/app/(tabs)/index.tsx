@@ -27,6 +27,7 @@ export default function ShowsScreen() {
   const active = useAppActive();
   const decisionsRec = useApp((s) => s.decisions);
   const allShows = useListings((s) => s.shows);
+  const feeds = useListings((s) => s.feeds);
   const listingsRefreshing = useListings((s) => s.refreshing);
   const listingsError = useListings((s) => s.error);
   const stored = useApp((s) => s.filters);
@@ -193,16 +194,23 @@ export default function ShowsScreen() {
             <Text style={styles.emptyTitle}>Finding shows near you…</Text>
           </View>
         ) : null}
-        {size.w > 0 && filters.place && allShows.length === 0 ? (
+        {size.w > 0 && filters.place && filters.place.metro && !feeds[filters.place.metro] ? (
           <NoListings loading={listingsRefreshing} error={listingsError} />
         ) : null}
-        {size.w > 0 && filters.place && allShows.length > 0 && queue.length === 0 ? (
+        {size.w > 0 && filters.place && (!filters.place.metro || feeds[filters.place.metro]) && queue.length === 0 ? (
+          filters.place.metro && feeds[filters.place.metro].shows.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>No listings here yet</Text>
+              <Text style={styles.emptyBody}>The listings provider has no upcoming shows for this city. Try another city in Filters.</Text>
+            </View>
+          ) : (
           <EmptyDeck
             filtered={nFilters > 0}
             when={filters.when}
             onWiden={() => setFilters({ when: filters.when === 'month' ? 'all' : 'month' })}
             onClear={resetFilters}
           />
+          )
         ) : null}
       </View>
 

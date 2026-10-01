@@ -33,34 +33,11 @@ export type SkipReason =
 
 export type MapOptions = {
   fetchedAt: string;
-  /** Skip venues that hold more than this many people (arenas, stadiums). */
-  maxCapacity: number;
+  /** Skip venues listed as holding more than this many people. Unset = keep every venue. */
+  maxCapacity?: number;
   /** Which city feed this event was fetched for. Defaults to NYC. */
   metro?: MetroId;
 };
-
-/** JamBase often leaves capacity blank for big rooms, so the obvious ones are named. Matched as a substring of the lower-cased venue name. */
-const BIG_VENUES = [
-  'barclays center', 'madison square garden', 'prudential center', 'metlife stadium', 'ubs arena', 'citi field',
-  'yankee stadium', 'radio city', 'forest hills stadium', 'kings theatre', 'brooklyn paramount', 'beacon theatre',
-  'terminal 5', 'brooklyn steel', 'hammerstein ballroom', 'playstation theater', 'nycb live', 'nassau coliseum',
-  'carnegie hall', 'lincoln center', 'new jersey performing arts center', 'njpac', 'st. george theatre', 'apollo theater',
-  // Los Angeles
-  'crypto.com arena', 'sofi stadium', 'hollywood bowl', 'kia forum', 'the forum', 'greek theatre', 'walt disney concert hall',
-  'dodger stadium', 'rose bowl', 'microsoft theater', 'hollywood palladium', 'shrine auditorium', 'pantages', 'the wiltern',
-  'peacock theater', 'honda center', 'bmo stadium', 'intuit dome', 'the theatre at ace hotel', 'orpheum theatre', 'pechanga arena',
-  // Chicago
-  'united center', 'soldier field', 'wrigley field', 'rate field', 'allstate arena', 'rosemont theatre', 'credit union 1 arena',
-  'huntington bank pavilion', 'auditorium theatre', 'chicago theatre', 'riviera theatre', 'aragon ballroom', 'salt shed',
-  'radius chicago', 'wintrust arena', 'northerly island', 'ravinia', 'tinley park', 'hollywood casino amphitheatre',
-];
-
-export function isBigVenue(name: string): boolean {
-  const n = name.toLowerCase();
-  return BIG_VENUES.some((v) => n.includes(v));
-}
-
-export const DEFAULT_MAP_OPTIONS = { maxCapacity: 1500 } as const;
 
 export type MapResult = { show: Show } | { skip: SkipReason };
 
@@ -178,7 +155,7 @@ export function mapJamBaseEvent(ev: unknown, opts: MapOptions): MapResult {
   if (!area) return { skip: 'outside-areas' };
 
   const capacity = num(venue.maximumAttendeeCapacity);
-  if ((capacity != null && capacity > opts.maxCapacity) || isBigVenue(venueName)) return { skip: 'large-venue' };
+  if (opts.maxCapacity != null && capacity != null && capacity > opts.maxCapacity) return { skip: 'large-venue' };
 
   const startRaw = str(ev.startDate);
   if (!startRaw) return { skip: 'no-date' };

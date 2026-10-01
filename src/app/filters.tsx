@@ -8,8 +8,8 @@ import { C, F } from '@/constants/theme';
 import { buildQueue, WHEN_LABELS } from '@/lib/filters';
 import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
-import { cityPlace, detectPlace } from '@/lib/location';
-import { METROS } from '@/lib/metros';
+import { detectPlace } from '@/lib/location';
+import { metroById } from '@/lib/metros';
 import { RADIUS_OPTIONS, type AgeFilter, type Decision, type Genre, type PriceFilter, type VenueType, type WhenFilter } from '@/lib/types';
 
 const WHEN: WhenFilter[] = ['tonight', 'tomorrow', 'weekend', 'week', 'month', 'all'];
@@ -99,19 +99,12 @@ export default function FiltersScreen() {
               on={filters.place?.source === 'device'}
               onPress={useMyLocation}
             />
-            {METROS.map((m) => (
-              <Chip
-                key={m.id}
-                label={m.name}
-                on={filters.place?.source === 'city' && filters.place.metro === m.id}
-                onPress={() => {
-                  setLocNote(null);
-                  setFilters({ place: cityPlace(m) });
-                }}
-              />
-            ))}
+            {filters.place?.source === 'city' ? (
+              <Chip label={filters.place.label} on onPress={() => router.push('/cities')} />
+            ) : null}
+            <Chip label={filters.place?.source === 'city' ? 'Change city' : 'Choose a city'} onPress={() => router.push('/cities')} />
           </Section>
-          <Section title="Distance" hint="Listings cover about 25 miles around each city">
+          <Section title="Distance" hint={`Listings cover about 25 miles around ${filters.place ? (metroById(filters.place.metro)?.name ?? 'each city') : 'each city'}`}>
             {RADIUS_OPTIONS.map((r) => (
               <Chip key={r} label={`${r} mi`} on={filters.radiusMi === r} onPress={() => setFilters({ radiusMi: r })} />
             ))}

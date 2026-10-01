@@ -46,6 +46,6 @@ example
 dist-android/
 
 # Listings feed output (published to a release, not committed)
-listings/shows.json
-listings/shows.json.tmp
+listings/shows*.json
+listings/state.json
 listings/raw-sample*.json

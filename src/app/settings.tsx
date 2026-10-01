@@ -14,6 +14,7 @@ export default function SettingsScreen() {
   const setAutoplay = useApp((s) => s.setAutoplay);
   const [allowed, setAllowed] = useState(true);
   const { shows, source, generatedAt, attribution, refreshing, error } = useListings();
+  const cities = useListings((s) => Object.keys(s.feeds).length);
 
   useEffect(() => {
     notificationsAllowed().then(setAllowed);
@@ -93,7 +94,7 @@ export default function SettingsScreen() {
         <Text style={styles.about}>
           {source === 'none'
             ? 'No listings downloaded yet.'
-            : `${shows.length} shows${generatedAt ? `, updated ${new Date(generatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}${source === 'cache' ? ' (saved copy)' : ''}.`}
+            : `${shows.length} shows from ${cities} ${cities === 1 ? 'city' : 'cities'}${generatedAt ? `, updated ${new Date(generatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}${source === 'cache' ? ' (saved copy)' : ''}.`}
           {attribution.length ? `\n${attribution.join('\n')}` : ''}
         </Text>
         {error ? <Text style={styles.listError}>Last refresh failed: {error}</Text> : null}

@@ -56,6 +56,7 @@ export default function RootLayout() {
   });
   const hydrated = useApp((s) => s.hydrated);
   const listingsReady = useListings((s) => s.ready);
+  const placeMetro = useApp((s) => s.filters.place?.metro);
 
   useNotificationRouting();
 
@@ -80,7 +81,8 @@ export default function RootLayout() {
   // On launch and whenever the app returns to the front: look for fresh listings
   // (at most every 30 minutes), then rebuild reminders so changed times are picked up.
   useEffect(() => {
-    if (!hydrated || !listingsReady) return;
+    // Wait for a city: the first launch picks one from the phone's location. Changing city downloads that city.
+    if (!hydrated || !listingsReady || !placeMetro) return;
     const run = async () => {
       await syncReminders();
       if (await useListings.getState().refresh()) await syncReminders();
@@ -90,7 +92,7 @@ export default function RootLayout() {
       if (s === 'active') run();
     });
     return () => sub.remove();
-  }, [hydrated, listingsReady]);
+  }, [hydrated, listingsReady, placeMetro]);
 
   const ready = fontsLoaded && hydrated && listingsReady;
   useEffect(() => {
@@ -113,6 +115,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="show/[id]" options={{ presentation: 'modal', headerShown: false }} />
           <Stack.Screen name="filters" options={{ presentation: 'modal', title: 'Filters' }} />
+          <Stack.Screen name="cities" options={{ presentation: 'modal', title: 'Choose a city' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         </Stack>
       </ThemeProvider>

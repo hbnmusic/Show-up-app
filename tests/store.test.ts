@@ -134,7 +134,7 @@ describe('listings refresh', () => {
     const { useApp } = await import('../src/lib/store');
     const { useListings } = await import('../src/lib/listingsStore');
     useApp.getState().resetAll();
-    useListings.setState({ shows: [], byId: {}, source: 'none', generatedAt: null, checkedAt: null, refreshing: false, error: null, ready: false });
+    useListings.setState({ shows: [], byId: {}, feeds: {}, source: 'none', generatedAt: null, checkedAt: {}, refreshing: false, error: null, ready: false });
   });
 
   it('starts empty: there is no bundled sample data', async () => {
@@ -151,10 +151,10 @@ describe('listings refresh', () => {
     assert.equal(st.source, 'live');
     assert.deepEqual(st.shows.map((s) => s.id), ['x1', 'x2']);
     assert.match(st.attribution[0], /JamBase/);
-    assert.ok(memory.get('pull-up-listings-cache-v1'));
+    assert.ok(memory.get('pull-up-listings-v2:nyc'));
 
     // A later launch with no network starts from the saved copy.
-    useListings.setState({ shows: [], byId: {}, source: 'none', generatedAt: null });
+    useListings.setState({ shows: [], byId: {}, feeds: {}, source: 'none', generatedAt: null });
     await useListings.getState().loadCache();
     assert.equal(useListings.getState().source, 'cache');
     assert.equal(useListings.getState().shows.length, 2);
@@ -179,11 +179,8 @@ describe('listings refresh', () => {
     assert.equal(useListings.getState().shows.length, before);
   });
 
-  it('an empty or unrecognised feed is not accepted', async () => {
+  it('an unrecognised feed is not accepted', async () => {
     const { useListings } = await import('../src/lib/listingsStore');
-    globalThis.fetch = feedResponse([], '2026-09-30T08:00:00Z');
-    assert.equal(await useListings.getState().refresh({ force: true }), false);
-    assert.match(useListings.getState().error ?? '', /no usable shows/);
     globalThis.fetch = (async () => ({ ok: true, status: 200, json: async () => ({ hello: 'world' }) })) as unknown as typeof fetch;
     assert.equal(await useListings.getState().refresh({ force: true }), false);
     assert.equal(useListings.getState().source, 'none');
@@ -227,9 +224,50 @@ describe('listings refresh', () => {
 
   it('a damaged saved copy is treated as no saved copy', async () => {
     const { useListings } = await import('../src/lib/listingsStore');
-    memory.set('pull-up-listings-cache-v1', '{not json');
+    memory.set('pull-up-listings-v2:index', '["nyc"]');
+    memory.set('pull-up-listings-v2:nyc', '{not json');
     await useListings.getState().loadCache();
     assert.equal(useListings.getState().source, 'none');
     assert.equal(useListings.getState().ready, true);
+  });
+
+  it('downloads only the city the deck is centered on and keeps others cached', async () => {
+    const { useListings, listingsUrl } = await import('../src/lib/listingsStore');
+    const { useApp } = await import('../src/lib/store');
+    const asked: string[] = [];
+    globalThis.fetch = (async (url: string) => {
+      asked.push(url);
+      const shows = url.includes('shows-la.json') ? [mk('la1', '2026-10-05')] : [mk('ny1', '2026-10-05')];
+      return { ok: true, status: 200, json: async () => ({ version: 1, generatedAt: '2026-10-01T08:00:00Z', attribution: ['x'], shows }) } as unknown as Response;
+    }) as unknown as typeof fetch;
+    useApp.getState().setFilters({ place: { label: 'Los Angeles', lat: 34, lng: -118, metro: 'la', source: 'city' } });
+    await useListings.getState().refresh({ force: true });
+    assert.deepEqual(asked, [listingsUrl('la')]);
+    useApp.getState().setFilters({ place: { label: 'New York', lat: 40, lng: -74, metro: 'nyc', source: 'city' } });
+    await useListings.getState().refresh();
+    assert.equal(asked.length, 2);
+    assert.deepEqual(useListings.getState().shows.map((s) => s.id).sort(), ['la1', 'ny1']);
+    assert.deepEqual(Object.keys(useListings.getState().feeds).sort(), ['la', 'nyc']);
+
+    // Next launch: both cities come back from the saved copies.
+    useListings.setState({ shows: [], byId: {}, feeds: {}, source: 'none' });
+    await useListings.getState().loadCache();
+    assert.equal(useListings.getState().shows.length, 2);
+  });
+
+  it('a city with no listings is a valid empty feed, not an error', async () => {
+    const { useListings } = await import('../src/lib/listingsStore');
+    globalThis.fetch = feedResponse([], '2026-09-30T08:00:00Z');
+    await useListings.getState().refresh({ force: true, metros: ['van'] });
+    assert.equal(useListings.getState().error, null);
+    assert.deepEqual(useListings.getState().feeds.van?.shows, []);
+  });
+
+  it('upgrades the single New York cache from earlier builds', async () => {
+    const { useListings } = await import('../src/lib/listingsStore');
+    memory.set('pull-up-listings-cache-v1', JSON.stringify({ version: 1, generatedAt: '2026-09-30T08:00:00Z', attribution: [], shows: [mk('old1', '2026-10-05')] }));
+    await useListings.getState().loadCache();
+    assert.deepEqual(useListings.getState().shows.map((s) => s.id), ['old1']);
+    assert.ok(useListings.getState().feeds.nyc);
   });
 });
