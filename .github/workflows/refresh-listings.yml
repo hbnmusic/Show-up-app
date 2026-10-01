@@ -7,7 +7,7 @@ name: Refresh listings
 # variables > Actions). Without it this workflow does nothing.
 #
 # Budget: the free JamBase plan allows 1,000 calls a month. Each run refreshes only the cities
-# that are due (large markets daily, others every few days), most overdue first, and state.json
+# that are due (large markets every two days, others weekly), most overdue first, and state.json
 # keeps a running monthly count that stops the job at 900 calls.
 on:
   schedule:

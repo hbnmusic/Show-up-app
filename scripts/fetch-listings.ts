@@ -5,7 +5,7 @@
  *   JAMBASE_API_KEY=... npx tsx scripts/fetch-listings.ts
  *
  * The free plan allows 1,000 calls a month, so each run refreshes only the
- * cities that are due, most overdue first: large markets daily, the rest every
+ * cities that are due, most overdue first: large markets every two days, the rest every
  * few days. A city is read in full when it is new and then every few weeks (to
  * extend the date window); in between it only asks for shows changed since its
  * last sync. A running monthly call count in state.json stops the job at the cap.
@@ -20,7 +20,7 @@
  *   --budget 60               most API calls one city may use in a run
  *   --run-budget 150          most API calls the whole run may use
  *   --monthly-cap 900         stop once this many calls are spent this month
- *   --hot-hours 24 --cold-hours 96 --full-every-days 28   refresh pacing
+ *   --hot-hours 48 --cold-hours 168 --full-every-days 42   refresh pacing
  *   --dump-sample listings/raw-sample.json   save the first raw page for inspection
  */
 /// <reference types="node" />
@@ -57,9 +57,9 @@ const days = Number(arg('days', '60'));
 const budget = Number(arg('budget', '60'));
 const runBudget = Number(arg('run-budget', '150'));
 const monthlyCap = Number(arg('monthly-cap', '900'));
-const hotHours = Number(arg('hot-hours', '24'));
-const coldHours = Number(arg('cold-hours', '96'));
-const fullEveryDays = Number(arg('full-every-days', '28'));
+const hotHours = Number(arg('hot-hours', '48'));
+const coldHours = Number(arg('cold-hours', '168'));
+const fullEveryDays = Number(arg('full-every-days', '42'));
 const maxCapacity = process.argv.includes('--max-capacity') ? Number(arg('max-capacity', '0')) : undefined;
 const requested = arg('mode', 'auto');
 if (!['auto', 'full', 'incremental'].includes(requested)) {

@@ -57,8 +57,8 @@ The **Refresh listings** workflow builds that file every day from the
 
 The free plan allows 1,000 calls a month and requires attribution (the app
 shows it in Settings and on each listing). Each run refreshes only the cities
-that are due, most overdue first: large markets daily, others every four days.
-A new city is read in full, then again every 28 days to extend the date window;
+that are due, most overdue first: large markets every two days, others weekly.
+A new city is read in full, then again every 42 days to extend the date window;
 in between it only asks for shows changed since its last sync. `state.json` in
 the release keeps a running monthly call count, and the job stops at 900. Every
 venue size is kept, and the script refuses to publish an empty or much smaller
