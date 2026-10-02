@@ -18,6 +18,7 @@ on:
     paths:
       - scripts/fetch-listings.ts
       - src/lib/listings/**
+      - scripts/enrich-ticketmaster.ts
       - .github/workflows/refresh-listings.yml
   workflow_dispatch:
     inputs:
@@ -40,6 +41,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       JAMBASE_API_KEY: ${{ secrets.JAMBASE_API_KEY }}
+      TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
     steps:
       - name: Check for the API key
         id: key
@@ -75,13 +77,20 @@ jobs:
           [ -z "$MODE" ] && MODE=auto
           npx tsx scripts/fetch-listings.ts --mode "$MODE" --dump-sample listings/raw-sample.json
 
+      # Optional: fills price, age and a photo from Ticketmaster when the secret exists.
+      # Never blocks publishing; problems show up as warnings.
+      - name: Add Ticketmaster details
+        if: steps.key.outputs.have == 'true'
+        continue-on-error: true
+        run: npx tsx scripts/enrich-ticketmaster.ts
+
       - name: Publish the feed
         if: steps.key.outputs.have == 'true'
         run: |
           gh release view listings >/dev/null 2>&1 || gh release create listings \
             --prerelease --latest=false --title "Listings feed" \
             --notes "Rolling listings feed downloaded by the app. Replaced by the Refresh listings workflow; not an app build."
-          gh release upload listings listings/shows-*.json listings/state.json --clobber
+          gh release upload listings listings/shows-*.json listings/state.json $(ls listings/tm-state.json 2>/dev/null) --clobber
 
       - name: Keep a few raw records for checking the mapping
         if: steps.key.outputs.have == 'true' && always()

@@ -297,22 +297,29 @@ function ZinePoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
   );
 }
 
-/** The headliner's catalog photo, when the match is a confident one. */
-function useHeadlinerPhoto(show: Show): string | undefined {
+/**
+ * A photo for the card: the listing's own image if it has one (from the
+ * promoter or Ticketmaster), else the headliner's catalog photo when the
+ * match is a confident one.
+ */
+function useCardPhoto(show: Show): { url: string; credit: string } | undefined {
   const previews = useShowPreviews(show.id);
+  if (show.flyerImages?.[0]) return { url: show.flyerImages[0], credit: show.flyerCredit ?? '' };
   const first = previews?.acts.find((a) => a.order === Math.min(...show.acts.map((x) => x.order)));
-  return first && first.status === 'found' && first.confidence === 'high' ? first.picture : undefined;
+  return first && first.status === 'found' && first.confidence === 'high' && first.picture
+    ? { url: first.picture, credit: 'DEEZER' }
+    : undefined;
 }
 
 /** Layout D: the artist's photo behind the date and bill. Used when no promoter flyer exists. */
-function PhotoPoster({ show, width: w, height: h, photo, p }: Props & { photo: string; p: PosterPalette }) {
+function PhotoPoster({ show, width: w, height: h, photo, p }: Props & { photo: { url: string; credit: string }; p: PosterPalette }) {
   const pad = Math.round(w * 0.07);
   const dp = dateParts(show);
   const acts = show.acts.length ? [...show.acts].sort((a, b) => a.order - b.order).map((a) => a.name) : [showTitle(show)];
   const headSize = fitFont(acts[0].toUpperCase(), w - pad * 2, 2, CHAR_W.poster, h * 0.15, 24);
   return (
     <View style={[styles.poster, { width: w, height: h, backgroundColor: p.bg }]}>
-      <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+      <Image source={{ uri: photo.url }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       <LinearGradient
         colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.88)']}
         locations={[0, 0.35, 1]}
@@ -343,7 +350,9 @@ function PhotoPoster({ show, width: w, height: h, photo, p }: Props & { photo: s
           <Text style={[styles.mono, { color: p.accent, marginTop: 8 }]} numberOfLines={1}>
             {show.venue.name.toUpperCase()} — {show.venue.neighborhood.toUpperCase()}
           </Text>
-          <Text style={[styles.mono, { color: 'rgba(255,255,255,0.55)', fontSize: 9, marginTop: 6 }]}>PHOTO VIA DEEZER</Text>
+          {photo.credit ? (
+            <Text style={[styles.mono, { color: 'rgba(255,255,255,0.55)', fontSize: 9, marginTop: 6 }]}>PHOTO VIA {photo.credit}</Text>
+          ) : null}
         </View>
       </View>
     </View>
@@ -352,7 +361,7 @@ function PhotoPoster({ show, width: w, height: h, photo, p }: Props & { photo: s
 
 function FlyerArtImpl({ show, width, height }: Props) {
   const seed = hash(show.id);
-  const photo = useHeadlinerPhoto(show);
+  const photo = useCardPhoto(show);
   const p = paletteFor(show.id, show.genres);
   if (photo) return <PhotoPoster show={show} width={width} height={height} photo={photo} p={p} />;
   const variant = seed % 3;

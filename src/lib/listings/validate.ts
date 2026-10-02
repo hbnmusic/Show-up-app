@@ -65,6 +65,7 @@ export function cleanShow(raw: unknown): Show | null {
     },
     agePolicy: AGES.includes(raw.agePolicy as AgePolicy) ? (raw.agePolicy as AgePolicy) : 'unknown',
     flyerImages: Array.isArray(raw.flyerImages) ? raw.flyerImages.filter((x): x is string => typeof x === 'string') : undefined,
+    flyerCredit: str(raw.flyerCredit),
     ticketUrl: str(raw.ticketUrl),
     status: STATUSES.includes(raw.status as string) ? (raw.status as Show['status']) : 'scheduled',
     source: {

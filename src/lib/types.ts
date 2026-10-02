@@ -75,6 +75,8 @@ export type Show = {
   price: Price;
   agePolicy: AgePolicy;
   flyerImages?: string[];
+  /** Who to credit when flyerImages came from a provider rather than the promoter. */
+  flyerCredit?: string;
   ticketUrl?: string;
   status: ShowStatus;
   source: { provider: string; url: string; fetchedAt: string };
