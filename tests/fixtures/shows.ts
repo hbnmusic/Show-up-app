@@ -138,7 +138,7 @@ export const SHOWS: Show[] = [
   show('2026-10-02', '18:00', 'alphaville', ['Bad Static', '3 The Hardway', 'T@B GRRRL', 'Brea Fournier and the Dream Ballet'], ['Punk']),
   show('2026-10-02', '19:00', 'broadway', ['Annie Collette', 'Alphabet City', 'Help Wanted'], ['Indie Rock']),
   show('2026-10-02', '20:00', 'roulette', ['The Fiery Furnaces', 'Skeletons Big Band'], ['Indie Rock', 'Experimental'], { title: 'Us v. Them Night 2' }),
-  show('2026-10-02', '22:00', 'bossaNova', ['KEBRA', 'Dj Rankng', 'La Maquina', 'zorenLo'], ['Club & Techno'], { title: 'Rollup', endTime: '23:59' }),
+  show('2026-10-02', '22:00', 'bossaNova', ['KEBRA', 'Dj Rankng', 'La Maquina', 'zorenLo'], ['Electronic'], { title: 'Rollup', endTime: '23:59' }),
 
   // Sat Oct 3
   show('2026-10-03', '19:00', 'lightSound', ['Arto Lindsay', 'Dr. S+M', 'Beat Detectives', 'Exoplex', 'Stewey Decimal'], ['Experimental', 'Noise Rock'], { price: SLIDING, endTime: '23:00' }),

@@ -28,7 +28,10 @@ export function cleanShow(raw: unknown): Show | null {
   const title = typeof raw.title === 'string' && raw.title ? raw.title : undefined;
   if (acts.length === 0 && !title) return null;
 
-  const genres = (Array.isArray(raw.genres) ? raw.genres : []).filter((g): g is Genre => ALL_GENRES.includes(g as Genre));
+  // "Club & Techno" was renamed; feeds and caches written before that still carry the old name.
+  const genres = (Array.isArray(raw.genres) ? raw.genres : [])
+    .map((g) => (g === 'Club & Techno' ? 'Electronic' : g))
+    .filter((g, i, all): g is Genre => ALL_GENRES.includes(g as Genre) && all.indexOf(g) === i);
   const price = isObj(raw.price) ? raw.price : {};
   const source = isObj(raw.source) ? raw.source : {};
   const str = (x: unknown) => (typeof x === 'string' && x ? x : undefined);

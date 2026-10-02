@@ -146,7 +146,10 @@ export const useApp = create<AppState>()(
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         const { areas: _areas, ...saved } = (p.filters ?? {}) as Record<string, unknown>;
-        return { ...current, ...p, filters: { ...DEFAULT_FILTERS, ...saved } as Filters };
+        const genres = Array.isArray(saved.genres)
+          ? [...new Set((saved.genres as string[]).map((g) => (g === 'Club & Techno' ? 'Electronic' : g)))]
+          : [];
+        return { ...current, ...p, filters: { ...DEFAULT_FILTERS, ...saved, genres } as Filters };
       },
       onRehydrateStorage: () => () => {
         useApp.setState({ hydrated: true });

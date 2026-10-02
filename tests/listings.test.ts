@@ -424,3 +424,10 @@ describe('Ticketmaster enrichment', () => {
     assert.equal(enrichShow(own, ev).show.ticketUrl, 'https://seller.example/tix');
   });
 });
+
+describe('genre rename', () => {
+  it('old Club & Techno data reads as Electronic', () => {
+    const s = cleanShow({ ...(concertShow() as object), genres: ['Club & Techno', 'Electronic', 'Metal'] })!;
+    assert.deepEqual(s.genres, ['Electronic', 'Metal']);
+  });
+});

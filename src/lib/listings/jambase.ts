@@ -49,7 +49,7 @@ const GENRES: Record<string, Genre[]> = {
   folk: ['Folk'],
   pop: ['Pop'],
   jazz: ['Jazz & Improv'],
-  edm: ['Club & Techno'],
+  edm: ['Electronic'],
   'rhythm-and-blues-soul': ['Soul & Gospel'],
 };
 

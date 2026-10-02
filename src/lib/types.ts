@@ -22,7 +22,7 @@ export type Genre =
   | 'Pop'
   | 'Experimental'
   | 'Jazz & Improv'
-  | 'Club & Techno'
+  | 'Electronic'
   | 'Soul & Gospel';
 
 export type Venue = {
@@ -130,5 +130,5 @@ export const RADIUS_OPTIONS = [5, 10, 15, 25] as const;
 export const ALL_GENRES: readonly Genre[] = [
   'Punk', 'Hardcore', 'Screamo', 'Emo', 'Post-Punk', 'Darkwave', 'Industrial', 'Garage', 'Indie Rock',
   'Shoegaze', 'Noise Rock', 'Metal', 'Sludge & Doom', 'Psych', 'Folk', 'Pop', 'Experimental',
-  'Jazz & Improv', 'Club & Techno', 'Soul & Gospel',
+  'Jazz & Improv', 'Electronic', 'Soul & Gospel',
 ];

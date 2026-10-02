@@ -80,7 +80,7 @@ const FAMILY: Partial<Record<Genre, PosterPalette[]>> = {
   'Noise Rock': EXPERIMENTAL,
   'Jazz & Improv': EXPERIMENTAL,
   Psych: EXPERIMENTAL,
-  'Club & Techno': CLUB,
+  'Electronic': CLUB,
   'Soul & Gospel': SOUL,
 };
 
