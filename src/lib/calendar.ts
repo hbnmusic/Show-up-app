@@ -1,7 +1,7 @@
 import { createEventInCalendarAsync } from 'expo-calendar/legacy';
 import { Platform } from 'react-native';
 
-import { calendarLocation, doorsDate, endDate, fullBill, priceLabel, showTitle, AGE_LABELS } from './showText';
+import { calendarLocation, doorsDate, endDate, fullBill, metaLine, showTitle } from './showText';
 import type { Show } from './types';
 
 /**
@@ -13,7 +13,7 @@ export async function addToCalendar(show: Show): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const notes = [
     `Lineup: ${fullBill(show) || show.title || ''}`,
-    `${priceLabel(show)} · ${AGE_LABELS[show.agePolicy]}`,
+    metaLine(show),
     show.ticketUrl ? `Listing: ${show.ticketUrl}` : '',
     `Open in Pull Up: pullup://show/${show.id}`,
   ]

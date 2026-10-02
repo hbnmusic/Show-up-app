@@ -10,6 +10,8 @@ import { chooseArtist, isCollaboration, namesMatch, normalizeName } from '../src
 import { buildQueue, inWhen, matchesFilters, placeOk } from '../src/lib/filters';
 import { distanceMi, METROS, nearestMetro, normalizeSearch } from '../src/lib/metros';
 import { planReminders } from '../src/lib/reminderPlan';
+import { factsFor, metaLine, timeLabel } from '../src/lib/showText';
+import { formatDay, wall } from '../src/lib/time';
 import { DEFAULT_FILTERS, DEFAULT_REMINDER_PREFS, type Filters, type Show } from '../src/lib/types';
 
 const byId = (id: string) => {
@@ -225,5 +227,60 @@ describe('preview matching', () => {
   it('short names are never high confidence', () => {
     const m = chooseArtist('DNE', [{ id: 4, name: 'DNE', fans: 10, albums: 1 }]);
     assert.equal(m.kind === 'match' && m.confidence, 'possible');
+  });
+});
+
+describe('venue-local time', () => {
+  const withZone = <T>(tz: string, fn: () => T): T => {
+    const was = process.env.TZ;
+    process.env.TZ = tz;
+    try {
+      return fn();
+    } finally {
+      if (was === undefined) delete process.env.TZ;
+      else process.env.TZ = was;
+    }
+  };
+  const base = SHOWS[0];
+  const evening: Show = { ...base, startsAt: '2026-10-10T19:00:00-04:00', doorsAt: '2026-10-10T18:00:00-04:00', timeTba: undefined };
+
+  it('shows the venue clock on a phone in another zone', () => {
+    withZone('America/Vancouver', () => {
+      assert.equal(timeLabel(evening), 'Doors 6 PM · 7 PM');
+      assert.equal(wall(evening.startsAt).getHours(), 19);
+      assert.equal(formatDay(wall(evening.startsAt)), 'Sat Oct 10');
+    });
+  });
+
+  it('decides tonight by the venue day, not the phone day', () => {
+    withZone('America/Vancouver', () => {
+      // 3 AM Oct 11 in Vancouver is already 6 AM Oct 11 in New York, so Saturday night is over there.
+      const late = new Date('2026-10-11T10:00:00Z');
+      assert.equal(inWhen(evening, 'tonight', late), false);
+      // 1 PM Oct 10 in Vancouver is 4 PM in New York: tonight.
+      const afternoon = new Date('2026-10-10T20:00:00Z');
+      assert.equal(inWhen(evening, 'tonight', afternoon), true);
+    });
+  });
+
+  it('schedules reminders on the venue clock', () => {
+    withZone('America/Vancouver', () => {
+      const prefs = { dayOf: true, beforeDoors: true, dayBefore: true };
+      const plan = planReminders(evening, prefs, new Date('2026-10-08T00:00:00Z'));
+      const at = (k: string) => plan.find((r) => r.kind === k)!.at.toISOString();
+      assert.equal(at('dayOf'), '2026-10-10T16:00:00.000Z'); // noon in New York
+      assert.equal(at('dayBefore'), '2026-10-09T22:00:00.000Z'); // 6 PM in New York
+      assert.equal(at('beforeDoors'), '2026-10-10T21:00:00.000Z'); // 5 PM in New York
+      assert.match(plan[0].body, /doors 6 PM/);
+    });
+  });
+
+  it('lists only the facts a listing actually has', () => {
+    const unknown: Show = { ...base, price: {}, agePolicy: 'unknown', ticketUrl: 'https://t', venue: { ...base.venue, type: 'venue' } };
+    assert.deepEqual(factsFor(unknown), [{ label: 'Cost & ages', value: 'On the ticket page' }]);
+    assert.equal(metaLine(unknown), '');
+    const partial: Show = { ...unknown, price: { min: 15, max: 15 }, venue: { ...unknown.venue, type: 'diy' } };
+    assert.deepEqual(factsFor(partial).map((f) => f.label), ['Cost', 'Venue type']);
+    assert.equal(metaLine(partial), '$15 · DIY space');
   });
 });

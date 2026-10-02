@@ -1,8 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { C, F } from '@/constants/theme';
-import { AGE_LABELS, VENUE_TYPE_LABELS, priceLabel, timeLabel } from '@/lib/showText';
-import { formatDay } from '@/lib/time';
+import { factsFor, timeLabel } from '@/lib/showText';
+import { formatDay, wall } from '@/lib/time';
 import type { Show } from '@/lib/types';
 
 /** Last slide on every card: the facts, legible at phone size. */
@@ -30,11 +30,11 @@ export function InfoSlide({ show, width, height }: { show: Show; width: number; 
       </View>
       <View style={{ flex: 1 }} />
       <View style={styles.grid}>
-        <Fact label="When" value={`${formatDay(new Date(show.startsAt))}\n${timeLabel(show)}`} />
+        <Fact label="When" value={`${formatDay(wall(show.startsAt))}\n${timeLabel(show)}`} />
         <Fact label="Where" value={`${show.venue.name}\n${where}`} />
-        <Fact label="Cost" value={priceLabel(show)} />
-        <Fact label="Ages" value={AGE_LABELS[show.agePolicy]} />
-        <Fact label="Room" value={VENUE_TYPE_LABELS[show.venue.type]} />
+        {factsFor(show).map((f) => (
+          <Fact key={f.label} label={f.label} value={f.value} />
+        ))}
       </View>
       <Text style={styles.note}>Details can change. Confirm with the venue before you go.</Text>
     </View>

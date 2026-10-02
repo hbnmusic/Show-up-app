@@ -1,6 +1,6 @@
 import type { Decision, Filters, Genre, Show, VenueType, WhenFilter } from './types';
 import { distanceMi } from './metros';
-import { addDays, startOfDay } from './time';
+import { addDays, startOfDay, wall, wallNow } from './time';
 
 /** A show stays in the deck until 3 hours after it starts. */
 const STILL_ON_MS = 3 * 60 * 60 * 1000;
@@ -23,9 +23,10 @@ export function isUpcoming(s: Show, now: Date): boolean {
   return showStart(s).getTime() + STILL_ON_MS > now.getTime();
 }
 
+/** Days are the venue's own: a show at 11 PM in Chicago is "tonight" there, whatever the phone's zone says. */
 export function inWhen(s: Show, when: WhenFilter, now: Date): boolean {
-  const night = nightOf(showStart(s)).getTime();
-  const tonight = nightOf(now);
+  const night = nightOf(wall(s.startsAt)).getTime();
+  const tonight = nightOf(wallNow(s.startsAt, now));
   const t = tonight.getTime();
   switch (when) {
     case 'tonight':

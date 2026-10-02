@@ -12,7 +12,7 @@ import Svg, { Circle, Defs, G, Line, Pattern, Rect } from 'react-native-svg';
 import { F, hash, paletteFor, seeded, type PosterPalette } from '@/constants/theme';
 import { useShowPreviews } from '@/lib/previews';
 import { headliner, showTitle, supportActs } from '@/lib/showText';
-import { MONTHS, WEEKDAYS, formatTime } from '@/lib/time';
+import { MONTHS, WEEKDAYS, formatTime, wall } from '@/lib/time';
 import type { Show } from '@/lib/types';
 
 type Props = { show: Show; width: number; height: number };
@@ -51,7 +51,7 @@ export function fitFont(
 }
 
 function dateParts(show: Show) {
-  const d = new Date(show.startsAt);
+  const d = wall(show.startsAt);
   return {
     month: MONTHS[d.getMonth()].toUpperCase(),
     day: String(d.getDate()),

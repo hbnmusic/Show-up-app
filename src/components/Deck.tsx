@@ -14,8 +14,8 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { C, F } from '@/constants/theme';
-import { AGE_LABELS, VENUE_TYPE_LABELS, placeLabel, priceLabel, showTitle, timeLabel } from '@/lib/showText';
-import { relativeDay } from '@/lib/time';
+import { metaLine, placeLabel, showTitle, timeLabel } from '@/lib/showText';
+import { relativeDay, wall, wallNow } from '@/lib/time';
 import type { Decision, Show } from '@/lib/types';
 import { FlyerArt } from './FlyerArt';
 import { InfoSlide } from './InfoSlide';
@@ -223,13 +223,14 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
     opacity: depth === 0 ? interpolate(tx.value, [-110, -20], [1, 0], Extrapolation.CLAMP) : 0,
   }));
 
-  const start = new Date(show.startsAt);
+  const start = wall(show.startsAt);
+  const today = wallNow(show.startsAt);
   return (
     <GestureDetector gesture={gestures}>
       <Animated.View
         style={[styles.card, { width, height: p.cardH }, cardStyle]}
         accessible={isTop}
-        accessibilityLabel={`${showTitle(show)} at ${show.venue.name}, ${relativeDay(start)}`}
+        accessibilityLabel={`${showTitle(show)} at ${show.venue.name}, ${relativeDay(start, today)}`}
         accessibilityActions={[
           { name: 'going', label: 'Going' },
           { name: 'pass', label: 'Pass' },
@@ -263,14 +264,16 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
         {p.audio}
         <Pressable style={styles.info} onPress={open} accessibilityRole="button" accessibilityLabel="Show details">
           <Text style={styles.when} numberOfLines={1}>
-            {relativeDay(start)} · {timeLabel(show)}
+            {relativeDay(start, today)} · {timeLabel(show)}
           </Text>
           <Text style={styles.where} numberOfLines={1}>
             {placeLabel(show)}
           </Text>
-          <Text style={styles.meta} numberOfLines={1}>
-            {priceLabel(show)} · {AGE_LABELS[show.agePolicy]} · {VENUE_TYPE_LABELS[show.venue.type]}
-          </Text>
+          {metaLine(show) ? (
+            <Text style={styles.meta} numberOfLines={1}>
+              {metaLine(show)}
+            </Text>
+          ) : null}
         </Pressable>
         <View style={styles.chips}>
           {show.genres.slice(0, 3).map((g) => (

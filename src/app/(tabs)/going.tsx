@@ -11,18 +11,18 @@ import { useNow } from '@/hooks/useNow';
 import { recordDecision, removeDecision } from '@/lib/decide';
 import { byStart } from '@/lib/filters';
 import { useListings } from '@/lib/listingsStore';
-import { AGE_LABELS, placeLabel, priceLabel, showTitle, supportActs, timeLabel } from '@/lib/showText';
+import { metaLine, placeLabel, showTitle, supportActs, timeLabel } from '@/lib/showText';
 import { useApp } from '@/lib/store';
-import { addDays, formatDay, relativeDay, sameDay, startOfDay } from '@/lib/time';
+import { addDays, formatDay, relativeDay, sameDay, startOfDay, wall, wallNow } from '@/lib/time';
 import type { Show } from '@/lib/types';
 
 type Tab = 'upcoming' | 'past' | 'passed';
 
 /** A show moves to Past the morning after (5 AM). */
 function isPast(s: Show, now: Date): boolean {
-  const cutoff = startOfDay(addDays(new Date(s.startsAt), 1));
+  const cutoff = startOfDay(addDays(wall(s.startsAt), 1));
   cutoff.setHours(5);
-  return now.getTime() >= cutoff.getTime();
+  return wallNow(s.startsAt, now).getTime() >= cutoff.getTime();
 }
 
 export default function GoingScreen() {
@@ -64,10 +64,11 @@ export default function GoingScreen() {
     const tonight: Show[] = [];
     const week: Show[] = [];
     const later: Show[] = [];
-    const weekEnd = addDays(startOfDay(now), 7).getTime();
     for (const s of upcoming) {
-      const d = new Date(s.startsAt);
-      if (sameDay(d, now) || d.getTime() < now.getTime()) tonight.push(s);
+      const d = wall(s.startsAt);
+      const nowThere = wallNow(s.startsAt, now);
+      const weekEnd = addDays(startOfDay(nowThere), 7).getTime();
+      if (sameDay(d, nowThere) || d.getTime() < nowThere.getTime()) tonight.push(s);
       else if (d.getTime() < weekEnd) week.push(s);
       else later.push(s);
     }
@@ -138,6 +139,7 @@ export default function GoingScreen() {
         renderItem={({ item }) => {
           const row = (
             <ShowRow
+              onRemove={() => remove(item)}
               show={item}
               now={now}
               tab={tab}
@@ -188,6 +190,7 @@ function Seg({ label, on, onPress }: { label: string; on: boolean; onPress: () =
 }
 
 function ShowRow(p: {
+  onRemove: () => void;
   show: Show;
   now: Date;
   tab: Tab;
@@ -197,7 +200,7 @@ function ShowRow(p: {
 }) {
   const s = p.show;
   const more = supportActs(s).length;
-  const start = new Date(s.startsAt);
+  const start = wall(s.startsAt);
   const setAttendance = useApp((st) => st.setAttendance);
   return (
     <Pressable style={styles.row} onPress={() => router.push(`/show/${s.id}`)} accessibilityRole="button">
@@ -209,7 +212,7 @@ function ShowRow(p: {
           </Text>
         ) : null}
         <Text style={[styles.rowWhen, s.status === 'cancelled' && styles.struck]} numberOfLines={1}>
-          {p.tab === 'upcoming' ? relativeDay(start, p.now) : formatDay(start)} · {timeLabel(s)}
+          {p.tab === 'upcoming' ? relativeDay(start, wallNow(s.startsAt, p.now)) : formatDay(start)} · {timeLabel(s)}
         </Text>
         <Text style={styles.rowTitle} numberOfLines={1}>
           {showTitle(s)}
@@ -232,9 +235,11 @@ function ShowRow(p: {
             />
           </View>
         ) : (
-          <Text style={styles.rowMeta} numberOfLines={1}>
-            {priceLabel(s)} · {AGE_LABELS[s.agePolicy]}
-          </Text>
+          metaLine(s) ? (
+            <Text style={styles.rowMeta} numberOfLines={1}>
+              {metaLine(s)}
+            </Text>
+          ) : null
         )}
       </View>
       {p.tab === 'upcoming' ? (
@@ -246,6 +251,16 @@ function ShowRow(p: {
             color={p.reminders ? C.text : C.faint}
           />
         </View>
+      ) : null}
+      {p.tab !== 'passed' ? (
+        <Pressable
+          onPress={p.onRemove}
+          hitSlop={10}
+          style={styles.removeBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${showTitle(s)} from Going`}>
+          <Ionicons name="trash-outline" size={19} color={C.muted} />
+        </Pressable>
       ) : null}
     </Pressable>
   );
@@ -275,6 +290,7 @@ function Empty({ tab }: { tab: Tab }) {
 }
 
 const styles = StyleSheet.create({
+  removeBtn: { paddingLeft: 10, paddingVertical: 8, alignSelf: 'center' },
   screen: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: 'row',

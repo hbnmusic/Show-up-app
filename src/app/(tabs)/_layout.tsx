@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { C, F } from '@/constants/theme';
 import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
-import { sameDay } from '@/lib/time';
+import { sameDay, wall, wallNow } from '@/lib/time';
 
 export default function TabsLayout() {
   const decisions = useApp((s) => s.decisions);
@@ -14,7 +14,7 @@ export default function TabsLayout() {
     const now = new Date();
     return Object.entries(decisions).filter(([id, d]) => {
       const s = byId[id];
-      return d.decision === 'going' && s && sameDay(new Date(s.startsAt), now) && s.status !== 'cancelled';
+      return d.decision === 'going' && s && sameDay(wall(s.startsAt), wallNow(s.startsAt, now)) && s.status !== 'cancelled';
     }).length;
   }, [decisions, byId]);
 

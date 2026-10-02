@@ -2,7 +2,7 @@
  * Which reminders a going show should get. Pure, so it can be tested without a phone.
  */
 import { doorsDate, headliner, supportActs } from './showText';
-import { addDays, formatTime, startOfDay } from './time';
+import { addDays, formatTime, fromWall, startOfDay, wall } from './time';
 import type { ReminderPrefs, Show } from './types';
 
 export type PlannedReminder = {
@@ -34,17 +34,22 @@ export function planReminders(s: Show, prefs: ReminderPrefs, now: Date): Planned
   const name = s.title && s.acts.length === 0 ? s.title : headliner(s);
   const where = `${s.venue.name}, ${s.venue.neighborhood}`;
   // Some listings give only a start time; do not call it doors.
-  const when = s.timeTba ? 'time TBA' : s.doorsAt ? `doors ${formatTime(doors)}` : `starts ${formatTime(doors)}`;
+  const doorsThere = wall(s.doorsAt ?? s.startsAt);
+  const when = s.timeTba ? 'time TBA' : s.doorsAt ? `doors ${formatTime(doorsThere)}` : `starts ${formatTime(doorsThere)}`;
   const out: PlannedReminder[] = [];
 
   if (prefs.dayBefore) {
-    const at = startOfDay(addDays(start, -1));
-    at.setHours(18, 0, 0, 0);
+    // 6 PM the evening before, on the venue's clock.
+    const w = startOfDay(addDays(wall(s.startsAt), -1));
+    w.setHours(18, 0, 0, 0);
+    const at = fromWall(s.startsAt, w);
     out.push({ kind: 'dayBefore', at, title: `Tomorrow: ${name}`, body: `${where} · ${when}` });
   }
   if (prefs.dayOf) {
-    const at = startOfDay(start);
-    at.setHours(12, 0, 0, 0);
+    // Noon on show day, on the venue's clock.
+    const w = startOfDay(wall(s.startsAt));
+    w.setHours(12, 0, 0, 0);
+    const at = fromWall(s.startsAt, w);
     if (at.getTime() < doors.getTime() - 60 * 60 * 1000) {
       out.push({ kind: 'dayOf', at, title: `Tonight: ${name}`, body: `${where} · ${when}` });
     }

@@ -1,5 +1,5 @@
 import type { AgePolicy, Show } from './types';
-import { formatDay, formatTime } from './time';
+import { formatDay, formatTime, wall } from './time';
 
 export function headliner(s: Show): string {
   const top = [...s.acts].sort((a, b) => a.order - b.order)[0];
@@ -26,13 +26,13 @@ export function endDate(s: Show): Date {
 
 export function timeLabel(s: Show): string {
   if (s.timeTba) return 'Time TBA';
-  const start = new Date(s.startsAt);
-  if (s.doorsAt) return `Doors ${formatTime(new Date(s.doorsAt))} · ${formatTime(start)}`;
+  const start = wall(s.startsAt);
+  if (s.doorsAt) return `Doors ${formatTime(wall(s.doorsAt))} · ${formatTime(start)}`;
   return formatTime(start);
 }
 
 export function dateTimeLabel(s: Show): string {
-  return `${formatDay(new Date(s.startsAt))} · ${timeLabel(s)}`;
+  return `${formatDay(wall(s.startsAt))} · ${timeLabel(s)}`;
 }
 
 export function priceLabel(s: Show): string {
@@ -43,6 +43,33 @@ export function priceLabel(s: Show): string {
   if (p.min != null) return `$${p.min}`;
   if (p.max != null) return `$${p.max}`;
   return 'Price TBA';
+}
+
+export const priceKnown = (s: Show) => !!s.price.isFree || !!s.price.notaflof || s.price.min != null || s.price.max != null;
+export const ageKnown = (s: Show) => s.agePolicy !== 'unknown';
+
+/**
+ * The facts to list for a show, leaving out what the listing does not say.
+ * A card full of "TBA" tells nobody anything, so when neither price nor age
+ * is known a single line points to the ticket page instead.
+ */
+export function factsFor(s: Show): { label: string; value: string }[] {
+  const out: { label: string; value: string }[] = [];
+  if (priceKnown(s)) out.push({ label: 'Cost', value: priceLabel(s) });
+  if (ageKnown(s)) out.push({ label: 'Ages', value: AGE_LABELS[s.agePolicy] });
+  if (out.length === 0) out.push({ label: 'Cost & ages', value: s.ticketUrl ? 'On the ticket page' : 'Ask the venue' });
+  // Listings from the provider are all ordinary venues, so the type says nothing there.
+  if (s.venue.type !== 'venue') out.push({ label: 'Venue type', value: VENUE_TYPE_LABELS[s.venue.type] });
+  return out;
+}
+
+/** One line for the card and the Going list: only what is known. */
+export function metaLine(s: Show): string {
+  const parts: string[] = [];
+  if (priceKnown(s)) parts.push(priceLabel(s));
+  if (ageKnown(s)) parts.push(AGE_LABELS[s.agePolicy]);
+  if (s.venue.type !== 'venue') parts.push(VENUE_TYPE_LABELS[s.venue.type]);
+  return parts.join(' · ');
 }
 
 export const AGE_LABELS: Record<AgePolicy, string> = {

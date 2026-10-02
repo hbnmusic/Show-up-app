@@ -25,16 +25,14 @@ import { useListings } from '@/lib/listingsStore';
 import { resolveShow, useShowPreviews, type ActPreview } from '@/lib/previews';
 import { notificationsAllowed, syncReminders } from '@/lib/reminders';
 import {
-  AGE_LABELS,
-  VENUE_TYPE_LABELS,
   calendarLocation,
-  priceLabel,
+  factsFor,
   showTitle,
   timeLabel,
 } from '@/lib/showText';
 import { useDeckState } from '@/lib/deckState';
 import { useApp } from '@/lib/store';
-import { formatDay } from '@/lib/time';
+import { formatDay, wall } from '@/lib/time';
 
 export default function ShowDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -110,7 +108,7 @@ export default function ShowDetail() {
 
   const onShare = () =>
     Share.share({
-      message: `${showTitle(show)} at ${show.venue.name}, ${formatDay(new Date(show.startsAt))} · ${timeLabel(show)}${
+      message: `${showTitle(show)} at ${show.venue.name}, ${formatDay(wall(show.startsAt))} · ${timeLabel(show)}${
         show.ticketUrl ? `\n${show.ticketUrl}` : ''
       }`,
     }).catch(() => {});
@@ -147,16 +145,16 @@ export default function ShowDetail() {
           ) : null}
           <Text style={styles.title}>{showTitle(show)}</Text>
           <Text style={styles.line}>
-            {formatDay(new Date(show.startsAt))} · {timeLabel(show)}
+            {formatDay(wall(show.startsAt))} · {timeLabel(show)}
           </Text>
           <Text style={styles.line}>{show.venue.name}</Text>
           <Text style={styles.sub}>{calendarLocation(show)}</Text>
         </View>
 
         <View style={styles.factsRow}>
-          <Fact label="Cost" value={priceLabel(show)} />
-          <Fact label="Ages" value={AGE_LABELS[show.agePolicy]} />
-          <Fact label="Room" value={VENUE_TYPE_LABELS[show.venue.type]} />
+          {factsFor(show).map((f) => (
+            <Fact key={f.label} label={f.label} value={f.value} />
+          ))}
         </View>
 
         <Pressable
