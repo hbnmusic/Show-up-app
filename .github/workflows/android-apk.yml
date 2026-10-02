@@ -21,6 +21,10 @@ jobs:
     env:
       CI: 1
       EXPO_NO_TELEMETRY: 1
+      # Community shows. Both are optional; without them the app hides those features.
+      # The anon key is designed to ship inside apps; row-level rules in supabase/schema.sql limit what it can do.
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v4
 

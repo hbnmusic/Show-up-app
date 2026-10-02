@@ -19,6 +19,7 @@ import { useListings } from '@/lib/listingsStore';
 import { playableActs, usePreviewStore } from '@/lib/previews';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
+import { communityEnabled } from '@/lib/communityConfig';
 import { DEFAULT_FILTERS, type Decision, type Show } from '@/lib/types';
 
 export default function ShowsScreen() {
@@ -98,13 +99,24 @@ export default function ShowsScreen() {
         <Text style={styles.logo}>
           PULL UP<Text style={{ color: C.accent }}>.</Text>
         </Text>
-        <Pressable
-          onPress={() => router.push('/settings')}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Settings">
-          <Ionicons name="settings-outline" size={22} color={C.muted} />
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+          {communityEnabled ? (
+            <Pressable
+              onPress={() => router.push('/community')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Add or confirm shows">
+              <Ionicons name="add-circle-outline" size={24} color={C.muted} />
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={() => router.push('/settings')}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Settings">
+            <Ionicons name="settings-outline" size={22} color={C.muted} />
+          </Pressable>
+        </View>
       </View>
 
       <View>
@@ -202,6 +214,11 @@ export default function ShowsScreen() {
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No listings here yet</Text>
               <Text style={styles.emptyBody}>The listings provider has no upcoming shows for this city. Try another city in Filters.</Text>
+              {communityEnabled ? (
+                <Pressable style={styles.emptyButton} onPress={() => router.push('/community')}>
+                  <Text style={styles.emptyButtonText}>Add a show</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
           <EmptyDeck

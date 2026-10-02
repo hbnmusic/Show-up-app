@@ -63,7 +63,8 @@
         {
           "locationWhenInUsePermission": "Pull Up uses your location once to show concerts near you. It is not stored on a server."
         }
-      ]
+      ],
+      "expo-share-intent"
     ],
     "experiments": {
       "typedRoutes": true

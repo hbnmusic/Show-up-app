@@ -97,3 +97,11 @@ npx expo start    # needs a development build: npx expo run:android
 Code layout: routes in `src/app`, UI in `src/components`, logic in `src/lib`,
 listings pipeline in `src/lib/listings` and `scripts/fetch-listings.ts`, test
 fixtures in `tests/fixtures`.
+
+
+## Community shows (optional)
+
+People can add shows the listings missed: from the + button, or by sharing an Instagram post or link to
+Pull Up. A new show is visible only to its author until a second person confirms it (or someone else submits
+the same show). Backed by Supabase; setup is in `supabase/SETUP.md`, the database in `supabase/schema.sql`.
+Without `SUPABASE_URL` / `SUPABASE_ANON_KEY` build variables the feature is hidden.

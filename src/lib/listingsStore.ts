@@ -9,10 +9,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-import { withRetained } from './listings/merge';
+import { dedupeKey, withRetained } from './listings/merge';
 import { parseFeed } from './listings/validate';
 import { DEFAULT_METRO } from './metros';
 import { useApp } from './store';
+import { communityEnabled } from './communityConfig';
 import type { Show } from './types';
 
 /**
@@ -52,15 +53,33 @@ type ListingsState = {
   loadCache: () => Promise<void>;
   /** Download the given cities (default: the one the deck is centered on). */
   refresh: (opts?: { force?: boolean; metros?: string[] }) => Promise<boolean>;
+  /** Re-download the shows other people added (after submitting or confirming one). */
+  refreshCommunity: (metros?: string[]) => Promise<boolean>;
 };
+
+/** Shows other people added are kept as one extra feed per city, under this prefix. */
+const COMMUNITY_FEED = 'community:';
+export const isCommunityFeed = (id: string) => id.startsWith(COMMUNITY_FEED);
 
 const index = (shows: Show[]): Record<string, Show> => Object.fromEntries(shows.map((s) => [s.id, s]));
 
 function combine(feeds: Record<string, MetroFeed>) {
   const byId = new Map<string, Show>();
-  for (const f of Object.values(feeds)) for (const s of f.shows) if (!byId.has(s.id)) byId.set(s.id, s);
+  const entries = Object.entries(feeds);
+  // Provider listings first, so a community copy of a show the provider already has is dropped.
+  for (const [id, f] of entries) if (!isCommunityFeed(id)) for (const s of f.shows) if (!byId.has(s.id)) byId.set(s.id, s);
+  const taken = new Set([...byId.values()].map(dedupeKey));
+  for (const [id, f] of entries) {
+    if (!isCommunityFeed(id)) continue;
+    for (const s of f.shows) {
+      const k = dedupeKey(s);
+      if (byId.has(s.id) || taken.has(k)) continue;
+      taken.add(k);
+      byId.set(s.id, s);
+    }
+  }
   const shows = [...byId.values()];
-  const list = Object.values(feeds);
+  const list = entries.filter(([id]) => !isCommunityFeed(id)).map(([, f]) => f);
   const generatedAt = list.map((f) => f.generatedAt).filter(Boolean).sort().pop() ?? null;
   const attribution = [...new Set(list.flatMap((f) => f.attribution))];
   const source: ListingsSource = list.length === 0 ? 'none' : list.some((f) => f.source === 'live') ? 'live' : 'cache';
@@ -167,7 +186,30 @@ export const useListings = create<ListingsState>()((set, get) => ({
         clearTimeout(timer);
       }
     }
+    const communityChanged = await get().refreshCommunity(wanted);
     set({ refreshing: false, error: firstError });
+    return changed || communityChanged;
+  },
+
+  refreshCommunity: async (metros) => {
+    if (!communityEnabled) return false;
+    // Loaded on demand so builds and tests without the community database never pull in its client.
+    const { fetchLiveShows } = await import('./community/api');
+    let changed = false;
+    for (const metro of metros ?? currentMetros()) {
+      // A failure here is ignored: the provider listings are what the app depends on.
+      const res = await fetchLiveShows(metro);
+      if (!res.ok) continue;
+      const id = `${COMMUNITY_FEED}${metro}`;
+      const cur = get();
+      const have = cur.feeds[id];
+      const shows = withRetained(res.data, have?.shows ?? [], Object.keys(useApp.getState().decisions));
+      const feed: MetroFeed = { generatedAt: new Date().toISOString(), attribution: [], shows, source: 'live' };
+      const feeds = { ...cur.feeds, [id]: feed };
+      set({ feeds, ...combine(feeds) });
+      await save(id, feed, Object.keys(cur.feeds));
+      changed = true;
+    }
     return changed;
   },
 }));

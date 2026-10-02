@@ -21,6 +21,9 @@ import { FlyerArt } from '@/components/FlyerArt';
 import { C, F } from '@/constants/theme';
 import { addToCalendar } from '@/lib/calendar';
 import { recordDecision, removeDecision } from '@/lib/decide';
+import { useAuth } from '@/lib/auth';
+import { COMMUNITY_PREFIX } from '@/lib/community/form';
+import { reportSubmission } from '@/lib/community/api';
 import { useListings } from '@/lib/listingsStore';
 import { resolveShow, useShowPreviews, type ActPreview } from '@/lib/previews';
 import { notificationsAllowed, syncReminders } from '@/lib/reminders';
@@ -237,7 +240,29 @@ export default function ShowDetail() {
         {show.ticketUrl ? (
           <Pressable style={styles.secondary} onPress={() => Linking.openURL(show.ticketUrl!)}>
             <Ionicons name="open-outline" size={16} color={C.text} />
-            <Text style={styles.secondaryText}>{show.source.provider === 'jambase' ? 'View on JamBase' : 'Open listing'}</Text>
+            <Text style={styles.secondaryText}>{show.source.provider === 'jambase' ? 'View on JamBase' : show.source.provider === 'community' ? 'Open the link' : 'Open listing'}</Text>
+          </Pressable>
+        ) : null}
+
+        {show.source.provider === 'community' && show.id.startsWith(COMMUNITY_PREFIX) ? (
+          <Pressable
+            style={styles.secondary}
+            onPress={() => {
+              if (!useAuth.getState().userId) return router.push('/community');
+              Alert.alert('Report this show?', 'Use this if it is fake, wrong, or spam. Three reports take it down.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Report',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const r = await reportSubmission(show.id.slice(COMMUNITY_PREFIX.length), 'detail');
+                    Alert.alert(r.ok ? 'Thanks' : 'That did not work', r.ok ? 'Your report was sent.' : r.error);
+                  },
+                },
+              ]);
+            }}>
+            <Ionicons name="flag-outline" size={16} color={C.text} />
+            <Text style={styles.secondaryText}>Report this show</Text>
           </Pressable>
         ) : null}
 
@@ -249,7 +274,7 @@ export default function ShowDetail() {
         ) : null}
 
         <Text style={styles.note}>
-          {show.source.provider === 'jambase' ? 'Listing from JamBase. ' : show.source.provider === 'manual' ? 'Listing added by hand. ' : ''}
+          {show.source.provider === 'jambase' ? 'Listing from JamBase. ' : show.source.provider === 'manual' ? 'Listing added by hand. ' : show.source.provider === 'community' ? 'Added by the Pull Up community and confirmed by a second person; not checked by the venue. ' : ''}
           Times, prices and age limits can change; check the listing before you go. Previews come from Deezer and may not
           be the right artist when names are common.
         </Text>

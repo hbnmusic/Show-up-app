@@ -9,6 +9,7 @@ import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/spac
 import { setAudioModeAsync } from 'expo-audio';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
+import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { DarkTheme, Stack, ThemeProvider, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -17,10 +18,13 @@ import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { C } from '@/constants/theme';
+import { useAuth } from '@/lib/auth';
+import { extractUrl } from '@/lib/community/form';
 import { initPlace } from '@/lib/location';
 import { useListings } from '@/lib/listingsStore';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
+import { communityEnabled } from '@/lib/communityConfig';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -44,6 +48,19 @@ function useNotificationRouting() {
   }, []);
 }
 
+/** A post or link shared to Pull Up from another app (Instagram's Share button, a browser) opens the add-a-show form. */
+function ShareRouter() {
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
+  useEffect(() => {
+    if (!hasShareIntent) return;
+    const text = shareIntent.text ?? shareIntent.webUrl ?? '';
+    const url = shareIntent.webUrl ?? extractUrl(text);
+    resetShareIntent();
+    if (communityEnabled && (url || text)) router.push({ pathname: '/submit', params: { url: url ?? '', text } });
+  }, [hasShareIntent, shareIntent, resetShareIntent]);
+  return null;
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Anton_400Regular,
@@ -59,6 +76,10 @@ export default function RootLayout() {
   const placeMetro = useApp((s) => s.filters.place?.metro);
 
   useNotificationRouting();
+
+  useEffect(() => {
+    useAuth.getState().init();
+  }, []);
 
   useEffect(() => {
     setAudioModeAsync({
@@ -102,9 +123,11 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
+    <ShareIntentProvider>
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.bg }}>
       <ThemeProvider value={theme}>
         <StatusBar style="light" />
+        <ShareRouter />
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: C.bg },
@@ -117,8 +140,11 @@ export default function RootLayout() {
           <Stack.Screen name="filters" options={{ presentation: 'modal', title: 'Filters' }} />
           <Stack.Screen name="cities" options={{ presentation: 'modal', title: 'Choose a city' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          <Stack.Screen name="community" options={{ title: 'Community shows' }} />
+          <Stack.Screen name="submit" options={{ presentation: 'modal', title: 'Add a show' }} />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
+    </ShareIntentProvider>
   );
 }

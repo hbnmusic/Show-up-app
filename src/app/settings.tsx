@@ -1,10 +1,12 @@
 import { Alert, Linking, Platform, ScrollView, StyleSheet, Switch, Text, View, Pressable } from 'react-native';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { C, F } from '@/constants/theme';
-import { useListings } from '@/lib/listingsStore';
+import { isCommunityFeed, useListings } from '@/lib/listingsStore';
 import { ensureNotificationPermission, notificationsAllowed, syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
+import { communityEnabled } from '@/lib/communityConfig';
 import type { ReminderPrefs } from '@/lib/types';
 
 export default function SettingsScreen() {
@@ -14,7 +16,7 @@ export default function SettingsScreen() {
   const setAutoplay = useApp((s) => s.setAutoplay);
   const [allowed, setAllowed] = useState(true);
   const { shows, source, generatedAt, attribution, refreshing, error } = useListings();
-  const cities = useListings((s) => Object.keys(s.feeds).length);
+  const cities = useListings((s) => Object.keys(s.feeds).filter((id) => !isCommunityFeed(id)).length);
 
   useEffect(() => {
     notificationsAllowed().then(setAllowed);
@@ -109,6 +111,18 @@ export default function SettingsScreen() {
           <Text style={[styles.label, refreshing && { color: C.faint }]}>{refreshing ? 'Refreshing…' : 'Refresh listings now'}</Text>
         </Pressable>
       </View>
+
+      {communityEnabled ? (
+        <>
+          <Text style={styles.section}>COMMUNITY</Text>
+          <View style={styles.card}>
+            <Pressable style={styles.refreshRow} onPress={() => router.push('/community')} accessibilityRole="button">
+              <Text style={styles.label}>Add or confirm shows</Text>
+              <Text style={styles.detail}>Add a show the listings missed, or confirm one someone else added</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
 
       <Text style={styles.section}>ABOUT THIS BUILD</Text>
       <View style={styles.card}>
