@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
+import { GenreGroups } from '@/components/GenreGroups';
 import { C, F } from '@/constants/theme';
 import { buildQueue, WHEN_LABELS } from '@/lib/filters';
 import { useListings } from '@/lib/listingsStore';
@@ -52,12 +53,8 @@ export default function FiltersScreen() {
       setLocNote(`You're ${Math.round(r.miles)} miles from ${r.nearest.name}, the closest city with listings, so that is what you're seeing.`);
     }
   };
-  // Genres present in the listings, most common first.
-  const genreList = useMemo(() => {
-    const counts = new Map<Genre, number>();
-    for (const sh of allShows) for (const g of sh.genres) counts.set(g, (counts.get(g) ?? 0) + 1);
-    return [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([g]) => g);
-  }, [allShows]);
+  // Genres present in the listings.
+  const genreSet = useMemo(() => new Set<Genre>(allShows.flatMap((sh) => sh.genres)), [allShows]);
   const scroll = useRef<ScrollView>(null);
   const [genreY, setGenreY] = useState<number | null>(null);
   const [whereY, setWhereY] = useState<number | null>(null);
@@ -101,14 +98,11 @@ export default function FiltersScreen() {
         </View>
         <View onLayout={(e) => setGenreY(e.nativeEvent.layout.y)}>
           <Section title="Genre" hint={filters.genres.length ? `${filters.genres.length} picked` : 'Any'}>
-            {[...new Set([...genreList, ...filters.genres])].map((g) => (
-              <Chip
-                key={g}
-                label={g}
-                on={filters.genres.includes(g)}
-                onPress={() => setFilters({ genres: toggle(filters.genres, g) })}
-              />
-            ))}
+            <GenreGroups
+              selected={filters.genres}
+              available={genreSet}
+              onToggle={(g) => setFilters({ genres: toggle(filters.genres, g) })}
+            />
           </Section>
         </View>
         <Section title="Price" hint="Shows with no listed price only appear under Any">

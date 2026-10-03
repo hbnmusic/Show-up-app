@@ -178,7 +178,16 @@ end $$;
 -- user_reports has no policy on purpose: nobody can read it through the API, only you in the dashboard.
 
 create or replace function public.pu_terms_version() returns text
-language sql immutable set search_path = public as $$ select '2026-10-02'::text $$;
+language sql immutable set search_path = public as $$ select '2026-10-04'::text $$;
+
+-- Genres a submission may carry. Keep in step with ALL_GENRES in src/lib/types.ts.
+create or replace function public.pu_allowed_genres() returns text[]
+language sql immutable set search_path = public as $$
+  select array['Punk','Hardcore','Screamo','Emo','Post-Punk','Darkwave','Industrial','Garage','Indie Rock',
+    'Shoegaze','Noise Rock','Metal','Sludge & Doom','Psych','Folk','Pop','Experimental','Jazz & Improv','Electronic','Soul & Gospel',
+    'Rock','Country','Blues','Hip-Hop','Classical','Latin','Reggae']::text[]
+$$;
+grant execute on function public.pu_allowed_genres() to anon, authenticated;
 
 -- True when the signed-in caller has blocked this author. Used by the read rule below; runs as owner so the
 -- rule works for people who cannot read user_blocks directly.
@@ -238,8 +247,7 @@ declare
   nm text;
   genres text[] := '{}';
   g text;
-  allowed text[] := array['Punk','Hardcore','Screamo','Emo','Post-Punk','Darkwave','Industrial','Garage','Indie Rock',
-    'Shoegaze','Noise Rock','Metal','Sludge & Doom','Psych','Folk','Pop','Experimental','Jazz & Improv','Electronic','Soul & Gospel'];
+  allowed text[] := public.pu_allowed_genres();
   metro_id text;
   title_t text;
   venue_t text;

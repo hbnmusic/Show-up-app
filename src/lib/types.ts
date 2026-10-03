@@ -21,7 +21,14 @@ export type Genre =
   | 'Experimental'
   | 'Jazz & Improv'
   | 'Electronic'
-  | 'Soul & Gospel';
+  | 'Soul & Gospel'
+  | 'Rock'
+  | 'Country'
+  | 'Blues'
+  | 'Hip-Hop'
+  | 'Classical'
+  | 'Latin'
+  | 'Reggae';
 
 export type Venue = {
   name: string;
@@ -118,8 +125,21 @@ export const DEFAULT_REMINDER_PREFS: ReminderPrefs = {
 
 export const RADIUS_OPTIONS = [5, 10, 15, 25] as const;
 
-export const ALL_GENRES: readonly Genre[] = [
-  'Punk', 'Hardcore', 'Screamo', 'Emo', 'Post-Punk', 'Darkwave', 'Industrial', 'Garage', 'Indie Rock',
-  'Shoegaze', 'Noise Rock', 'Metal', 'Sludge & Doom', 'Psych', 'Folk', 'Pop', 'Experimental',
-  'Jazz & Improv', 'Electronic', 'Soul & Gospel',
+/** Genres shown together in pickers. Genre ids never change; only this grouping is for display. */
+export const GENRE_GROUPS: readonly { title: string; genres: readonly Genre[] }[] = [
+  { title: 'Rock & Indie', genres: ['Rock', 'Indie Rock', 'Garage', 'Psych', 'Shoegaze', 'Noise Rock'] },
+  { title: 'Punk & Hardcore', genres: ['Punk', 'Hardcore', 'Screamo', 'Emo', 'Post-Punk'] },
+  { title: 'Metal & Heavy', genres: ['Metal', 'Sludge & Doom'] },
+  { title: 'Electronic & Dark', genres: ['Electronic', 'Darkwave', 'Industrial'] },
+  { title: 'Folk & Roots', genres: ['Folk', 'Country', 'Blues'] },
+  { title: 'Pop, Hip-Hop & Soul', genres: ['Pop', 'Hip-Hop', 'Soul & Gospel'] },
+  { title: 'Jazz, Classical & Experimental', genres: ['Jazz & Improv', 'Classical', 'Experimental'] },
+  { title: 'Latin & Reggae', genres: ['Latin', 'Reggae'] },
 ];
+
+export const ALL_GENRES: readonly Genre[] = GENRE_GROUPS.flatMap((g) => g.genres);
+
+/** Groups with only the genres kept by `keep`; empty groups are dropped. */
+export function groupGenres(keep: (g: Genre) => boolean): { title: string; genres: Genre[] }[] {
+  return GENRE_GROUPS.map((g) => ({ title: g.title, genres: g.genres.filter(keep) })).filter((g) => g.genres.length > 0);
+}

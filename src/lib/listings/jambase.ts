@@ -41,7 +41,7 @@ export type MapOptions = {
 
 export type MapResult = { show: Show } | { skip: SkipReason };
 
-/** JamBase's genre slugs are coarse; only the ones that map cleanly are used. */
+/** JamBase's genre slugs are coarse; slugs with no clean match (tribute) are left out rather than guessed. */
 const GENRES: Record<string, Genre[]> = {
   punk: ['Punk'],
   metal: ['Metal'],
@@ -51,6 +51,18 @@ const GENRES: Record<string, Genre[]> = {
   jazz: ['Jazz & Improv'],
   edm: ['Electronic'],
   'rhythm-and-blues-soul': ['Soul & Gospel'],
+  rock: ['Rock'],
+  jamband: ['Rock'],
+  'country-music': ['Country'],
+  bluegrass: ['Folk'],
+  blues: ['Blues'],
+  'hip-hop-rap': ['Hip-Hop'],
+  classical: ['Classical'],
+  latin: ['Latin'],
+  reggae: ['Reggae'],
+  kpop: ['Pop'],
+  christian: ['Soul & Gospel'],
+  // 'tribute' is a kind of show, not a genre, so it is left unmapped.
 };
 
 export function mapGenres(slugs: string[]): Genre[] {

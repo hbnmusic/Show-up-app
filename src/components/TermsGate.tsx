@@ -11,7 +11,7 @@ export function TermsGate({ onAccept, error }: { onAccept: () => Promise<boolean
     <View style={styles.box}>
       <Text style={styles.title}>Before you add or confirm shows</Text>
       <Text style={styles.body}>
-        You must be 16 or older to use Pull Up. Shows you add are visible to other people. Only add real events, do not post anything offensive, misleading or
+        You must be 18 or older to use Pull Up. Shows you add are visible to other people. Only add real events, do not post anything offensive, misleading or
         private, and do not add shows you do not know to be real. Reports and blocks are available on every community
         show, and we may remove content or accounts that break these rules.
       </Text>

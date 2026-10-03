@@ -77,7 +77,7 @@ describe('JamBase mapper', () => {
     assert.equal(s.doorsAt, '2026-10-05T18:00:00-04:00');
     assert.equal(s.venue.area, 'Brooklyn');
     assert.equal(s.venue.address, '1120 Manhattan Ave');
-    assert.deepEqual(s.genres, ['Metal']);
+    assert.deepEqual(s.genres, ['Metal', 'Rock']);
     assert.deepEqual(s.price, { min: 18, max: 22 });
     assert.equal(s.ticketUrl, 'https://tickets.example/1001');
     assert.equal(s.source.provider, 'jambase');
@@ -154,8 +154,10 @@ describe('JamBase mapper', () => {
     assert.equal(mapped(ev).venue.area, 'Brooklyn');
   });
 
-  it('keeps only genres that map cleanly', () => {
-    assert.deepEqual(mapGenres(['punk', 'rock', 'jamband', 'metal', 'punk']), ['Punk', 'Metal']);
+  it('maps JamBase slugs to app genres and leaves unmatched ones out', () => {
+    assert.deepEqual(mapGenres(['punk', 'rock', 'jamband', 'metal', 'punk']), ['Punk', 'Rock', 'Metal']);
+    assert.deepEqual(mapGenres(['country-music', 'hip-hop-rap', 'tribute', 'KPOP']), ['Country', 'Hip-Hop', 'Pop']);
+    assert.deepEqual(mapGenres(['tribute']), []);
   });
 });
 

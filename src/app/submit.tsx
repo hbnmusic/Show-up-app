@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 
-import { Chip } from '@/components/Chip';
+import { GenreGroups } from '@/components/GenreGroups';
 import { SignIn } from '@/components/SignIn';
 import { TermsGate } from '@/components/TermsGate';
 import { useTerms } from '@/lib/useTerms';
@@ -28,7 +28,6 @@ import { useListings } from '@/lib/listingsStore';
 import { DEFAULT_METRO, METROS, metroById, normalizeSearch } from '@/lib/metros';
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
-import { ALL_GENRES, type Genre } from '@/lib/types';
 
 export default function SubmitScreen() {
   const { url, text } = useLocalSearchParams<{ url?: string; text?: string }>();
@@ -216,19 +215,10 @@ export default function SubmitScreen() {
         </Field>
 
         <Field label="GENRE (up to 3, optional)">
-          <View style={styles.chips}>
-            {ALL_GENRES.map((g: Genre) => {
-              const on = form.genres.includes(g);
-              return (
-                <Chip
-                  key={g}
-                  label={g}
-                  on={on}
-                  onPress={() => set('genres', on ? form.genres.filter((x) => x !== g) : form.genres.length < 3 ? [...form.genres, g] : form.genres)}
-                />
-              );
-            })}
-          </View>
+          <GenreGroups
+            selected={form.genres}
+            onToggle={(g) => set('genres', form.genres.includes(g) ? form.genres.filter((x) => x !== g) : form.genres.length < 3 ? [...form.genres, g] : form.genres)}
+          />
         </Field>
 
         <Field label="TICKET LINK (optional)">

@@ -90,7 +90,7 @@ export function SignIn({ onDone, reason }: { onDone?: () => void; reason?: strin
       )}
       {msg ? <Text style={styles.err}>{msg}</Text> : null}
       <Text style={styles.fine}>
-        You must be 16 or older. By continuing you agree to the{' '}
+        You must be 18 or older. By continuing you agree to the{' '}
         <Text style={styles.fineLink} onPress={() => Linking.openURL(TERMS_URL)}>
           Terms of Use
         </Text>{' '}

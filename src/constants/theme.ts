@@ -82,6 +82,13 @@ const FAMILY: Partial<Record<Genre, PosterPalette[]>> = {
   Psych: EXPERIMENTAL,
   'Electronic': CLUB,
   'Soul & Gospel': SOUL,
+  Rock: PUNK,
+  Country: SOUL,
+  Blues: DARK,
+  'Hip-Hop': CLUB,
+  Classical: DREAMY,
+  Latin: SOUL,
+  Reggae: SOUL,
 };
 
 /** Stable small hash so a show always gets the same poster. */
