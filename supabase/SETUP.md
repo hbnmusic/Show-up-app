@@ -37,6 +37,18 @@ Nothing else in the app depends on this.
 - A person can post 5 shows per 24 hours (30 if trusted). Three different people reporting a show removes it.
 - The free plan pauses a project after a week with no activity; open the dashboard to resume it.
 
+## First-party listings (flyers and venue pages): one-time setup
+
+Do these once; the migrations 005-011 are already applied to the project.
+1. Authentication → Sign In / Providers → turn on **Allow anonymous sign-ins** (needed so a first-time user can share a flyer).
+2. Google AI Studio: create an API key in a project where **billing was never enabled** (the free tier is the only allowed one). Read the model's
+   free limits at aistudio.google.com/rate-limit and set `update fp.ai_config set value = '<requests per day>' where key = 'daily_cap';`.
+3. Supabase → Edge Functions → Secrets: `GEMINI_API_KEY` and `JOB_TOKEN` (any long random string).
+4. Supabase → Vault: create a secret named `fp_job_token` with the same value as `JOB_TOKEN` (pg_cron uses it for flyer retries).
+5. GitHub → Settings → Secrets and variables → Actions: secret `JOB_TOKEN` (same value), secret `SUPABASE_ACCESS_TOKEN`, variables `FP_JOB_URL`
+   (`https://<project ref>.supabase.co/functions/v1/fp-job`) and `SUPABASE_PROJECT_REF` (and `SUPABASE_ANON_KEY` if not already set).
+6. Run the Actions workflow **Deploy Supabase functions**, then **Seed venues** (dry run first), then **Venue scan**.
+
 ## What the rules do not stop
 
 - One person with two email addresses can confirm their own submission. Trusted/banned lists and the

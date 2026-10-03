@@ -14,6 +14,11 @@ export const EVENT_NAMES = [
   'calendar_added',
   'community_action',
   'share_received',
+  'flyer_shared',
+  'flyer_ocr',
+  'flyer_result',
+  'link_fetch',
+  'ai_quota',
   'permission',
   'feedback_sent',
 ] as const;

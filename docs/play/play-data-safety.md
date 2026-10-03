@@ -23,6 +23,7 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
 | Personal info → Email address | Yes: the sign-in email (Community), and the optional contact email typed into the feedback form | No | Account management; Developer communications (feedback reply) | Optional | Yes | Sign-in email: yes, in-app or web. Feedback contact email: on request by email |
 | App activity → Other user-generated content (shows people submit: bands, venue, date, price, links, genres) | Yes | No (see note 1) | App functionality | Optional | Yes | Yes for shows no one else confirmed; shows another person confirmed stay without the author (stated in the privacy policy and on the deletion page) |
 | App activity → Other actions (confirmations, reports, blocks, Terms acceptance with version and time) | Yes | No | App functionality; fraud prevention, security and compliance | Optional | Yes | Yes |
+| App activity → Other user-generated content (flyer text and shared links) | Yes, only when someone shares a flyer | **Yes: recognised text only, to Google (Gemini API free tier)** (note 6) | App functionality | Optional | Yes | Yes: deleting the account deletes flyer jobs; OCR text is cleared 14 days after processing |
 | Location → Approximate location | **No** (note 2) | No | n/a | n/a | n/a | n/a |
 | Location → Precise location | No (permission removed from the app) | No | n/a | n/a | n/a | n/a |
 | Device or other IDs | No | No | n/a | n/a | n/a | n/a |
@@ -65,3 +66,14 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
   runbook (`supabase/MODERATION.md`); these meet Google's UGC requirements as written in the policy [inference].
 - **Permissions:** the final manifest permissions are `ACCESS_COARSE_LOCATION`, `POST_NOTIFICATIONS`, `INTERNET`, `ACCESS_NETWORK_STATE`,
   `VIBRATE`, `MODIFY_AUDIO_SETTINGS`, `RECEIVE_BOOT_COMPLETED` (reminders survive a restart). None need a Play permission declaration form.
+
+6. **Flyer sharing and Gemini.** Flyer images are read by ML Kit text recognition on the phone and never leave it. The app removes emails,
+   phone numbers, social handles and social links from the recognised text, then sends the rest to our Supabase Edge Function, which
+   sends it (not the image) to the Gemini API on the free tier. The free-tier terms allow Google to use inputs and outputs to improve
+   its products and human reviewers to read them [inference from Google's published terms; re-read before submitting]. Because the text
+   goes to a third party for a purpose beyond pure service processing, the conservative form answer is "shared" for that row. Billing on
+   the Google project must stay disabled; if it is ever enabled the terms change. Retention: OCR text cleared 14 days after the job
+   finishes; job records deleted after 90 days. Anonymous submissions use a Supabase anonymous account (no email; counts as an account
+   identifier). Venue pages are read server-side and contain no personal data.
+7. **New analytics events** `flyer_shared`, `flyer_ocr`, `flyer_result`, `link_fetch`, `ai_quota` carry only counts, result codes and
+   durations: no flyer text, names or links.

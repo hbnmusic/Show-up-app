@@ -69,7 +69,7 @@ target tables in non-public schemas; test it]. That would put message text into 
 ## What the app sends
 
 Event names are fixed in `src/lib/analyticsCore.ts` and in `log_events`: `app_open`, `session_start`, `screen_view`, `decision`,
-`show_opened`, `filter_changed`, `city_changed`, `calendar_added`, `community_action`, `share_received`, `permission`, `feedback_sent`.
+`show_opened`, `filter_changed`, `city_changed`, `calendar_added`, `community_action`, `share_received`, `permission`, `feedback_sent`, plus the flyer events `flyer_shared`, `flyer_ocr`, `flyer_result`, `link_fetch`, `ai_quota` (counts, result codes and durations only; no text, names or links).
 Properties are short scalars (for example `d = going`, `metro = nyc`, `screen = /settings`). Each batch also carries the install id, a
 session id, the app version and the Android version. The server drops unknown event names and any oversized or non-scalar property,
 accepts at most 50 events per call and 2,000 events per install per day.

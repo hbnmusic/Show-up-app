@@ -29,6 +29,8 @@
 <tr><td><b>Going list, passed shows, filters, settings, saved listings, sign-in session</b></td><td>Make the app work and remember your choices.</td><td>Stored on your phone only (app storage). Cleared by Settings, Reset all data, or uninstalling.</td></tr>
 <tr><td><b>Band names from the shows you see</b></td><td>Find a 30-second preview and an artist photo.</td><td>Sent to Deezer (api.deezer.com), which receives the band name and your IP address.</td></tr>
 <tr><td><b>Requests for listings and images</b></td><td>Download show listings and flyer images.</td><td>Listings come from GitHub (releases of this project). Flyer and event images load from the image servers of listing providers (JamBase, Ticketmaster) and Deezer. Each of them sees your IP address and device details in the ordinary way a web request works.</td></tr>
+<tr><td><b>Flyers and links you share</b> (text recognised from the flyer on your phone, with the venue, date and artists it contains; the link you shared; the city; your anonymous or signed-in account id)</td><td>Turn a flyer into a show listing, confirm it, and tell you when it goes live.</td><td>The flyer image is read on your phone and is <b>never uploaded</b>. Only recognised text (with emails, phone numbers, social handles and social links removed on your phone first) is sent to our Supabase project and, to pick out the show details, to Google's Gemini API on its free tier. Under the free tier terms, Google may use what is sent and what comes back to improve its products and human reviewers may read it, so do not share a flyer with text you would not want that to apply to. We do not send images to Google. Anonymous submissions use a temporary account with no email.</td></tr>
+<tr><td><b>Public venue pages</b></td><td>List shows from venues' own event pages.</td><td>Our server reads public event pages (obeying robots.txt) and stores show facts and a link to the page. No personal data is collected.</td></tr>
 </table>
 <p>We do not collect your contacts, photos, microphone audio, advertising ID, precise location, payment information or your phone's identifiers, and the app has no advertising, third-party analytics or crash-reporting service.</p>
 
@@ -36,6 +38,7 @@
 <p>We do not sell personal information or share it for advertising. These services process data to run the app:</p>
 <ul>
 <li><b>Supabase</b> (supabase.com): database and sign-in for community features. Our project is hosted in the United States (us-west-2).</li>
+<li><b>Google (Gemini API, free tier)</b>: receives recognised flyer text (never images) and venue page text to extract show details. See the flyer row above for the terms that apply.</li>
 <li><b>Deezer</b>: previews and artist photos (band names, IP address).</li>
 <li><b>GitHub</b>: hosts listing files and app downloads.</li>
 <li><b>JamBase and Ticketmaster</b>: source of show data; their image servers deliver flyers.</li>
@@ -49,6 +52,7 @@
 <li>Shows nobody confirmed: shown only to signed-in people until the date passes, and stored until you delete your account or we remove them.</li>
 <li>Reports: kept while needed for moderation, and deleted with the accounts they involve.</li>
 <li>Server logs kept by our hosting providers follow their own retention periods.</li>
+<li>Flyer submissions: the recognised text is deleted 14 days after processing finishes; the resulting show, its status and the job record are kept up to 90 days (job record) and the show until the date passes or you or we remove it. Deleting your account deletes your flyer jobs and any show only you supplied.</li>
 <li>Anonymous usage events: up to 14 months, or until you turn off sharing usage data in Settings.</li>
 <li>Feedback: up to 24 months, or until you ask us to delete it.</li>
 <li>On-device data: until you reset the app or uninstall it.</li>

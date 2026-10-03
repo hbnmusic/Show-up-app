@@ -84,6 +84,27 @@ jobs:
         continue-on-error: true
         run: npx tsx scripts/enrich-ticketmaster.ts
 
+      # Licensed-layer switches (public RPC; the anon key is public by design). Missing values mean everything stays on.
+      - name: Apply licensed-layer switches
+        if: steps.key.outputs.have == 'true'
+        env:
+          SB_URL: ${{ vars.SUPABASE_URL }}
+          SB_ANON: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$SB_URL" ] && [ -n "$SB_ANON" ]; then
+            curl -fsS -X POST "$SB_URL/rest/v1/rpc/fp_licensed_switches" -H "apikey: $SB_ANON" -H "content-type: application/json" -d '{}' -o listings/licensed-switches.json || echo "::warning::Could not read switches; keeping defaults."
+          fi
+          npx tsx scripts/apply-switches.ts --dir listings
+
+      - name: Match first-party shows to the feed (ids only)
+        if: steps.key.outputs.have == 'true'
+        continue-on-error: true
+        env:
+          FP_JOB_URL: ${{ vars.FP_JOB_URL }}
+          JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+        run: |
+          if [ -n "$FP_JOB_URL" ] && [ -n "$JOB_TOKEN" ]; then npx tsx scripts/link-licensed.ts --dir listings; fi
+
       - name: Publish the feed
         if: steps.key.outputs.have == 'true'
         run: |

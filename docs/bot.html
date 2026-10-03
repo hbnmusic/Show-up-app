@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="style.css"><title>PullUpBot</title></head><body><main>
+<nav><a href="index.html">Pull Up</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a><a href="dmca.html">Copyright (DMCA)</a></nav>
+<h1>PullUpBot</h1>
+<p>PullUpBot is the user agent of Pull Up, a concert discovery app. It reads the public events page of music venues so their shows can be listed with a link back to the venue.</p>
+<h2>How it behaves</h2>
+<ul>
+<li>It obeys robots.txt, including Crawl-delay, and skips any page that disallows it.</li>
+<li>It reads a venue's events page about once a week, waits at least 3 seconds between requests to the same host, and sends conditional requests (ETag, Last-Modified) so unchanged pages cost almost nothing.</li>
+<li>It does not log in, solve CAPTCHAs, or try to get around a block. If a site blocks it, it stops and does not retry that site.</li>
+<li>It takes show facts (artists, date, time, price, ticket link). Photos are linked to, not copied.</li>
+</ul>
+<h2>Ask us to stop</h2>
+<p>To exclude your site, add a rule for <code>PullUpBot</code> in robots.txt, or email <span class="ph">[CONTACT_EMAIL]</span> and we will remove your venue and its shows.</p>
+</main></body></html>

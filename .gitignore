@@ -58,3 +58,4 @@ listings/raw-sample*.json
 *.pepk
 keystore*.b64
 upload-keystore*
+dist-functions/

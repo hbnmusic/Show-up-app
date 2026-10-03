@@ -11,6 +11,14 @@ const validDate = (v: unknown): v is string => typeof v === 'string' && !Number.
 const STATUSES = ['scheduled', 'cancelled', 'moved'];
 const VISIBILITY = ['public', 'neighborhood_only', 'on_request'];
 
+const tmSources = (o: Obj): Show['fieldSources'] | undefined => {
+  const out: NonNullable<Show['fieldSources']> = {};
+  if (o.price === 'ticketmaster') out.price = 'ticketmaster';
+  if (o.image === 'ticketmaster') out.image = 'ticketmaster';
+  if (o.ticketUrl === 'ticketmaster') out.ticketUrl = 'ticketmaster';
+  return Object.keys(out).length ? out : undefined;
+};
+
 /** Returns a cleaned Show, or null when the record cannot be shown safely. */
 export function cleanShow(raw: unknown): Show | null {
   if (!isObj(raw)) return null;
@@ -66,6 +74,7 @@ export function cleanShow(raw: unknown): Show | null {
     flyerImages: Array.isArray(raw.flyerImages) ? raw.flyerImages.filter((x): x is string => typeof x === 'string') : undefined,
     flyerCredit: str(raw.flyerCredit),
     ticketUrl: str(raw.ticketUrl),
+    fieldSources: isObj(raw.fieldSources) ? tmSources(raw.fieldSources) : undefined,
     status: STATUSES.includes(raw.status as string) ? (raw.status as Show['status']) : 'scheduled',
     source: {
       provider: str(source.provider) ?? 'unknown',

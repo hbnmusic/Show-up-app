@@ -55,6 +55,24 @@ delete from trusted_users where user_id = '<user id>';
 Limit to know about: a banned person can delete their own account (which deletes the ban row) and sign up again with the same
 email. If that becomes a problem, keep a list of banned email addresses and delete matching new accounts with `admin_delete_user`.
 
+## First-party listings (flyers and venue pages): takedowns, bans, purges
+
+Everything runs in the `fp` schema, which is not exposed to the app; use the SQL editor. Public shows are `fp.shows` with `visibility = 'public'`.
+
+```sql
+select fp.takedown_show('<show id>', 'DMCA notice 2026-10-05');      -- hide one show and block its source key/URL
+select fp.takedown_image('<image URL>', 'DMCA notice');             -- block that image URL everywhere
+select fp.takedown_venue('<venue id>', 'venue owner request');       -- disable a venue, hide its shows, stop scanning
+select fp.ban_user('<user id>', 'repeat infringer');                  -- bans the account and hides its flyer shows
+select fp.purge_licensed('ticketmaster');                            -- clears Ticketmaster link rows (also run the Purge licensed data workflow)
+```
+
+Every takedown is recorded in `fp.takedowns`. DMCA notices go to the agent address on `docs/dmca.html`; act on a complete notice promptly, tell the
+person who added the show, and ban after repeated notices (repeat-infringer clause in the Terms). Counter-notices: restore with
+`update fp.shows set visibility = 'public' where id = '<id>'` after the waiting period in the DMCA page.
+Switch licensed data off without deleting anything: `update fp.licensed_switches set enabled = false where family = 'ticketmaster_photo';`
+(families: jambase_listings, ticketmaster_price, ticketmaster_photo, ticketmaster_link). Flyer shows waiting for a second person appear in the app's confirm queue.
+
 ## Deletion requests that arrive by email or from the web page
 
 Confirm the request came from the address on the account, then:

@@ -133,14 +133,19 @@ export function enrichShow(show: Show, ev: TmEvent): { show: Show; fills: Fills 
   const unknownPrice = !show.price.isFree && !show.price.notaflof && show.price.min == null && show.price.max == null;
   if (unknownPrice && ev.price) {
     next.price = { ...show.price, ...ev.price };
+    next.fieldSources = { ...next.fieldSources, price: 'ticketmaster' };
     fills.price = true;
   }
   if (!show.flyerImages?.length && ev.image) {
     next.flyerImages = [ev.image];
     next.flyerCredit = TM_CREDIT;
+    next.fieldSources = { ...next.fieldSources, image: 'ticketmaster' };
     fills.image = true;
   }
   // JamBase's own page is the fallback link when it has no ticket seller; a real ticket page is better.
-  if (ev.url && (!show.ticketUrl || show.ticketUrl === show.source.url)) next.ticketUrl = ev.url;
+  if (ev.url && (!show.ticketUrl || show.ticketUrl === show.source.url)) {
+    next.ticketUrl = ev.url;
+    next.fieldSources = { ...next.fieldSources, ticketUrl: 'ticketmaster' };
+  }
   return { show: next, fills };
 }

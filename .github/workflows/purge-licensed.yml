@@ -1,0 +1,30 @@
+name: Purge licensed data
+
+# Removes one licensed source (ticketmaster or jambase) from the published feed. Run it when a provider asks or terms change.
+# Also switch the matching family off in Supabase (fp.licensed_switches) so later refreshes stay clean.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Source to purge'
+        type: choice
+        options: [ticketmaster, jambase]
+
+permissions:
+  contents: write
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: gh release download listings --dir listings --clobber
+      - run: npx tsx scripts/purge-licensed.ts --source ${{ inputs.source }} --dir listings
+      - run: gh release upload listings listings/shows-*.json --clobber

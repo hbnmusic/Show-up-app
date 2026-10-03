@@ -1,0 +1,27 @@
+name: Seed venues
+
+# Adds candidate venues from Wikidata (CC0) to the registry. Candidates go live only after the automatic trial read.
+# Needs: secret JOB_TOKEN and repository variable FP_JOB_URL.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print instead of sending'
+        type: boolean
+        default: true
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FP_JOB_URL: ${{ vars.FP_JOB_URL }}
+      JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/seed-venues.ts --wikidata ${{ inputs.dry_run && '--dry-run' || '' }}

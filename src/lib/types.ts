@@ -81,6 +81,8 @@ export type Show = {
   /** Who to credit when flyerImages came from a provider rather than the promoter. */
   flyerCredit?: string;
   ticketUrl?: string;
+  /** Fields filled in from Ticketmaster, so the licensed layer can be switched off or purged by field. Absent on older feeds. */
+  fieldSources?: { price?: 'ticketmaster'; image?: 'ticketmaster'; ticketUrl?: 'ticketmaster' };
   status: ShowStatus;
   source: { provider: string; url: string; fetchedAt: string; /** Community shows only: the person who added it (an opaque id), used for block and report. */ author?: string };
   updatedAt: string;

@@ -686,3 +686,607 @@ revoke all on all tables in schema ops from public, anon, authenticated;
 -- select ops.purge_old(); by hand now and then.
 create extension if not exists pg_cron;
 select cron.schedule('ops-purge-old', '17 8 * * *', 'select ops.purge_old()');
+
+
+-- =============================================================================================
+-- First-party listings layer: flyers shared by people and venues' own sites, kept apart from JamBase and Ticketmaster data.
+-- Everything lives in the "fp" schema, which is not exposed through the API. The app reads and writes only through the
+-- public.fp_* functions at the bottom; Edge Functions use the service role. Safe to run twice.
+
+create schema if not exists fp;
+revoke all on schema fp from public, anon, authenticated;
+grant usage on schema fp to service_role;
+
+-- Per-metro scan settings. Waves: 1 = hot metros, 2 = next largest by show volume, 3 = the rest.
+create table if not exists fp.metro_config (
+  metro text primary key,
+  name text not null,
+  state text not null,
+  tz text not null,
+  hot boolean not null default false,
+  wave smallint not null default 3 check (wave in (1, 2, 3)),
+  venue_scan_enabled boolean not null default false,   -- per-metro off flag
+  daily_request_budget integer not null default 10 check (daily_request_budget >= 0),
+  last_full_scan_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+-- Venue registry. Seeded only from venues' own sites and Wikidata (CC0). Never from JamBase, Ticketmaster or OpenStreetMap.
+create table if not exists fp.venues (
+  id uuid primary key default gen_random_uuid(),
+  canonical_name text not null check (char_length(canonical_name) between 1 and 160),
+  aliases text[] not null default '{}',
+  metro text not null references fp.metro_config (metro),
+  address text,
+  neighborhood text,
+  lat double precision,
+  lng double precision,
+  website text,
+  events_url text,
+  publish_method text check (publish_method in ('jsonld', 'ical', 'rss', 'widget', 'ai', 'none')),
+  robots_status text not null default 'unknown' check (robots_status in ('ok', 'disallowed', 'bot_wall', 'unknown')),
+  tier text check (tier in ('A', 'B', 'C')),
+  status text not null default 'candidate' check (status in ('candidate', 'approved', 'rejected', 'quarantined', 'disabled')),
+  status_reasons text[] not null default '{}',
+  seeded_from text not null check (seeded_from in ('own_site', 'wikidata')),
+  wikidata_id text,
+  takedown boolean not null default false,
+  content_hash text,
+  etag text,
+  last_modified text,
+  last_checked_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists fp_venues_metro_status on fp.venues (metro, status);
+create unique index if not exists fp_venues_wikidata on fp.venues (wikidata_id) where wikidata_id is not null;
+
+-- One row per scan of a venue: the health history behind auto-disable.
+create table if not exists fp.venue_runs (
+  id bigserial primary key,
+  venue_id uuid not null references fp.venues (id) on delete cascade,
+  at timestamptz not null default now(),
+  fetch_ok boolean not null,
+  tier text,
+  extracted integer not null default 0,
+  rejected integer not null default 0,
+  note text
+);
+create index if not exists fp_venue_runs_venue on fp.venue_runs (venue_id, at desc);
+
+-- The merged first-party show. Licensed data (JamBase, Ticketmaster) is never stored here.
+create table if not exists fp.shows (
+  id uuid primary key default gen_random_uuid(),
+  key text not null,
+  metro text not null,
+  venue_id uuid references fp.venues (id) on delete set null,
+  venue_name text not null,
+  city text,
+  address text,
+  address_mode text not null default 'withheld' check (address_mode in ('registry', 'withheld')),
+  local_date date not null,
+  start_local text,
+  doors_local text,
+  headliner text not null check (char_length(headliner) <= 160),
+  supports jsonb not null default '[]',
+  price jsonb,
+  ticket_url text check (ticket_url is null or (ticket_url ~* '^https?://' and char_length(ticket_url) <= 500)),
+  status text not null default 'scheduled' check (status in ('scheduled', 'cancelled', 'moved')),
+  genres text[] not null default '{}' check (cardinality(genres) <= 3),
+  age_policy text,
+  image_url text check (image_url is null or image_url ~* '^https?://'),
+  field_source jsonb not null default '{}',
+  conflicts jsonb not null default '[]',
+  sources jsonb not null default '[]',
+  visibility text not null default 'pending' check (visibility in ('public', 'pending', 'removed')),
+  unconfirmed boolean not null default false,     -- venue stopped listing it: shown as unconfirmed, never as cancelled
+  submitter uuid references auth.users (id) on delete set null,
+  confidence numeric,
+  corroborated boolean not null default false,
+  confirm_count integer not null default 0,
+  report_count integer not null default 0,
+  removed_reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists fp_shows_metro_date on fp.shows (metro, local_date) where visibility <> 'removed';
+create index if not exists fp_shows_key on fp.shows (key);
+create index if not exists fp_shows_submitter on fp.shows (submitter);
+
+-- Per-source records, kept as received and never rewritten. Only first-party sources can be stored here.
+create table if not exists fp.source_records (
+  id bigserial primary key,
+  show_id uuid references fp.shows (id) on delete cascade,
+  source_type text not null check (source_type in ('flyer', 'venue_site')),
+  licence text not null default 'first_party' check (licence = 'first_party'),
+  source_url text,
+  fetched_at timestamptz not null,
+  venue_id uuid references fp.venues (id) on delete set null,
+  metro text,
+  local_date date not null,
+  submitter uuid references auth.users (id) on delete set null,
+  payload jsonb not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists fp_source_records_show on fp.source_records (show_id);
+create index if not exists fp_source_records_night on fp.source_records (metro, local_date);
+
+create or replace function fp.no_rewrite() returns trigger language plpgsql as $$
+begin
+  if current_setting('fp.allow_purge', true) = 'on' then
+    if tg_op = 'DELETE' then return old; end if;
+    return new;
+  end if;
+  raise exception 'fp.source_records is append-only' using errcode = 'P0001';
+end $$;
+create or replace trigger fp_source_records_append_only before update or delete on fp.source_records
+  for each row when (pg_trigger_depth() = 0) execute function fp.no_rewrite();
+
+-- Links from a first-party show to the same show in a licensed feed. Ids only, no licensed content.
+create table if not exists fp.licensed_links (
+  show_id uuid not null references fp.shows (id) on delete cascade,
+  source text not null check (source in ('jambase', 'ticketmaster')),
+  external_id text not null check (char_length(external_id) <= 120),
+  created_at timestamptz not null default now(),
+  primary key (show_id, source)
+);
+
+-- On/off switches for the licensed layer. Defaults keep today's behaviour.
+create table if not exists fp.licensed_switches (
+  family text primary key check (family in ('jambase_listings', 'ticketmaster_price', 'ticketmaster_photo', 'ticketmaster_link')),
+  enabled boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+insert into fp.licensed_switches (family) values ('jambase_listings'), ('ticketmaster_price'), ('ticketmaster_photo'), ('ticketmaster_link')
+  on conflict do nothing;
+
+-- Flyer jobs. Only redacted recognised text is stored; the image never leaves the phone.
+create table if not exists fp.flyer_jobs (
+  id uuid primary key default gen_random_uuid(),
+  submitter uuid references auth.users (id) on delete cascade,
+  anonymous boolean not null default false,
+  origin text not null default 'image' check (origin in ('image', 'link')),
+  metro_hint text,
+  ocr_text text,          -- redacted on the phone and again on the server; cleared after retention
+  layout text,
+  status text not null default 'queued' check (status in ('queued', 'processing', 'retry', 'done', 'failed')),
+  result text check (result in ('published', 'pending', 'processing', 'rejected')),
+  reason text,
+  attempts integer not null default 0,
+  next_attempt_at timestamptz not null default now(),
+  show_ids uuid[] not null default '{}',
+  notified boolean not null default false,
+  created_at timestamptz not null default now(),
+  finished_at timestamptz
+);
+create index if not exists fp_flyer_jobs_due on fp.flyer_jobs (next_attempt_at) where status in ('queued', 'retry');
+create index if not exists fp_flyer_jobs_submitter on fp.flyer_jobs (submitter, created_at desc);
+
+create table if not exists fp.ai_usage (
+  day date not null,
+  kind text not null check (kind in ('flyer', 'venue')),
+  requests integer not null default 0,
+  input_tokens bigint not null default 0,
+  output_tokens bigint not null default 0,
+  throttled integer not null default 0,
+  primary key (day, kind)
+);
+
+create table if not exists fp.ai_config (key text primary key, value jsonb not null, updated_at timestamptz not null default now());
+insert into fp.ai_config (key, value) values
+  ('provider', '"gemini"'),
+  ('model', '"gemini-3.5-flash-lite"'),
+  ('daily_cap', '200'),
+  ('flyer_reserve_share', '0.3'),
+  ('headroom', '0.7'),
+  ('refresh_days', '7'),
+  ('current_wave', '1')
+  on conflict do nothing;
+
+create table if not exists fp.widening_log (id bigserial primary key, at timestamptz not null default now(), decision jsonb not null);
+create table if not exists fp.weekly_summaries (week date primary key, body text not null, created_at timestamptz not null default now());
+
+create table if not exists fp.confirmations (
+  show_id uuid not null references fp.shows (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (show_id, user_id)
+);
+create table if not exists fp.reports (
+  show_id uuid not null references fp.shows (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  reason text check (reason is null or char_length(reason) <= 200),
+  created_at timestamptz not null default now(),
+  primary key (show_id, user_id)
+);
+
+-- Takedowns: what was removed, why, and what must not come back.
+create table if not exists fp.takedowns (id bigserial primary key, at timestamptz not null default now(), kind text not null, ref text not null, note text);
+create table if not exists fp.blocked_urls (url text primary key, reason text, created_at timestamptz not null default now());
+create table if not exists fp.blocked_keys (key text primary key, reason text, created_at timestamptz not null default now());
+
+-- Lock everything down: RLS on, no policies. Only the service role and the owner reach these tables.
+do $$
+declare t text;
+begin
+  for t in select tablename from pg_tables where schemaname = 'fp' loop
+    execute format('alter table fp.%I enable row level security', t);
+  end loop;
+end $$;
+grant all on all tables in schema fp to service_role;
+grant all on all sequences in schema fp to service_role;
+grant execute on all functions in schema fp to service_role;
+
+-- Functions for the first-party listings layer (see 005). Safe to run twice.
+
+create or replace function public.pu_is_anonymous() returns boolean
+language sql stable set search_path = public as $$
+  select coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false)
+$$;
+grant execute on function public.pu_is_anonymous() to anon, authenticated;
+
+-- ---- reading ----------------------------------------------------------------------------------------------------------
+
+-- Public first-party shows for one metro, plus the caller's own pending ones. No submitter ids are returned except an opaque
+-- author for shows from people (so Block and Report work), and nothing from the licensed layer.
+create or replace function public.fp_public_shows(p_metro text) returns jsonb
+language sql stable security definer set search_path = public, fp as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', s.id, 'key', s.key, 'metro', s.metro, 'venueId', s.venue_id, 'venueName', s.venue_name, 'city', s.city,
+    'address', case when s.address_mode = 'registry' then s.address end, 'addressMode', s.address_mode,
+    'localDate', s.local_date, 'startLocal', s.start_local, 'doorsLocal', s.doors_local,
+    'headliner', s.headliner, 'supports', s.supports, 'price', s.price, 'ticketUrl', s.ticket_url, 'status', s.status,
+    'genres', s.genres, 'agePolicy', s.age_policy, 'imageUrl', s.image_url, 'fieldSource', s.field_source,
+    'conflicts', s.conflicts, 'sources', s.sources, 'unconfirmed', s.unconfirmed,
+    'pending', s.visibility = 'pending', 'author', s.submitter
+  ) order by s.local_date, s.start_local), '[]'::jsonb)
+  from (
+    select * from fp.shows
+    where metro = p_metro and local_date >= current_date - 1 and visibility <> 'removed'
+      and (visibility = 'public' or submitter = auth.uid())
+      and (submitter is null or submitter = auth.uid() or not public.pu_blocked(submitter))
+    order by local_date, start_local
+    limit 1500
+  ) s
+$$;
+
+-- Pending flyer shows other people can confirm (signed-in, non-anonymous people only).
+create or replace function public.fp_confirm_queue(p_metro text) returns jsonb
+language sql stable security definer set search_path = public, fp as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', s.id, 'headliner', s.headliner, 'supports', s.supports, 'venueName', s.venue_name, 'city', s.city,
+    'localDate', s.local_date, 'startLocal', s.start_local, 'author', s.submitter
+  ) order by s.local_date), '[]'::jsonb)
+  from (
+    select * from fp.shows
+    where metro = p_metro and visibility = 'pending' and local_date >= current_date
+      and auth.uid() is not null and not public.pu_is_anonymous()
+      and submitter is distinct from auth.uid() and not public.pu_blocked(submitter)
+      and not exists (select 1 from fp.confirmations c where c.show_id = fp.shows.id and c.user_id = auth.uid())
+    order by local_date limit 50
+  ) s
+$$;
+
+-- The caller's flyer jobs from the last 30 days, for status and notifications.
+create or replace function public.fp_my_flyer_jobs() returns jsonb
+language sql stable security definer set search_path = public, fp as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', j.id, 'status', j.status, 'result', j.result, 'reason', j.reason, 'createdAt', j.created_at,
+    'finishedAt', j.finished_at, 'notified', j.notified,
+    'shows', (select coalesce(jsonb_agg(jsonb_build_object('id', s.id, 'headliner', s.headliner, 'localDate', s.local_date, 'visibility', s.visibility)), '[]'::jsonb)
+              from fp.shows s where s.id = any (j.show_ids))
+  ) order by j.created_at desc), '[]'::jsonb)
+  from fp.flyer_jobs j
+  where j.submitter = auth.uid() and j.created_at > now() - interval '30 days'
+$$;
+
+create or replace function public.fp_mark_notified(ids uuid[]) returns void
+language sql security definer set search_path = public, fp as $$
+  update fp.flyer_jobs set notified = true where submitter = auth.uid() and id = any (ids)
+$$;
+
+-- ---- people acting on flyer shows ---------------------------------------------------------------------------------------
+
+create or replace function public.fp_confirm_show(sid uuid) returns jsonb
+language plpgsql security definer set search_path = public, fp as $$
+declare
+  uid uuid := auth.uid();
+  s fp.shows;
+begin
+  if uid is null or public.pu_is_anonymous() then raise exception 'Sign in first' using errcode = 'P0001'; end if;
+  if exists (select 1 from banned_users where user_id = uid) then raise exception 'This account cannot post' using errcode = 'P0001'; end if;
+  if not public.pu_accepted_terms(uid) then raise exception 'Accept the Terms of Use first' using errcode = 'P0001'; end if;
+  select * into s from fp.shows where id = sid for update;
+  if not found or s.visibility = 'removed' then raise exception 'That show is no longer listed' using errcode = 'P0001'; end if;
+  if s.submitter = uid then raise exception 'You cannot confirm your own submission' using errcode = 'P0001'; end if;
+  if public.pu_blocked(s.submitter) then raise exception 'That show is no longer listed' using errcode = 'P0001'; end if;
+  insert into fp.confirmations (show_id, user_id) values (sid, uid) on conflict do nothing;
+  if found then
+    update fp.shows set confirm_count = confirm_count + 1, corroborated = true,
+      visibility = case when visibility = 'pending' then 'public' else visibility end, updated_at = now()
+    where id = sid;
+  end if;
+  return jsonb_build_object('result', 'ok');
+end $$;
+
+create or replace function public.fp_report_show(sid uuid, why text default null) returns jsonb
+language plpgsql security definer set search_path = public, fp as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'Sign in first' using errcode = 'P0001'; end if;
+  if why is not null and (char_length(why) > 200 or public.pu_has_ctrl(why)) then raise exception 'Reason is too long' using errcode = 'P0001'; end if;
+  insert into fp.reports (show_id, user_id, reason) values (sid, uid, why) on conflict do nothing;
+  if found then
+    update fp.shows set report_count = report_count + 1,
+      visibility = case when report_count + 1 >= 3 and submitter is not null then 'removed' else visibility end,
+      removed_reason = case when report_count + 1 >= 3 and submitter is not null then 'reports' else removed_reason end
+    where id = sid;
+  end if;
+  return jsonb_build_object('result', 'ok');
+end $$;
+
+create or replace function public.fp_withdraw_show(sid uuid) returns jsonb
+language plpgsql security definer set search_path = public, fp as $$
+begin
+  if auth.uid() is null then raise exception 'Sign in first' using errcode = 'P0001'; end if;
+  update fp.shows set visibility = 'removed', removed_reason = 'withdrawn', updated_at = now()
+    where id = sid and submitter = auth.uid() and visibility <> 'removed';
+  return jsonb_build_object('result', 'ok');
+end $$;
+
+revoke all on function public.fp_public_shows(text), public.fp_confirm_queue(text), public.fp_my_flyer_jobs(), public.fp_mark_notified(uuid[]),
+  public.fp_confirm_show(uuid), public.fp_report_show(uuid, text), public.fp_withdraw_show(uuid) from public, anon, authenticated;
+grant execute on function public.fp_public_shows(text) to anon, authenticated;
+grant execute on function public.fp_confirm_queue(text), public.fp_my_flyer_jobs(), public.fp_mark_notified(uuid[]),
+  public.fp_confirm_show(uuid), public.fp_report_show(uuid, text), public.fp_withdraw_show(uuid) to authenticated;
+
+-- ---- account deletion ---------------------------------------------------------------------------------------------------
+-- Small single-purpose delete helpers (the SQL connector refuses migrations that mix several deletes).
+
+create or replace function fp.delete_user_jobs(uid uuid) returns void
+language sql security definer set search_path = fp, public as $$ delete from fp.flyer_jobs where submitter = uid $$;
+create or replace function fp.delete_user_unpublished(uid uuid) returns void
+language sql security definer set search_path = fp, public as $$ delete from fp.shows where submitter = uid and visibility <> 'public' $$;
+create or replace function fp.delete_licensed_links(src text) returns void
+language sql security definer set search_path = fp, public as $$ delete from fp.licensed_links where source = src $$;
+create or replace function fp.delete_old_rows() returns void
+language sql security definer set search_path = fp, public as $$ delete from fp.flyer_jobs where finished_at < now() - interval '90 days' $$;
+create or replace function fp.delete_old_runs() returns void
+language sql security definer set search_path = fp, public as $$ delete from fp.venue_runs where at < now() - interval '90 days' $$;
+create or replace function fp.delete_old_removed() returns void
+language sql security definer set search_path = fp, public as $$ delete from fp.shows where local_date < current_date - 30 and visibility = 'removed' $$;
+
+create or replace function fp.purge_user(uid uuid) returns void
+language plpgsql security definer set search_path = fp, public as $$
+begin
+  perform fp.delete_user_jobs(uid);
+  perform fp.delete_user_unpublished(uid);
+  update fp.shows set submitter = null where submitter = uid;
+  update fp.source_records set submitter = null where submitter = uid;
+end $$;
+
+-- Account deletion also removes flyer data: add the call at the top of pu_purge_user_content.
+do $m$
+declare def text;
+begin
+  select pg_get_functiondef('public.pu_purge_user_content(uuid)'::regprocedure) into def;
+  if position('fp.purge_user' in def) = 0 then
+    def := replace(def, E'begin\n', E'begin\n  perform fp.purge_user(uid);\n');
+    execute def;
+  end if;
+end
+$m$;
+
+-- Anonymous sign-ins (used only for sharing flyers) must not post, confirm or report in the community.
+do $m$
+declare
+  f regprocedure;
+  def text;
+  fns regprocedure[] := array[
+    'public.submit_show(jsonb)'::regprocedure, 'public.confirm_submission(uuid)'::regprocedure,
+    'public.report_submission(uuid,text)'::regprocedure, 'public.fp_report_show(uuid,text)'::regprocedure
+  ];
+begin
+  foreach f in array fns loop
+    select pg_get_functiondef(f) into def;
+    if position('pu_is_anonymous' in def) = 0 then
+      def := replace(def, 'if uid is null then raise exception ''Sign in first''', 'if uid is null or public.pu_is_anonymous() then raise exception ''Sign in first''');
+      execute def;
+    end if;
+  end loop;
+  select pg_get_functiondef('public.report_user(uuid,text,uuid)'::regprocedure) into def;
+  if position('pu_is_anonymous' in def) = 0 then
+    def := replace(def, 'if auth.uid() is null then raise exception ''Sign in first''', 'if auth.uid() is null or public.pu_is_anonymous() then raise exception ''Sign in first''');
+    execute def;
+  end if;
+end
+$m$;
+
+-- ---- moderation (run in the SQL editor as the owner; see supabase/MODERATION.md) -----------------------------------------
+
+create or replace function fp.takedown_show(sid uuid, note text default null) returns void
+language plpgsql security definer set search_path = fp, public as $$
+declare s fp.shows;
+begin
+  select * into s from fp.shows where id = sid;
+  if not found then raise exception 'No such show'; end if;
+  update fp.shows set visibility = 'removed', image_url = null, removed_reason = 'takedown', updated_at = now() where id = sid;
+  insert into fp.blocked_keys (key, reason) values (s.key, coalesce(note, 'takedown')) on conflict do nothing;
+  insert into fp.takedowns (kind, ref, note) values ('show', sid::text, note);
+end $$;
+
+create or replace function fp.takedown_image(img text, note text default null) returns integer
+language plpgsql security definer set search_path = fp, public as $$
+declare n integer;
+begin
+  update fp.shows set image_url = null, updated_at = now() where image_url = img;
+  get diagnostics n = row_count;
+  insert into fp.blocked_urls (url, reason) values (img, coalesce(note, 'takedown')) on conflict do nothing;
+  insert into fp.takedowns (kind, ref, note) values ('image', img, note);
+  return n;
+end $$;
+
+create or replace function fp.takedown_venue(vid uuid, note text default null) returns void
+language plpgsql security definer set search_path = fp, public as $$
+begin
+  update fp.venues set status = 'disabled', takedown = true, status_reasons = array['takedown'], updated_at = now() where id = vid;
+  update fp.shows set visibility = 'removed', removed_reason = 'takedown', updated_at = now() where venue_id = vid and visibility <> 'removed';
+  insert into fp.takedowns (kind, ref, note) values ('venue', vid::text, note);
+end $$;
+
+-- Repeat infringers: ban the account from posting.
+create or replace function fp.ban_user(uid uuid, note text default null) returns void
+language plpgsql security definer set search_path = fp, public as $$
+begin
+  insert into public.banned_users (user_id) values (uid) on conflict do nothing;
+  update fp.shows set visibility = 'removed', removed_reason = 'banned', updated_at = now() where submitter = uid and visibility <> 'removed';
+  insert into fp.takedowns (kind, ref, note) values ('ban', uid::text, note);
+end $$;
+
+-- Licensed layer: turn a source off and delete the ids linked to it. Feed files are cleaned by scripts/purge-licensed.ts.
+create or replace function fp.purge_licensed(src text) returns integer
+language plpgsql security definer set search_path = fp, public as $$
+declare n integer;
+begin
+  if src not in ('jambase', 'ticketmaster') then raise exception 'source must be jambase or ticketmaster'; end if;
+  select count(*) into n from fp.licensed_links where source = src;
+  perform fp.delete_licensed_links(src);
+  update fp.licensed_switches set enabled = false, updated_at = now()
+    where (src = 'jambase' and family = 'jambase_listings') or (src = 'ticketmaster' and family like 'ticketmaster_%');
+  insert into fp.takedowns (kind, ref, note) values ('purge_licensed', src, null);
+  return n;
+end $$;
+
+-- Retention: recognised text is kept 14 days after a job finishes, then cleared. Finished jobs go after 90 days.
+create or replace function fp.purge_old() returns void
+language plpgsql security definer set search_path = fp, public as $$
+begin
+  update fp.flyer_jobs set ocr_text = null, layout = null where ocr_text is not null and finished_at < now() - interval '14 days';
+  perform fp.delete_old_rows();
+  perform fp.delete_old_runs();
+  perform fp.delete_old_removed();
+end $$;
+
+revoke all on all functions in schema fp from public, anon, authenticated;
+grant execute on all functions in schema fp to service_role;
+
+-- Metro settings for the venue-site layer, seeded from src/lib/metros.ts (wave 1 = hot metros). Safe to run twice.
+alter table fp.metro_config add column if not exists aliases text[] not null default '{}';
+
+insert into fp.metro_config (metro, name, state, tz, hot, wave, venue_scan_enabled) values
+('nyc', 'New York', 'NY', 'America/New_York', true, 1, true),
+('la', 'Los Angeles', 'CA', 'America/Los_Angeles', true, 1, true),
+('chi', 'Chicago', 'IL', 'America/Chicago', true, 1, true),
+('sf', 'San Francisco Bay Area', 'CA', 'America/Los_Angeles', true, 1, true),
+('tor', 'Toronto', 'ON', 'America/Toronto', true, 1, true),
+('mtl', 'Montréal', 'QC', 'America/Toronto', true, 1, true),
+('van', 'Vancouver', 'BC', 'America/Vancouver', true, 1, true),
+('bos', 'Boston', 'MA', 'America/New_York', true, 1, true),
+('dc', 'Washington', 'DC', 'America/New_York', true, 1, true),
+('phl', 'Philadelphia', 'PA', 'America/New_York', true, 1, true),
+('atl', 'Atlanta', 'GA', 'America/New_York', false, 3, false),
+('mia', 'Miami', 'FL', 'America/New_York', false, 3, false),
+('sea', 'Seattle', 'WA', 'America/Los_Angeles', false, 3, false),
+('aus', 'Austin', 'TX', 'America/Chicago', false, 3, false),
+('nash', 'Nashville', 'TN', 'America/Chicago', false, 3, false),
+('den', 'Denver', 'CO', 'America/Denver', false, 3, false),
+('dal', 'Dallas–Fort Worth', 'TX', 'America/Chicago', false, 3, false),
+('hou', 'Houston', 'TX', 'America/Chicago', false, 3, false),
+('phx', 'Phoenix', 'AZ', 'America/Phoenix', false, 3, false),
+('sd', 'San Diego', 'CA', 'America/Los_Angeles', false, 3, false),
+('por', 'Portland', 'OR', 'America/Los_Angeles', false, 3, false),
+('lv', 'Las Vegas', 'NV', 'America/Los_Angeles', false, 3, false),
+('msp', 'Minneapolis–St. Paul', 'MN', 'America/Chicago', false, 3, false),
+('det', 'Detroit', 'MI', 'America/Detroit', false, 3, false),
+('nola', 'New Orleans', 'LA', 'America/Chicago', false, 3, false),
+('pit', 'Pittsburgh', 'PA', 'America/New_York', false, 3, false),
+('bal', 'Baltimore', 'MD', 'America/New_York', false, 3, false),
+('stl', 'St. Louis', 'MO', 'America/Chicago', false, 3, false),
+('kc', 'Kansas City', 'MO', 'America/Chicago', false, 3, false),
+('orl', 'Orlando', 'FL', 'America/New_York', false, 3, false),
+('tpa', 'Tampa', 'FL', 'America/New_York', false, 3, false),
+('clt', 'Charlotte', 'NC', 'America/New_York', false, 3, false),
+('rdu', 'Raleigh–Durham', 'NC', 'America/New_York', false, 3, false),
+('slc', 'Salt Lake City', 'UT', 'America/Denver', false, 3, false),
+('cmh', 'Columbus', 'OH', 'America/New_York', false, 3, false),
+('cle', 'Cleveland', 'OH', 'America/New_York', false, 3, false),
+('cin', 'Cincinnati', 'OH', 'America/New_York', false, 3, false),
+('ind', 'Indianapolis', 'IN', 'America/Indiana/Indianapolis', false, 3, false),
+('mke', 'Milwaukee', 'WI', 'America/Chicago', false, 3, false),
+('sat', 'San Antonio', 'TX', 'America/Chicago', false, 3, false),
+('sac', 'Sacramento', 'CA', 'America/Los_Angeles', false, 3, false),
+('cgy', 'Calgary', 'AB', 'America/Edmonton', false, 3, false),
+('edm', 'Edmonton', 'AB', 'America/Edmonton', false, 3, false),
+('ott', 'Ottawa', 'ON', 'America/Toronto', false, 3, false),
+('wpg', 'Winnipeg', 'MB', 'America/Winnipeg', false, 3, false),
+('yqb', 'Québec City', 'QC', 'America/Toronto', false, 3, false),
+('hfx', 'Halifax', 'NS', 'America/Halifax', false, 3, false)
+on conflict (metro) do update set name = excluded.name, state = excluded.state, tz = excluded.tz, hot = excluded.hot;
+
+update fp.metro_config set aliases = case metro
+  when 'nyc' then array['Brooklyn','Queens','Manhattan','Bronx','Staten Island','NYC','Jersey City','Hoboken']
+  when 'sf' then array['San Francisco','Oakland','Berkeley','San Jose']
+  when 'mtl' then array['Montreal']
+  when 'la' then array['Hollywood','Pasadena','Long Beach','Santa Monica']
+  when 'dc' then array['Washington DC','Arlington','Alexandria']
+  when 'yqb' then array['Quebec City','Quebec']
+  else aliases end
+where metro in ('nyc','sf','mtl','la','dc','yqb');
+-- When a retry worker picked a flyer job up, so a crashed worker's job can be put back in the queue. Safe to run twice.
+alter table fp.flyer_jobs add column if not exists claimed_at timestamptz not null default now();
+-- Scheduled work inside Supabase: retry queued flyers (only when something is due) and clear old data once a day.
+-- The JOB_TOKEN is read from Supabase Vault (secret name fp_job_token). Add it once in the SQL editor:
+--   select vault.create_secret('<the same value as the JOB_TOKEN function secret>', 'fp_job_token');
+-- Until that exists, fp.retry_if_due() does nothing. Safe to run twice.
+
+create extension if not exists pg_net with schema extensions;
+
+insert into fp.ai_config (key, value) values ('job_url', '"https://ytybkywyygorfvflbxzk.supabase.co/functions/v1/fp-job"') on conflict do nothing;
+
+create or replace function fp.call_job(act text) returns bigint
+language plpgsql security definer set search_path = fp, public, extensions as $$
+declare tok text; url text; req bigint;
+begin
+  select decrypted_secret into tok from vault.decrypted_secrets where name = 'fp_job_token' limit 1;
+  select value #>> '{}' into url from fp.ai_config where key = 'job_url';
+  if tok is null or url is null then return null; end if;
+  select net.http_post(url := url, headers := jsonb_build_object('content-type', 'application/json', 'x-job-token', tok), body := jsonb_build_object('action', act)) into req;
+  return req;
+end $$;
+
+create or replace function fp.retry_if_due() returns void
+language plpgsql security definer set search_path = fp, public, extensions as $$
+begin
+  if exists (select 1 from fp.flyer_jobs where status in ('queued', 'retry') and next_attempt_at <= now())
+     or exists (select 1 from fp.flyer_jobs where status = 'processing' and finished_at is null and claimed_at < now() - interval '10 minutes') then
+    perform fp.call_job('retry');
+  end if;
+end $$;
+
+revoke all on function fp.call_job(text), fp.retry_if_due() from public, anon, authenticated;
+grant execute on function fp.call_job(text), fp.retry_if_due() to service_role;
+
+select cron.schedule('fp-flyer-retry', '* * * * *', 'select fp.retry_if_due()');
+select cron.schedule('fp-purge-old', '23 8 * * *', 'select fp.purge_old()');
+-- Public read of the licensed-layer switches (no secrets): the feed job and the app apply them.
+create or replace function public.fp_licensed_switches()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = fp, public
+as $$
+  select coalesce(jsonb_object_agg(family, enabled), '{}'::jsonb) from fp.licensed_switches;
+$$;
+revoke all on function public.fp_licensed_switches() from public;
+grant execute on function public.fp_licensed_switches() to anon, authenticated;
+-- Allow the flyer analytics events in log_events (names only; properties are still checked as short scalars).
+do $$
+declare def text;
+begin
+  select pg_get_functiondef('public.log_events(jsonb)'::regprocedure) into def;
+  if def not like '%flyer_shared%' then
+    def := replace(def, '''feedback_sent''];', '''feedback_sent'',''flyer_shared'',''flyer_ocr'',''flyer_result'',''link_fetch'',''ai_quota''];');
+    execute def;
+  end if;
+end $$;

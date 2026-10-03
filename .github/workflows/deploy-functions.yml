@@ -1,0 +1,24 @@
+name: Deploy Supabase functions
+
+# Deploys flyer-extract, link-fetch and fp-job with the Supabase CLI.
+# Needs: secret SUPABASE_ACCESS_TOKEN (a personal access token from supabase.com/dashboard/account/tokens) and variable SUPABASE_PROJECT_REF.
+# The function secrets GEMINI_API_KEY and JOB_TOKEN are set in Supabase, never here.
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy
+        run: |
+          supabase functions deploy flyer-extract --project-ref "$REF"
+          supabase functions deploy link-fetch --project-ref "$REF"
+          supabase functions deploy fp-job --project-ref "$REF" --no-verify-jwt

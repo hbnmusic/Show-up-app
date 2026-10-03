@@ -1,0 +1,53 @@
+name: Venue scan
+
+# Reads public venue event pages (wave by wave) through the fp-job function, then runs the daily wave decision.
+# Needs: secret JOB_TOKEN and repository variable FP_JOB_URL (the fp-job function URL). Without them this does nothing.
+# Polite fetching: bot user agent with a contact page, robots.txt, per-host spacing, conditional requests.
+# Note: GitHub pauses scheduled workflows after about 60 days without repository activity [inference]; re-enable under Actions if that happens.
+# Logs of public repositories are public: this job prints venue names and counts only, never secrets.
+on:
+  schedule:
+    - cron: '41 6 * * *'
+  workflow_dispatch:
+    inputs:
+      weekly:
+        description: 'Also write the weekly summary'
+        type: boolean
+        default: false
+
+concurrency:
+  group: venue-scan
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      FP_JOB_URL: ${{ vars.FP_JOB_URL }}
+      JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+    steps:
+      - name: Check configuration
+        id: cfg
+        run: |
+          if [ -z "$FP_JOB_URL" ] || [ -z "$JOB_TOKEN" ]; then
+            echo "::notice::FP_JOB_URL or JOB_TOKEN is not set; nothing to do."
+            echo "have=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.have == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.cfg.outputs.have == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        if: steps.cfg.outputs.have == 'true'
+        run: npm ci
+      - name: Scan
+        if: steps.cfg.outputs.have == 'true'
+        run: |
+          W=""
+          if [ "${{ inputs.weekly }}" = "true" ] || [ "$(date -u +%u)" = "1" ]; then W="--weekly"; fi
+          npx tsx scripts/venue-scan.ts $W
