@@ -26,6 +26,6 @@ questionnaire sets the actual rating; do not change answers to get a lower one.
 Notes:
 - Flyer and event images are loaded from JamBase, Ticketmaster and Deezer. We do not review them. If any image is inappropriate, it comes
   from the provider; you cannot remove it, but you can hide the show via `supabase/MODERATION.md` if it is a community show.
-- **Target audience** (Play Console → App content → Target audience): choose 18 and over to avoid the extra requirements for apps
-  that appeal to children, since many shows are at 21+ venues. The Terms of Use set a minimum age of 13; if you pick "18 and over" in
-  Play, change the Terms and Privacy Policy "13" to "18" for consistency (`docs/terms.html`, `docs/privacy.html`).
+- **Target audience** (Play Console → App content → Target audience): the app's minimum age is 16 (Terms, Privacy Policy and in-app text).
+  Select only the **16–17** and **18 and over** groups. Do not select any group under 16, which avoids the extra requirements for
+  apps that appeal to children. Note the Play age groups are 13–15, 16–17 and 18+ [inference], so 16+ maps to the last two.

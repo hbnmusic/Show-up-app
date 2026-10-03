@@ -12,7 +12,7 @@ export default function AboutScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.name}>Pull Up</Text>
-      <Text style={styles.sub}>Version {Constants.expoConfig?.version ?? '1.0.0'}</Text>
+      <Text style={styles.sub}>Version {Constants.expoConfig?.version ?? "1.0.0"} · For ages 16 and up</Text>
 
       <Text style={styles.section}>HELP AND POLICIES</Text>
       <View style={styles.card}>

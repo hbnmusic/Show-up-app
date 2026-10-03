@@ -31,7 +31,7 @@ Know about a gig that is not listed? Sign in with your email (no password) and a
 PRIVATE BY DEFAULT
 No account is needed to browse. Your location, Going list and filters stay on your phone. No ads and no analytics.
 
-Listings come from JamBase and Ticketmaster and from people like you. Times, prices and lineups can change, so check the ticket page before you go. Previews come from Deezer and may not match when band names are common.
+For ages 16 and up. Listings come from JamBase and Ticketmaster and from people like you. Times, prices and lineups can change, so check the ticket page before you go. Previews come from Deezer and may not match when band names are common.
 ```
 Review this before publishing: the "about 45 metro areas" figure comes from `src/lib/metros.ts`; confirm it is still accurate.
 
