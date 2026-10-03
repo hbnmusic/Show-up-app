@@ -57,6 +57,15 @@ export default function ShowsScreen() {
     useDeckState.setState({ pinnedId: top?.id ?? null });
   }, [top?.id]);
 
+  // The details screen was swiped: fly that card off the deck as if it had been swiped here.
+  const swipeRequest = useDeckState((s) => s.swipeRequest);
+  useEffect(() => {
+    if (!swipeRequest) return;
+    useDeckState.setState({ swipeRequest: null });
+    if (top?.id === swipeRequest.id) deckRef.current?.swipe(swipeRequest.d);
+    else recordDecision(swipeRequest.id, swipeRequest.d);
+  }, [swipeRequest, top?.id]);
+
   const deckDetails = useDeckState((s) => s.deckDetails);
   const detailsPlaying = useDeckState((s) => s.detailsPlaying);
   // The details screen opened from the deck covers it, so keep the preview going unless the user plays something there.

@@ -15,12 +15,16 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { FlyerArt } from '@/components/FlyerArt';
 import { C, F } from '@/constants/theme';
 import { addToCalendar } from '@/lib/calendar';
 import { recordDecision, removeDecision } from '@/lib/decide';
+import type { Decision } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { COMMUNITY_PREFIX } from '@/lib/community/form';
 import { reportSubmission } from '@/lib/community/api';
@@ -55,6 +59,44 @@ export default function ShowDetail() {
     () => () => useDeckState.setState({ deckDetails: false, detailsPlaying: false }),
     [],
   );
+
+  // Opened from the deck (not from Going or a reminder) on a show not yet decided:
+  // swipe right to go, left to pass, same as on the card. Vertical drags still scroll.
+  const [fromDeck] = useState(() => useDeckState.getState().deckDetails);
+  const canSwipe = fromDeck && !decision;
+  const tx = useSharedValue(0);
+  const threshold = width * 0.3;
+
+  const finishSwipe = (d: Decision) => {
+    player.pause();
+    if (id) useDeckState.setState({ swipeRequest: { id, d } });
+    router.back();
+  };
+
+  const swipe = Gesture.Pan()
+    .enabled(canSwipe)
+    .activeOffsetX([-24, 24])
+    .failOffsetY([-14, 14])
+    .onUpdate((e) => {
+      tx.value = e.translationX;
+    })
+    .onEnd((e) => {
+      const right = e.translationX > threshold || (e.velocityX > 900 && e.translationX > 40);
+      const left = e.translationX < -threshold || (e.velocityX < -900 && e.translationX < -40);
+      if (right || left) {
+        tx.value = withTiming((right ? 1 : -1) * width * 1.3, { duration: 200 }, (done) => {
+          if (done) scheduleOnRN(finishSwipe, right ? 'going' : 'passed');
+        });
+        return;
+      }
+      tx.value = withSpring(0, { damping: 18, stiffness: 180 });
+    });
+
+  const slideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tx.value }, { rotate: `${(tx.value / width) * 6}deg` }],
+  }));
+  const goingTag = useAnimatedStyle(() => ({ opacity: interpolate(tx.value, [0, threshold], [0, 1], Extrapolation.CLAMP) }));
+  const passTag = useAnimatedStyle(() => ({ opacity: interpolate(tx.value, [-threshold, 0], [1, 0], Extrapolation.CLAMP) }));
 
   useEffect(() => {
     if (show) resolveShow(show);
@@ -132,10 +174,13 @@ export default function ShowDetail() {
         <Pressable onPress={close} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close">
           <Ionicons name="chevron-down" size={28} color={C.text} />
         </Pressable>
+        {canSwipe ? <Text style={styles.swipeHint}>← pass · swipe · going →</Text> : null}
         <Pressable onPress={onShare} hitSlop={12} accessibilityRole="button" accessibilityLabel="Share">
           <Ionicons name={Platform.OS === 'ios' ? 'share-outline' : 'share-social-outline'} size={22} color={C.text} />
         </Pressable>
       </View>
+      <GestureDetector gesture={swipe}>
+      <Animated.View style={[{ flex: 1 }, slideStyle]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.flyerWrap}>
           <FlyerArt show={show} width={flyerW} height={Math.round(flyerW * 1.1)} />
@@ -279,6 +324,18 @@ export default function ShowDetail() {
           be the right artist when names are common.
         </Text>
       </ScrollView>
+      </Animated.View>
+      </GestureDetector>
+      {canSwipe ? (
+        <>
+          <Animated.View pointerEvents="none" style={[styles.swipeTag, styles.tagGoing, goingTag]}>
+            <Text style={styles.tagText}>GOING</Text>
+          </Animated.View>
+          <Animated.View pointerEvents="none" style={[styles.swipeTag, styles.tagPass, passTag]}>
+            <Text style={styles.tagText}>PASS</Text>
+          </Animated.View>
+        </>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -307,6 +364,11 @@ function Row(p: { icon: keyof typeof Ionicons.glyphMap; label: string; detail: s
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
+  swipeHint: { fontFamily: F.mono, color: C.faint, fontSize: 11 },
+  swipeTag: { position: 'absolute', top: 120, borderWidth: 3, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: 'rgba(12,11,10,0.7)' },
+  tagGoing: { right: 20, borderColor: C.good },
+  tagPass: { left: 20, borderColor: C.pass },
+  tagText: { fontFamily: F.poster, color: C.text, fontSize: 22, letterSpacing: 2 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, height: 48 },
   content: { padding: 16, paddingTop: 4, gap: 14, paddingBottom: 40 },
   missing: { fontFamily: F.ui, color: C.text, fontSize: 16, padding: 24 },
