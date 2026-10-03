@@ -32,7 +32,6 @@ create table if not exists public.submissions (
   price_min     numeric check (price_min is null or (price_min >= 0 and price_min <= 2000)),
   price_max     numeric check (price_max is null or (price_max >= 0 and price_max <= 2000)),
   is_free       boolean not null default false,
-  age_policy    text not null default 'unknown' check (age_policy in ('all_ages', '18_plus', '21_plus', 'unknown')),
   genres        text[] not null default '{}' check (cardinality(genres) <= 3),
   ticket_url    text check (ticket_url is null or (ticket_url ~* '^https?://' and char_length(ticket_url) <= 500)),
   source_url    text check (source_url is null or (source_url ~* '^https?://' and char_length(source_url) <= 500)),
@@ -150,12 +149,12 @@ begin
 
   insert into submissions (
     created_by, status, metro, title, acts, venue_name, venue_area, venue_address, starts_local, tz, utc_offset_min,
-    starts_at, price_min, price_max, is_free, age_policy, genres, ticket_url, source_url, dup_key
+    starts_at, price_min, price_max, is_free, genres, ticket_url, source_url, dup_key
   ) values (
     uid, case when trusted then 'live' else 'pending' end, p ->> 'metro', nullif(trim(p ->> 'title'), ''), acts,
     trim(p ->> 'venue_name'), trim(p ->> 'venue_area'), nullif(trim(p ->> 'venue_address'), ''), p ->> 'starts_local',
     tzname, offset_min, utc, nullif(p ->> 'price_min', '')::numeric, nullif(p ->> 'price_max', '')::numeric,
-    coalesce((p ->> 'is_free')::boolean, false), coalesce(p ->> 'age_policy', 'unknown'),
+    coalesce((p ->> 'is_free')::boolean, false),
     coalesce(array(select jsonb_array_elements_text(coalesce(p -> 'genres', '[]'::jsonb))), '{}'),
     nullif(trim(p ->> 'ticket_url'), ''), nullif(trim(p ->> 'source_url'), ''), key
   ) returning * into new_row;

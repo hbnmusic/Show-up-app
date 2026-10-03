@@ -10,24 +10,14 @@ import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
 import { detectPlace } from '@/lib/location';
 import { metroById } from '@/lib/metros';
-import { RADIUS_OPTIONS, type AgeFilter, type Decision, type Genre, type PriceFilter, type VenueType, type WhenFilter } from '@/lib/types';
+import { RADIUS_OPTIONS, type Decision, type Genre, type PriceFilter, type WhenFilter } from '@/lib/types';
 
 const WHEN: WhenFilter[] = ['tonight', 'tomorrow', 'weekend', 'week', 'month', 'all'];
-const VENUES: { value: VenueType; label: string }[] = [
-  { value: 'house', label: 'House & basement' },
-  { value: 'diy', label: 'DIY spaces' },
-  { value: 'venue', label: 'Venues & clubs' },
-];
 const PRICES: { value: PriceFilter; label: string }[] = [
   { value: 'any', label: 'Any' },
   { value: 'free', label: 'Free' },
   { value: 'under10', label: '$10 or less' },
   { value: 'under20', label: '$20 or less' },
-];
-const AGES: { value: AgeFilter; label: string }[] = [
-  { value: 'any', label: 'Any' },
-  { value: 'all_ages', label: 'All ages only' },
-  { value: '18_plus', label: '18+ or all ages' },
 ];
 
 function toggle<T>(list: T[], v: T): T[] {
@@ -41,7 +31,6 @@ export default function FiltersScreen() {
   const resetFilters = useApp((s) => s.resetFilters);
   const decisionsRec = useApp((s) => s.decisions);
   const allShows = useListings((s) => s.shows);
-  const ageKnown = useMemo(() => allShows.some((s) => s.agePolicy !== 'unknown'), [allShows]);
   const [locNote, setLocNote] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
 
@@ -110,16 +99,6 @@ export default function FiltersScreen() {
             ))}
           </Section>
         </View>
-        <Section title="Venue type">
-          {VENUES.map((v) => (
-            <Chip
-              key={v.value}
-              label={v.label}
-              on={filters.venueTypes.includes(v.value)}
-              onPress={() => setFilters({ venueTypes: toggle(filters.venueTypes, v.value) })}
-            />
-          ))}
-        </Section>
         <View onLayout={(e) => setGenreY(e.nativeEvent.layout.y)}>
           <Section title="Genre" hint={filters.genres.length ? `${filters.genres.length} picked` : 'Any'}>
             {[...new Set([...genreList, ...filters.genres])].map((g) => (
@@ -137,13 +116,6 @@ export default function FiltersScreen() {
             <Chip key={p.value} label={p.label} on={filters.price === p.value} onPress={() => setFilters({ price: p.value })} />
           ))}
         </Section>
-        {ageKnown ? (
-          <Section title="Age" hint="Shows with no listed age policy only appear under Any">
-            {AGES.map((a) => (
-              <Chip key={a.value} label={a.label} on={filters.age === a.value} onPress={() => setFilters({ age: a.value })} />
-            ))}
-          </Section>
-        ) : null}
       </ScrollView>
       <View style={styles.footer}>
         <Pressable onPress={resetFilters} hitSlop={8} accessibilityRole="button">

@@ -12,7 +12,7 @@ import { dedupeKey, dedupeShows, mergeFeed, withRetained } from '../src/lib/list
 import { buildFeed, collect, sanityProblem } from '../src/lib/listings/pipeline';
 import { localToIso } from '../src/lib/listings/tz';
 import { cleanShow, parseFeed } from '../src/lib/listings/validate';
-import { enrichShow, imageFrom, matchEvent, parseAge, parseTmEvent, priceFrom } from '../src/lib/listings/ticketmaster';
+import { enrichShow, imageFrom, matchEvent, parseTmEvent, priceFrom } from '../src/lib/listings/ticketmaster';
 import type { Show } from '../src/lib/types';
 
 const OPTS = { fetchedAt: '2026-09-30T02:00:00.000Z', maxCapacity: 1500 };
@@ -81,7 +81,6 @@ describe('JamBase mapper', () => {
     assert.deepEqual(s.price, { min: 18, max: 22 });
     assert.equal(s.ticketUrl, 'https://tickets.example/1001');
     assert.equal(s.source.provider, 'jambase');
-    assert.equal(s.agePolicy, 'unknown');
   });
 
   it('puts the headliner first regardless of API order', () => {
@@ -236,7 +235,7 @@ describe('pipeline', () => {
   });
 
   it('merges hand-kept listings and marks their provider', () => {
-    const manual = [{ ...mapped(concert({ identifier: 'jambase:77', performer: [{ name: 'Basement Band', 'x-isHeadliner': true }] })), venue: { ...mapped(concert()).venue, name: 'Some Basement', type: 'basement' } }];
+    const manual = [{ ...mapped(concert({ identifier: 'jambase:77', performer: [{ name: 'Basement Band', 'x-isHeadliner': true }] })), venue: { ...mapped(concert()).venue, name: 'Some Basement' } }];
     const { feed } = buildFeed([concert()], { mode: 'full', now, manual });
     const m = feed.shows.find((s) => s.venue.name === 'Some Basement')!;
     assert.ok(m.id.startsWith('manual-'));
@@ -273,9 +272,8 @@ describe('feed validation', () => {
     assert.equal(parseFeed({ version: 1 }), null);
   });
   it('removes unknown genres and fills missing optional fields', () => {
-    const s = cleanShow({ ...good, genres: ['Metal', 'Vaporwave'], agePolicy: 'whatever', price: undefined, status: 'weird' })!;
+    const s = cleanShow({ ...good, genres: ['Metal', 'Vaporwave'], price: undefined, status: 'weird' })!;
     assert.deepEqual(s.genres, ['Metal']);
-    assert.equal(s.agePolicy, 'unknown');
     assert.equal(s.status, 'scheduled');
   });
   it('survives a round trip through JSON', () => {
@@ -365,14 +363,6 @@ describe('Ticketmaster enrichment', () => {
     ...over,
   });
 
-  it('reads age policy from free text', () => {
-    assert.equal(parseAge('This is an ALL AGES show'), 'all_ages');
-    assert.equal(parseAge('21+ with valid ID'), '21_plus');
-    assert.equal(parseAge('Must be 18 and over'), '18_plus');
-    assert.equal(parseAge('Doors at 8'), 'unknown');
-    assert.equal(parseAge(undefined), 'unknown');
-  });
-
   it('summarises price ranges and picks a light, wide image', () => {
     assert.deepEqual(priceFrom([{ min: 20, max: 30 }, { min: 15, max: 25 }]), { min: 15, max: 30 });
     assert.equal(priceFrom([]), undefined);
@@ -381,21 +371,20 @@ describe('Ticketmaster enrichment', () => {
   });
 
   it('matches by time plus venue or act, and fills only blanks', () => {
-    const show: Show = { ...concertShow(), price: {}, agePolicy: 'unknown', flyerImages: undefined }; // Saint Vitus, 2026-10-05 19:00 New York = 23:00Z
+    const show: Show = { ...concertShow(), price: {}, flyerImages: undefined }; // Saint Vitus, 2026-10-05 19:00 New York = 23:00Z
     const ev = parseTmEvent(tm())!;
     assert.equal(matchEvent(show, [ev])?.id, 'tm1');
     const out = enrichShow(show, ev);
-    assert.deepEqual(out.fills, { price: true, age: true, image: true });
+    assert.deepEqual(out.fills, { price: true, image: true });
     assert.deepEqual(out.show.price, { min: 23, max: 35 });
-    assert.equal(out.show.agePolicy, 'all_ages');
     assert.equal(out.show.flyerImages?.[0], 'https://img/mid.jpg');
     assert.equal(out.show.flyerCredit, 'TICKETMASTER');
 
     // Existing facts are never overwritten.
-    const known: Show = { ...show, price: { min: 10, max: 10 }, agePolicy: '21_plus', flyerImages: ['https://mine'] };
+    const known: Show = { ...show, price: { min: 10, max: 10 }, flyerImages: ['https://mine'] };
     const kept = enrichShow(known, ev);
-    assert.deepEqual(kept.fills, { price: false, age: false, image: false });
-    assert.equal(kept.show.agePolicy, '21_plus');
+    assert.deepEqual(kept.fills, { price: false, image: false });
+    assert.deepEqual(kept.show.price, { min: 10, max: 10 });
   });
 
   it('does not match a different night or an unrelated room', () => {

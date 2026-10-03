@@ -6,17 +6,14 @@
  * app's own and are approximate. Flyer art is generated in the app; no
  * promoter artwork is republished.
  */
-import type { AgePolicy, Genre, Price, Show, VenueType, AddressVisibility } from '@/lib/types';
+import type { Genre, Price, Show, AddressVisibility } from '@/lib/types';
 
 type VenueDef = {
   name: string;
-  type: VenueType;
   neighborhood: string;
   area: string;
   city: string;
   addressVisibility?: AddressVisibility;
-  /** Age policy the venue listed on other nights; used when a listing gave none. */
-  defaultAge?: AgePolicy;
   source: string;
 };
 
@@ -24,34 +21,34 @@ const NYC_NOISE = 'https://www.nyc-noise.com/';
 const donyc = (slug: string) => `https://donyc.com/venues/${slug}`;
 
 const V = {
-  saintVitus: { name: 'Saint Vitus', type: 'venue', neighborhood: 'Greenpoint', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: '21_plus', source: donyc('saint-vitus') },
-  tvEye: { name: 'TV Eye', type: 'venue', neighborhood: 'Ridgewood', area: 'Queens', city: 'Queens, NY', defaultAge: '21_plus', source: donyc('tv-eye') },
-  unionPool: { name: 'Union Pool', type: 'venue', neighborhood: 'Williamsburg', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: '21_plus', source: donyc('union-pool') },
-  broadway: { name: 'The Broadway', type: 'venue', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: '21_plus', source: donyc('the-broadway') },
-  purgatory: { name: 'Purgatory', type: 'venue', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: '21_plus', source: donyc('purgatory') },
-  alphaville: { name: 'Alphaville', type: 'venue', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: donyc('alphaville') },
-  transPecos: { name: 'Trans-Pecos', type: 'diy', neighborhood: 'Ridgewood', area: 'Queens', city: 'Queens, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  marketHotel: { name: 'Market Hotel', type: 'diy', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: donyc('market-hotel') },
-  irvingPlaza: { name: 'Irving Plaza', type: 'venue', neighborhood: 'Union Square', area: 'Manhattan', city: 'New York, NY', source: 'https://donyc.com/events/music/2026/10/16' },
-  pioneerWorks: { name: 'Pioneer Works', type: 'venue', neighborhood: 'Red Hook', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  roulette: { name: 'Roulette', type: 'venue', neighborhood: 'Downtown Brooklyn', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  lightSound: { name: 'Light & Sound Design', type: 'diy', neighborhood: 'Greenpoint', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  livingGallery: { name: 'The Living Gallery', type: 'diy', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  mamaTried: { name: 'Mama Tried', type: 'diy', neighborhood: 'Sunset Park', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  salonKingston: { name: 'Salon on Kingston', type: 'house', neighborhood: 'Bed-Stuy', area: 'Brooklyn', city: 'Brooklyn, NY', addressVisibility: 'neighborhood_only', defaultAge: 'all_ages', source: NYC_NOISE },
-  stripedLight: { name: 'Striped Light', type: 'diy', neighborhood: 'Long Island City', area: 'Queens', city: 'Queens, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  veryFriendly: { name: 'Very Friendly Music', type: 'diy', neighborhood: 'Prospect Heights', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  kiSmith: { name: 'Ki Smith Gallery', type: 'diy', neighborhood: 'Lower East Side', area: 'Manhattan', city: 'New York, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  footlight: { name: 'Footlight at Windjammer', type: 'venue', neighborhood: 'Ridgewood', area: 'Queens', city: 'Queens, NY', defaultAge: '21_plus', source: NYC_NOISE },
-  sleepwalk: { name: 'Sleepwalk', type: 'venue', neighborhood: 'Williamsburg', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: '21_plus', source: NYC_NOISE },
-  hartBar: { name: 'Hart Bar', type: 'venue', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: '21_plus', source: NYC_NOISE },
-  bossaNova: { name: 'Bossa Nova Civic Club', type: 'venue', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', defaultAge: '21_plus', source: NYC_NOISE },
-  hexHouse: { name: 'Hex House', type: 'house', neighborhood: 'Williamsburg', area: 'Brooklyn', city: 'Brooklyn, NY', addressVisibility: 'neighborhood_only', defaultAge: 'all_ages', source: NYC_NOISE },
-  laundromat: { name: 'The Laundromat', type: 'diy', neighborhood: 'Maspeth', area: 'Queens', city: 'Queens, NY', defaultAge: 'all_ages', source: NYC_NOISE },
-  whiteEagle: { name: 'White Eagle Hall', type: 'venue', neighborhood: 'Jersey City', area: 'North Jersey', city: 'Jersey City, NJ', source: donyc('white-eagle-hall') },
-  montyHall: { name: 'WFMU Monty Hall', type: 'venue', neighborhood: 'Jersey City', area: 'North Jersey', city: 'Jersey City, NJ', source: donyc('monty-hall-wfmu') },
-  williamsCenter: { name: 'Black Box at Williams Center', type: 'venue', neighborhood: 'Rutherford', area: 'North Jersey', city: 'Rutherford, NJ', source: 'https://www.jambase.com/concerts/us/new-jersey/genres/punk-concerts' },
-  dingbatz: { name: 'Dingbatz', type: 'venue', neighborhood: 'Clifton', area: 'North Jersey', city: 'Clifton, NJ', source: 'https://www.jambase.com/concerts/us/new-jersey/genres/punk-concerts' },
+  saintVitus: { name: 'Saint Vitus', neighborhood: 'Greenpoint', area: 'Brooklyn', city: 'Brooklyn, NY', source: donyc('saint-vitus') },
+  tvEye: { name: 'TV Eye', neighborhood: 'Ridgewood', area: 'Queens', city: 'Queens, NY', source: donyc('tv-eye') },
+  unionPool: { name: 'Union Pool', neighborhood: 'Williamsburg', area: 'Brooklyn', city: 'Brooklyn, NY', source: donyc('union-pool') },
+  broadway: { name: 'The Broadway', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: donyc('the-broadway') },
+  purgatory: { name: 'Purgatory', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: donyc('purgatory') },
+  alphaville: { name: 'Alphaville', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: donyc('alphaville') },
+  transPecos: { name: 'Trans-Pecos', neighborhood: 'Ridgewood', area: 'Queens', city: 'Queens, NY', source: NYC_NOISE },
+  marketHotel: { name: 'Market Hotel', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: donyc('market-hotel') },
+  irvingPlaza: { name: 'Irving Plaza', neighborhood: 'Union Square', area: 'Manhattan', city: 'New York, NY', source: 'https://donyc.com/events/music/2026/10/16' },
+  pioneerWorks: { name: 'Pioneer Works', neighborhood: 'Red Hook', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  roulette: { name: 'Roulette', neighborhood: 'Downtown Brooklyn', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  lightSound: { name: 'Light & Sound Design', neighborhood: 'Greenpoint', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  livingGallery: { name: 'The Living Gallery', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  mamaTried: { name: 'Mama Tried', neighborhood: 'Sunset Park', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  salonKingston: { name: 'Salon on Kingston', neighborhood: 'Bed-Stuy', area: 'Brooklyn', city: 'Brooklyn, NY', addressVisibility: 'neighborhood_only', source: NYC_NOISE },
+  stripedLight: { name: 'Striped Light', neighborhood: 'Long Island City', area: 'Queens', city: 'Queens, NY', source: NYC_NOISE },
+  veryFriendly: { name: 'Very Friendly Music', neighborhood: 'Prospect Heights', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  kiSmith: { name: 'Ki Smith Gallery', neighborhood: 'Lower East Side', area: 'Manhattan', city: 'New York, NY', source: NYC_NOISE },
+  footlight: { name: 'Footlight at Windjammer', neighborhood: 'Ridgewood', area: 'Queens', city: 'Queens, NY', source: NYC_NOISE },
+  sleepwalk: { name: 'Sleepwalk', neighborhood: 'Williamsburg', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  hartBar: { name: 'Hart Bar', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  bossaNova: { name: 'Bossa Nova Civic Club', neighborhood: 'Bushwick', area: 'Brooklyn', city: 'Brooklyn, NY', source: NYC_NOISE },
+  hexHouse: { name: 'Hex House', neighborhood: 'Williamsburg', area: 'Brooklyn', city: 'Brooklyn, NY', addressVisibility: 'neighborhood_only', source: NYC_NOISE },
+  laundromat: { name: 'The Laundromat', neighborhood: 'Maspeth', area: 'Queens', city: 'Queens, NY', source: NYC_NOISE },
+  whiteEagle: { name: 'White Eagle Hall', neighborhood: 'Jersey City', area: 'North Jersey', city: 'Jersey City, NJ', source: donyc('white-eagle-hall') },
+  montyHall: { name: 'WFMU Monty Hall', neighborhood: 'Jersey City', area: 'North Jersey', city: 'Jersey City, NJ', source: donyc('monty-hall-wfmu') },
+  williamsCenter: { name: 'Black Box at Williams Center', neighborhood: 'Rutherford', area: 'North Jersey', city: 'Rutherford, NJ', source: 'https://www.jambase.com/concerts/us/new-jersey/genres/punk-concerts' },
+  dingbatz: { name: 'Dingbatz', neighborhood: 'Clifton', area: 'North Jersey', city: 'Clifton, NJ', source: 'https://www.jambase.com/concerts/us/new-jersey/genres/punk-concerts' },
 } satisfies Record<string, VenueDef>;
 
 type VenueKey = keyof typeof V;
@@ -65,7 +62,6 @@ function nyIso(date: string, time: string): string {
 type Opts = {
   title?: string;
   price?: Price;
-  age?: AgePolicy;
   timeTba?: boolean;
   endTime?: string;
   source?: string;
@@ -98,7 +94,6 @@ function show(
     timeTba: opts.timeTba,
     venue: {
       name: v.name,
-      type: v.type,
       neighborhood: v.neighborhood,
       area: v.area,
       metro: 'nyc',
@@ -108,7 +103,6 @@ function show(
     acts: acts.map((name, order) => ({ name, order })),
     genres,
     price: opts.price ?? {},
-    agePolicy: opts.age ?? v.defaultAge ?? 'unknown',
     ticketUrl: opts.source ?? v.source,
     status: 'scheduled',
     source: { provider: 'sample', url: opts.source ?? v.source, fetchedAt: '2026-09-29' },

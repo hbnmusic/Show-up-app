@@ -103,7 +103,6 @@ const good: SubmitForm = {
   date: '10/24',
   time: '8pm',
   price: '15-20',
-  age: 'all_ages',
   genres: ['Punk'],
   sourceUrl: 'https://www.instagram.com/p/AbC123/',
 };
@@ -153,7 +152,6 @@ const row: SubmissionRow = {
   price_min: 12,
   price_max: null,
   is_free: false,
-  age_policy: '21_plus',
   genres: ['Indie Rock', 'Not A Genre'],
   ticket_url: null,
   source_url: 'https://example.com/post',
@@ -175,7 +173,6 @@ describe('row to show', () => {
     assert.equal(s.venue.metro, 'chi');
     assert.equal(s.venue.city, 'Ukrainian Village, IL');
     assert.deepEqual(s.genres, ['Indie Rock']);
-    assert.equal(s.agePolicy, '21_plus');
     assert.equal(s.source.provider, 'community');
     assert.equal(s.ticketUrl, 'https://example.com/post');
   });
@@ -191,11 +188,10 @@ describe('community shows in the listings', () => {
     const provider = {
       id: 'jb-1',
       startsAt: '2026-11-07T21:00:00-06:00',
-      venue: { name: 'The Empty Bottle', type: 'venue', neighborhood: 'UV', area: 'Chicago', metro: 'chi', city: 'Chicago, IL', addressVisibility: 'public' },
+      venue: { name: 'The Empty Bottle', neighborhood: 'UV', area: 'Chicago', metro: 'chi', city: 'Chicago, IL', addressVisibility: 'public' },
       acts: [{ name: 'Headliner', order: 0 }],
       genres: [],
       price: {},
-      agePolicy: 'unknown',
       status: 'scheduled',
       source: { provider: 'jambase', url: '', fetchedAt: '2026-10-01' },
       updatedAt: '2026-10-01T00:00:00Z',

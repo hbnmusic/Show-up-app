@@ -24,12 +24,9 @@ import { buildPayload, EMPTY_FORM, extractUrl, rowToShow, type SubmitForm } from
 import { dedupeKey } from '@/lib/listings/merge';
 import { useListings } from '@/lib/listingsStore';
 import { DEFAULT_METRO, METROS, metroById, normalizeSearch } from '@/lib/metros';
-import { AGE_LABELS } from '@/lib/showText';
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
-import { ALL_GENRES, type AgePolicy, type Genre } from '@/lib/types';
-
-const AGES: AgePolicy[] = ['unknown', 'all_ages', '18_plus', '21_plus'];
+import { ALL_GENRES, type Genre } from '@/lib/types';
 
 export default function SubmitScreen() {
   const { url, text } = useLocalSearchParams<{ url?: string; text?: string }>();
@@ -92,7 +89,6 @@ export default function SubmitScreen() {
       price_min: null,
       price_max: null,
       is_free: false,
-      age_policy: 'unknown',
       genres: [],
       ticket_url: null,
       source_url: null,
@@ -199,14 +195,6 @@ export default function SubmitScreen() {
           {!form.free ? (
             <TextInput style={styles.input} value={form.price} onChangeText={(v) => set('price', v)} placeholder="20 or 15-25 (optional)" placeholderTextColor={C.faint} keyboardType="numbers-and-punctuation" accessibilityLabel="Price" />
           ) : null}
-        </Field>
-
-        <Field label="AGES">
-          <View style={styles.chips}>
-            {AGES.map((a) => (
-              <Chip key={a} label={a === 'unknown' ? "Don't know" : AGE_LABELS[a]} on={form.age === a} onPress={() => set('age', a)} />
-            ))}
-          </View>
         </Field>
 
         <Field label="GENRE (up to 3, optional)">

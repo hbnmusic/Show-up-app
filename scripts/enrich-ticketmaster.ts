@@ -1,5 +1,5 @@
 /**
- * Fill in price, age policy and a photo on the published city feeds from
+ * Fill in price and a photo on the published city feeds from
  * Ticketmaster's Discovery API. Runs after fetch-listings.ts.
  *
  *   TICKETMASTER_API_KEY=... npx tsx scripts/enrich-ticketmaster.ts
@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { enrichShow, matchEvent, parseTmEvent, TM_ATTRIBUTION, type TmEvent } from '../src/lib/listings/ticketmaster';
+import { enrichShow, matchEvent, parseTmEvent, TM_ATTRIBUTION, TM_ATTRIBUTION_OLD, type TmEvent } from '../src/lib/listings/ticketmaster';
 import { parseFeed } from '../src/lib/listings/validate';
 import { METROS, type Metro } from '../src/lib/metros';
 
@@ -128,22 +128,23 @@ async function main() {
       const { events, calls } = await fetchCity(metro);
       totalCalls += calls;
       let matched = 0;
-      const count = { price: 0, age: 0, image: 0 };
+      const count = { price: 0, image: 0 };
       const shows = parsed.feed.shows.map((s) => {
         const ev = matchEvent(s, events);
         if (!ev) return s;
         matched++;
         const r = enrichShow(s, ev);
-        for (const k of ['price', 'age', 'image'] as const) if (r.fills[k]) count[k]++;
+        for (const k of ['price', 'image'] as const) if (r.fills[k]) count[k]++;
         return r.show;
       });
-      console.log(`${metro.name}: ${events.length} Ticketmaster events, ${matched}/${shows.length} shows matched; filled price ${count.price}, age ${count.age}, photo ${count.image} (${calls} calls)`);
+      console.log(`${metro.name}: ${events.length} Ticketmaster events, ${matched}/${shows.length} shows matched; filled price ${count.price}, photo ${count.image} (${calls} calls)`);
       if (sample && events[0]) {
         const e = events[0];
-        console.log(`  sample: ${e.venueName} | ${e.attractions.join(', ')} | price ${JSON.stringify(e.price)} | age ${e.age} | image ${e.image ? 'yes' : 'no'}`);
+        console.log(`  sample: ${e.venueName} | ${e.attractions.join(', ')} | price ${JSON.stringify(e.price)} | image ${e.image ? 'yes' : 'no'}`);
         sample = false;
       }
-      const attribution = parsed.feed.attribution.includes(TM_ATTRIBUTION) ? parsed.feed.attribution : [...parsed.feed.attribution, TM_ATTRIBUTION];
+      const kept = parsed.feed.attribution.filter((a) => a !== TM_ATTRIBUTION_OLD);
+      const attribution = kept.includes(TM_ATTRIBUTION) ? kept : [...kept, TM_ATTRIBUTION];
       writeAtomic(file, { ...parsed.feed, attribution, shows });
       state.metros[metro.id] = { enrichedAt: now.toISOString() };
     } catch (e) {

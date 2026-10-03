@@ -29,7 +29,7 @@ previous one and keeps your Going list.
 - **Previews** — the top card autoplays a 30-second preview of the headliner
   and steps through the bill; the next card's preview is preloaded. Long-press
   the audio bar (or tap *Possible match*) to report a wrong artist.
-- **Filters** — when, where, venue type, genre, price and age, with quick chips
+- **Filters** — when, where, genre and price, with quick chips
   above the deck. Changing filters never swaps the card you're listening to.
 - **Going** — upcoming shows grouped Tonight / This week / Later, past shows
   with Went / Didn't go, and passed shows you can put back. Swipe a row left to
@@ -75,9 +75,9 @@ no longer has event methods.
 
 ## Known limits
 
-- **Listings come from JamBase**, whose free plan is non-commercial. It has no
-  age policy and only broad genres, and it may not carry basement or house
-  shows. Flyers are generated placeholders.
+- **Listings come from JamBase**, whose free plan is non-commercial. It has
+  only broad genres, and it may not carry basement or house shows. The app no
+  longer shows or filters by age policy or venue type. Flyers are generated placeholders.
 - **Previews use Deezer's public API**, whose terms allow non-commercial use
   only. Fine for a private prototype; replace before any public release (see
   the spec's audio section). Common band names can match the wrong artist.

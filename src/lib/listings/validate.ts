@@ -3,14 +3,12 @@
  * a cached copy). Anything malformed is dropped rather than allowed to crash
  * a screen that assumes the Show type.
  */
-import { ALL_GENRES, type AgePolicy, type Genre, type Show } from '../types';
+import { ALL_GENRES, type Genre, type Show } from '../types';
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 const validDate = (v: unknown): v is string => typeof v === 'string' && !Number.isNaN(new Date(v).getTime());
-const AGES: AgePolicy[] = ['all_ages', '18_plus', '21_plus', 'unknown'];
 const STATUSES = ['scheduled', 'cancelled', 'moved'];
-const VENUE_TYPES = ['basement', 'house', 'diy', 'venue'];
 const VISIBILITY = ['public', 'neighborhood_only', 'on_request'];
 
 /** Returns a cleaned Show, or null when the record cannot be shown safely. */
@@ -45,7 +43,6 @@ export function cleanShow(raw: unknown): Show | null {
     timeTba: raw.timeTba === true ? true : undefined,
     venue: {
       name: v.name,
-      type: VENUE_TYPES.includes(v.type as string) ? (v.type as Show['venue']['type']) : 'venue',
       neighborhood: str(v.neighborhood) ?? (v.area as string),
       area: v.area,
       // Feeds from before multi-city support were NYC only.
@@ -66,7 +63,6 @@ export function cleanShow(raw: unknown): Show | null {
       isFree: price.isFree === true ? true : undefined,
       notaflof: price.notaflof === true ? true : undefined,
     },
-    agePolicy: AGES.includes(raw.agePolicy as AgePolicy) ? (raw.agePolicy as AgePolicy) : 'unknown',
     flyerImages: Array.isArray(raw.flyerImages) ? raw.flyerImages.filter((x): x is string => typeof x === 'string') : undefined,
     flyerCredit: str(raw.flyerCredit),
     ticketUrl: str(raw.ticketUrl),

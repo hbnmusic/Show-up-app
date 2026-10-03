@@ -1,5 +1,5 @@
 /**
- * Fill in what JamBase leaves blank (price, age policy, a photo) from
+ * Fill in what JamBase leaves blank (price, a photo) from
  * Ticketmaster's Discovery API, for shows that Ticketmaster also lists.
  *
  * Written against the Discovery API v2 event shape from its public docs
@@ -9,7 +9,7 @@
  * quickly whether a field is shaped differently than expected.
  */
 import { namesMatch, normalizeName } from '../deezer';
-import type { AgePolicy, Show } from '../types';
+import type { Show } from '../types';
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -26,19 +26,8 @@ export type TmEvent = {
   venueName?: string;
   attractions: string[];
   price?: { min: number; max: number };
-  age: AgePolicy;
   image?: string;
 };
-
-/** "All Ages", "18+", "21 and over" in free text. Order matters: all ages wins over a stray number. */
-export function parseAge(text: string | undefined): AgePolicy {
-  if (!text) return 'unknown';
-  const t = text.toLowerCase();
-  if (/\ball[- ]ages\b/.test(t)) return 'all_ages';
-  if (/\b21\s*\+|\b21\s*(and|&)\s*(over|up|older)|\b21\s*years|\bage 21\b|\b21 or older\b/.test(t)) return '21_plus';
-  if (/\b18\s*\+|\b18\s*(and|&)\s*(over|up|older)|\b18\s*years|\bage 18\b|\b18 or older\b/.test(t)) return '18_plus';
-  return 'unknown';
-}
 
 export function priceFrom(ranges: unknown): { min: number; max: number } | undefined {
   if (!Array.isArray(ranges)) return undefined;
@@ -84,7 +73,6 @@ export function parseTmEvent(raw: unknown): TmEvent | null {
   const attractions = (Array.isArray(emb.attractions) ? emb.attractions : [])
     .map((a) => (isObj(a) ? str(a.name) : undefined))
     .filter((n): n is string => !!n);
-  const age = [str(raw.info), str(raw.pleaseNote)].map(parseAge).find((a) => a !== 'unknown') ?? 'unknown';
   return {
     id,
     url: str(raw.url),
@@ -93,7 +81,6 @@ export function parseTmEvent(raw: unknown): TmEvent | null {
     venueName: isObj(venues[0]) ? str(venues[0].name) : undefined,
     attractions,
     price: priceFrom(raw.priceRanges),
-    age,
     image: imageFrom(raw.images),
   };
 }
@@ -133,22 +120,20 @@ export function matchEvent(show: Show, events: TmEvent[]): TmEvent | null {
 }
 
 export const TM_CREDIT = 'TICKETMASTER';
-export const TM_ATTRIBUTION = 'Prices, ages and photos from Ticketmaster where available';
+export const TM_ATTRIBUTION = 'Prices and photos from Ticketmaster where available';
+/** Feeds published before ages were dropped carry this older wording. */
+export const TM_ATTRIBUTION_OLD = 'Prices, ages and photos from Ticketmaster where available';
 
-export type Fills = { price: boolean; age: boolean; image: boolean };
+export type Fills = { price: boolean; image: boolean };
 
 /** Only blanks are filled; anything JamBase or a manual listing already says stays. */
 export function enrichShow(show: Show, ev: TmEvent): { show: Show; fills: Fills } {
   const next: Show = { ...show };
-  const fills: Fills = { price: false, age: false, image: false };
+  const fills: Fills = { price: false, image: false };
   const unknownPrice = !show.price.isFree && !show.price.notaflof && show.price.min == null && show.price.max == null;
   if (unknownPrice && ev.price) {
     next.price = { ...show.price, ...ev.price };
     fills.price = true;
-  }
-  if (show.agePolicy === 'unknown' && ev.age !== 'unknown') {
-    next.agePolicy = ev.age;
-    fills.age = true;
   }
   if (!show.flyerImages?.length && ev.image) {
     next.flyerImages = [ev.image];

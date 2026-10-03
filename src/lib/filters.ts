@@ -1,4 +1,4 @@
-import type { Decision, Filters, Genre, Show, VenueType, WhenFilter } from './types';
+import type { Decision, Filters, Genre, Show, WhenFilter } from './types';
 import { distanceMi } from './metros';
 import { addDays, startOfDay, wall, wallNow } from './time';
 
@@ -73,26 +73,6 @@ export function placeOk(s: Show, f: Filters): boolean {
   return !p.metro || s.venue.metro === p.metro;
 }
 
-export function ageOk(s: Show, age: Filters['age']): boolean {
-  switch (age) {
-    case 'any':
-      return true;
-    case 'all_ages':
-      return s.agePolicy === 'all_ages';
-    case '18_plus':
-      return s.agePolicy === 'all_ages' || s.agePolicy === '18_plus';
-  }
-}
-
-/** The House & basement chip covers both kinds of home venue. */
-function venueTypeOk(t: VenueType, selected: VenueType[]): boolean {
-  if (selected.length === 0) return true;
-  if (selected.includes(t)) return true;
-  if ((t === 'basement' || t === 'house') && (selected.includes('house') || selected.includes('basement')))
-    return true;
-  return false;
-}
-
 function genreOk(genres: Genre[], selected: Genre[]): boolean {
   return selected.length === 0 || genres.some((g) => selected.includes(g));
 }
@@ -102,10 +82,8 @@ export function matchesFilters(s: Show, f: Filters, now: Date): boolean {
     isUpcoming(s, now) &&
     inWhen(s, f.when, now) &&
     placeOk(s, f) &&
-    venueTypeOk(s.venue.type, f.venueTypes) &&
     genreOk(s.genres, f.genres) &&
-    priceOk(s, f.price) &&
-    ageOk(s, f.age)
+    priceOk(s, f.price)
   );
 }
 
@@ -142,10 +120,8 @@ export function activeFilterCount(f: Filters, defaults: Filters): number {
   let n = 0;
   if (f.when !== defaults.when) n++;
   if (f.radiusMi !== defaults.radiusMi) n++;
-  if (f.venueTypes.length) n++;
   if (f.genres.length) n++;
   if (f.price !== 'any') n++;
-  if (f.age !== 'any') n++;
   return n;
 }
 

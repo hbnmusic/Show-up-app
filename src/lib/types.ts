@@ -1,6 +1,4 @@
-export type VenueType = 'basement' | 'house' | 'diy' | 'venue';
 export type AddressVisibility = 'public' | 'neighborhood_only' | 'on_request';
-export type AgePolicy = 'all_ages' | '18_plus' | '21_plus' | 'unknown';
 export type ShowStatus = 'scheduled' | 'cancelled' | 'moved';
 
 export type Genre =
@@ -27,7 +25,6 @@ export type Genre =
 
 export type Venue = {
   name: string;
-  type: VenueType;
   neighborhood: string;
   /** Borough or town, shown in listings. */
   area: string;
@@ -73,7 +70,6 @@ export type Show = {
   acts: Act[];
   genres: Genre[];
   price: Price;
-  agePolicy: AgePolicy;
   flyerImages?: string[];
   /** Who to credit when flyerImages came from a provider rather than the promoter. */
   flyerCredit?: string;
@@ -87,7 +83,6 @@ export type Decision = 'going' | 'passed';
 
 export type WhenFilter = 'tonight' | 'tomorrow' | 'weekend' | 'week' | 'month' | 'all';
 export type PriceFilter = 'any' | 'free' | 'under10' | 'under20';
-export type AgeFilter = 'any' | 'all_ages' | '18_plus';
 
 /** The place the deck is centered on: the phone's location or a chosen city. */
 export type Place = { label: string; lat: number; lng: number; metro?: string; source: 'device' | 'city' };
@@ -97,20 +92,16 @@ export type Filters = {
   /** null = no location limit (shows everything in the feed). */
   place: Place | null;
   radiusMi: number;
-  venueTypes: VenueType[];
   genres: Genre[];
   price: PriceFilter;
-  age: AgeFilter;
 };
 
 export const DEFAULT_FILTERS: Filters = {
   when: 'week',
   place: null,
   radiusMi: 25,
-  venueTypes: [],
   genres: [],
   price: 'any',
-  age: 'any',
 };
 
 export type ReminderPrefs = {

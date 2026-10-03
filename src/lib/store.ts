@@ -145,7 +145,7 @@ export const useApp = create<AppState>()(
       // Filters saved by older builds have no place and carry an obsolete `areas` list.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>;
-        const { areas: _areas, ...saved } = (p.filters ?? {}) as Record<string, unknown>;
+        const { areas: _areas, venueTypes: _venueTypes, age: _age, ...saved } = (p.filters ?? {}) as Record<string, unknown>;
         const genres = Array.isArray(saved.genres)
           ? [...new Set((saved.genres as string[]).map((g) => (g === 'Club & Techno' ? 'Electronic' : g)))]
           : [];

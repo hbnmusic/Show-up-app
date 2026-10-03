@@ -275,7 +275,7 @@ export default function ShowDetail() {
 
         <Text style={styles.note}>
           {show.source.provider === 'jambase' ? 'Listing from JamBase. ' : show.source.provider === 'manual' ? 'Listing added by hand. ' : show.source.provider === 'community' ? 'Added by the Pull Up community and confirmed by a second person; not checked by the venue. ' : ''}
-          Times, prices and age limits can change; check the listing before you go. Previews come from Deezer and may not
+          Times and prices can change; check the listing before you go. Previews come from Deezer and may not
           be the right artist when names are common.
         </Text>
       </ScrollView>

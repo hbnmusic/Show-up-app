@@ -26,11 +26,10 @@ import type { Show } from '../src/lib/types';
 const mk = (id: string, day: string, name = id): Show => ({
   id,
   startsAt: `${day}T20:00:00-04:00`,
-  venue: { name: 'Room', type: 'venue', neighborhood: 'Greenpoint', area: 'Brooklyn', metro: 'nyc', city: 'Brooklyn, NY', addressVisibility: 'public' },
+  venue: { name: 'Room', neighborhood: 'Greenpoint', area: 'Brooklyn', metro: 'nyc', city: 'Brooklyn, NY', addressVisibility: 'public' },
   acts: [{ name, order: 0 }],
   genres: [],
   price: {},
-  agePolicy: 'unknown',
   status: 'scheduled',
   source: { provider: 'jambase', url: 'https://www.jambase.com', fetchedAt: '2026-09-30' },
   updatedAt: '2026-09-30T00:00:00Z',
@@ -44,6 +43,20 @@ function feedResponse(shows: Show[], generatedAt: string, ok = true, status = 20
       json: async () => ({ version: 1, generatedAt, attribution: ['Listings by JamBase (jambase.com)'], shows }),
     }) as unknown as Response;
 }
+
+describe('saved filters from older versions', () => {
+  it('drops the removed venue-type and age filters and keeps the rest', async () => {
+    const { useApp } = await import('../src/lib/store');
+    const merge = useApp.persist.getOptions().merge!;
+    const saved = { filters: { when: 'month', radiusMi: 15, venueTypes: ['diy'], age: 'all_ages', genres: ['Club & Techno'], price: 'free' } };
+    const next = merge(saved, useApp.getState()) as ReturnType<typeof useApp.getState>;
+    assert.equal(next.filters.when, 'month');
+    assert.equal(next.filters.price, 'free');
+    assert.deepEqual(next.filters.genres, ['Electronic']);
+    assert.ok(!('venueTypes' in next.filters));
+    assert.ok(!('age' in next.filters));
+  });
+});
 
 describe('going list actions', () => {
   it('records, removes and undoes decisions in order', async () => {

@@ -189,7 +189,6 @@ export function mapJamBaseEvent(ev: unknown, opts: MapOptions): MapResult {
       timeTba: timeTba || undefined,
       venue: {
         name: venueName,
-        type: 'venue',
         neighborhood: area === 'Manhattan' ? 'Manhattan' : locality ?? area,
         area,
         metro,
@@ -202,7 +201,6 @@ export function mapJamBaseEvent(ev: unknown, opts: MapOptions): MapResult {
       acts: performers.map((p, order) => ({ name: p.name, order })),
       genres: mapGenres(performers.flatMap((p) => p.genres)),
       price: priceOf(offers, ev.isAccessibleForFree),
-      agePolicy: 'unknown',
       ticketUrl: ticketUrl ?? eventUrl,
       status: status === 'cancelled' ? 'cancelled' : status === 'postponed' || status === 'rescheduled' ? 'moved' : 'scheduled',
       source: { provider: 'jambase', url: eventUrl, fetchedAt: opts.fetchedAt },

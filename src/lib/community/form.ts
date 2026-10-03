@@ -5,7 +5,7 @@
  */
 import { cleanShow } from '../listings/validate';
 import { metroById } from '../metros';
-import { ALL_GENRES, type AgePolicy, type Genre, type Show } from '../types';
+import { ALL_GENRES, type Genre, type Show } from '../types';
 
 export type Ymd = { y: number; m: number; d: number };
 
@@ -120,7 +120,6 @@ export type SubmitForm = {
   time: string;
   free: boolean;
   price: string;
-  age: AgePolicy;
   genres: Genre[];
   ticketUrl: string;
   sourceUrl: string;
@@ -137,7 +136,6 @@ export const EMPTY_FORM: SubmitForm = {
   time: '',
   free: false,
   price: '',
-  age: 'unknown',
   genres: [],
   ticketUrl: '',
   sourceUrl: '',
@@ -156,7 +154,6 @@ export type SubmitPayload = {
   price_min: number | null;
   price_max: number | null;
   is_free: boolean;
-  age_policy: AgePolicy;
   genres: Genre[];
   ticket_url: string | null;
   source_url: string | null;
@@ -207,7 +204,6 @@ export function buildPayload(f: SubmitForm, today: Ymd): { ok: true; payload: Su
       price_min: min,
       price_max: max,
       is_free: f.free,
-      age_policy: f.age,
       genres: f.genres.filter((g) => ALL_GENRES.includes(g)).slice(0, 3),
       ticket_url: ticket || null,
       source_url: source || null,
@@ -232,7 +228,6 @@ export type SubmissionRow = {
   price_min: number | null;
   price_max: number | null;
   is_free: boolean;
-  age_policy: AgePolicy;
   genres: string[] | null;
   ticket_url: string | null;
   source_url: string | null;
@@ -261,7 +256,6 @@ export function rowToShow(row: SubmissionRow): Show | null {
     startsAt: `${row.starts_local}:00${offsetString(row.utc_offset_min)}`,
     venue: {
       name: row.venue_name,
-      type: 'venue',
       neighborhood: row.venue_area,
       area: row.venue_area,
       metro: row.metro,
@@ -276,7 +270,6 @@ export function rowToShow(row: SubmissionRow): Show | null {
       max: row.price_max ?? undefined,
       isFree: row.is_free ? true : undefined,
     },
-    agePolicy: row.age_policy,
     ticketUrl: row.ticket_url ?? row.source_url ?? undefined,
     status: 'scheduled',
     source: { provider: 'community', url: row.source_url ?? '', fetchedAt: row.created_at },

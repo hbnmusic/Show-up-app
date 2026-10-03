@@ -72,10 +72,9 @@ describe('filters', () => {
     assert.equal(q[0].id, later.id);
   });
 
-  it('unknown prices and ages only pass under Any', () => {
-    const unknown = SHOWS.find((s) => !s.price.isFree && s.price.min == null && s.agePolicy === 'unknown')!;
+  it('unknown prices only pass under Any', () => {
+    const unknown = SHOWS.find((s) => !s.price.isFree && s.price.min == null)!;
     assert.equal(matchesFilters(unknown, { ...DEFAULT_FILTERS, when: 'all', price: 'under10' }, now), false);
-    assert.equal(matchesFilters(unknown, { ...DEFAULT_FILTERS, when: 'all', age: 'all_ages' }, now), false);
     assert.equal(matchesFilters(unknown, { ...DEFAULT_FILTERS, when: 'all' }, now), true);
   });
 
@@ -276,11 +275,11 @@ describe('venue-local time', () => {
   });
 
   it('lists only the facts a listing actually has', () => {
-    const unknown: Show = { ...base, price: {}, agePolicy: 'unknown', ticketUrl: 'https://t', venue: { ...base.venue, type: 'venue' } };
-    assert.deepEqual(factsFor(unknown), [{ label: 'Cost & ages', value: 'On the ticket page' }]);
+    const unknown: Show = { ...base, price: {}, ticketUrl: 'https://t' };
+    assert.deepEqual(factsFor(unknown), [{ label: 'Cost', value: 'On the ticket page' }]);
     assert.equal(metaLine(unknown), '');
-    const partial: Show = { ...unknown, price: { min: 15, max: 15 }, venue: { ...unknown.venue, type: 'diy' } };
-    assert.deepEqual(factsFor(partial).map((f) => f.label), ['Cost', 'Venue type']);
-    assert.equal(metaLine(partial), '$15 · DIY space');
+    const partial: Show = { ...unknown, price: { min: 15, max: 15 } };
+    assert.deepEqual(factsFor(partial).map((f) => f.label), ['Cost']);
+    assert.equal(metaLine(partial), '$15');
   });
 });

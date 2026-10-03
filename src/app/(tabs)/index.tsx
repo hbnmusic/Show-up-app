@@ -35,9 +35,7 @@ export default function ShowsScreen() {
   const setFilters = useApp((s) => s.setFilters);
   const resetFilters = useApp((s) => s.resetFilters);
   const history = useApp((s) => s.history);
-  // The age filter only means something once some listing says what its age policy is.
-  const ageKnown = useMemo(() => allShows.some((s) => s.agePolicy !== 'unknown'), [allShows]);
-  const filters = useMemo(() => (ageKnown || stored.age === 'any' ? stored : { ...stored, age: 'any' as const }), [stored, ageKnown]);
+  const filters = stored;
   const deckRef = useRef<DeckHandle>(null);
   const drag = useSharedValue(0);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -139,13 +137,6 @@ export default function ShowsScreen() {
             on={filters.price === 'free'}
             onPress={() => setFilters({ price: filters.price === 'free' ? 'any' : 'free' })}
           />
-          {ageKnown ? (
-            <Chip
-              label="All ages"
-              on={filters.age === 'all_ages'}
-              onPress={() => setFilters({ age: filters.age === 'all_ages' ? 'any' : 'all_ages' })}
-            />
-          ) : null}
           <Chip
             label={filters.genres.length ? `Genre · ${filters.genres.length}` : 'Genre'}
             on={filters.genres.length > 0}
