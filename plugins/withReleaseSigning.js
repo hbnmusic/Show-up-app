@@ -28,7 +28,7 @@ module.exports = function withReleaseSigning(config) {
     );
 
     if (!/versionCode\s+\d+/.test(gradle)) throw new Error('withReleaseSigning: versionCode not found');
-    gradle = gradle.replace(/versionCode\s+(\d+)/, `versionCode (System.getenv('ANDROID_VERSION_CODE') ?: '$1').toInteger()`);
+    gradle = gradle.replace(/versionCode\s+(\d+)/, `versionCode Integer.parseInt(System.getenv('ANDROID_VERSION_CODE') ?: '$1')`);
 
     gradle += `\n${MARKER}\n`;
     cfg.modResults.contents = gradle;
