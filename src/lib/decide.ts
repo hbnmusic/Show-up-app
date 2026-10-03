@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
+import { track } from './analyticsCore';
 import { ensureNotificationPermission, syncReminders } from './reminders';
 import { useApp } from './store';
 import type { Decision } from './types';
@@ -8,6 +9,7 @@ import type { Decision } from './types';
 /** Record a swipe and keep reminders in step. */
 export async function recordDecision(showId: string, d: Decision) {
   useApp.getState().decide(showId, d);
+  track('decision', { d });
   if (Platform.OS !== 'web') {
     Haptics.impactAsync(d === 'going' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light).catch(
       () => {},

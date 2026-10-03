@@ -1,7 +1,9 @@
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { C, F } from '@/constants/theme';
+import { communityEnabled } from '@/lib/communityConfig';
 import { DELETE_ACCOUNT_URL, PRIVACY_URL, SUPPORT_EMAIL, SUPPORT_MAILTO, TERMS_URL } from '@/lib/legal';
 import { useListings } from '@/lib/listingsStore';
 
@@ -17,6 +19,7 @@ export default function AboutScreen() {
       <Text style={styles.section}>HELP AND POLICIES</Text>
       <View style={styles.card}>
         <LinkRow label="Support" detail={SUPPORT_EMAIL} onPress={() => open(SUPPORT_MAILTO)} />
+        {communityEnabled ? <LinkRow label="Send feedback or report a bug" onPress={() => router.push('/feedback')} /> : null}
         <LinkRow label="Privacy Policy" onPress={() => open(PRIVACY_URL)} />
         <LinkRow label="Terms of Use" onPress={() => open(TERMS_URL)} />
         <LinkRow label="Delete your account (web)" onPress={() => open(DELETE_ACCOUNT_URL)} last />

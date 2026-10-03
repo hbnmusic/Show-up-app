@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { track } from './analyticsCore';
 import {
   DEFAULT_FILTERS,
   DEFAULT_REMINDER_PREFS,
@@ -89,9 +90,22 @@ export const useApp = create<AppState>()(
         return last;
       },
 
-      setFilters: (f) => set((s) => ({ filters: { ...s.filters, ...f } })),
+      setFilters: (f) => {
+        const prev = get().filters;
+        set((s) => ({ filters: { ...s.filters, ...f } }));
+        for (const k of Object.keys(f) as (keyof Filters)[]) {
+          if (JSON.stringify(prev[k]) === JSON.stringify(f[k])) continue;
+          if (k === 'place') {
+            const metro = f.place?.metro;
+            if (metro && metro !== prev.place?.metro) track('city_changed', { metro, source: f.place?.source });
+          } else track('filter_changed', { filter: k });
+        }
+      },
       // Reset keeps the place: it is where the person is, not a preference to clear.
-      resetFilters: () => set((s) => ({ filters: { ...DEFAULT_FILTERS, place: s.filters.place } })),
+      resetFilters: () => {
+        track('filter_changed', { filter: 'reset' });
+        set((s) => ({ filters: { ...DEFAULT_FILTERS, place: s.filters.place } }));
+      },
 
       setReminderPrefs: (p) => set((s) => ({ reminderPrefs: { ...s.reminderPrefs, ...p } })),
 

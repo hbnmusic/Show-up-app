@@ -10,7 +10,7 @@ import { setAudioModeAsync } from 'expo-audio';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
-import { DarkTheme, Stack, ThemeProvider, router } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider, router, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -18,6 +18,8 @@ import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { C } from '@/constants/theme';
+import { initAnalytics } from '@/lib/analytics';
+import { track } from '@/lib/analyticsCore';
 import { useAuth } from '@/lib/auth';
 import { extractUrl } from '@/lib/community/form';
 import { initPlace } from '@/lib/location';
@@ -49,6 +51,15 @@ function useNotificationRouting() {
 }
 
 /** A post or link shared to Pull Up from another app (Instagram's Share button, a browser) opens the add-a-show form. */
+/** Records which screens people open (the screen name only, never a show id). */
+function ScreenTracker() {
+  const pathname = usePathname();
+  useEffect(() => {
+    track('screen_view', { screen: pathname.startsWith('/show/') ? '/show' : pathname });
+  }, [pathname]);
+  return null;
+}
+
 function ShareRouter() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
   useEffect(() => {
@@ -56,6 +67,7 @@ function ShareRouter() {
     const text = shareIntent.text ?? shareIntent.webUrl ?? '';
     const url = shareIntent.webUrl ?? extractUrl(text);
     resetShareIntent();
+    track('share_received');
     if (communityEnabled && (url || text)) router.push({ pathname: '/submit', params: { url: url ?? '', text } });
   }, [hasShareIntent, shareIntent, resetShareIntent]);
   return null;
@@ -87,6 +99,10 @@ export default function RootLayout() {
       shouldPlayInBackground: false,
       interruptionMode: 'doNotMix',
     }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    initAnalytics();
   }, []);
 
   // First launch: centre the deck on the phone's location (falls back to New York).
@@ -128,6 +144,7 @@ export default function RootLayout() {
       <ThemeProvider value={theme}>
         <StatusBar style="light" />
         <ShareRouter />
+        <ScreenTracker />
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: C.bg },
@@ -140,6 +157,7 @@ export default function RootLayout() {
           <Stack.Screen name="filters" options={{ presentation: 'modal', title: 'Filters' }} />
           <Stack.Screen name="cities" options={{ presentation: 'modal', title: 'Choose a city' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          <Stack.Screen name="feedback" options={{ title: 'Send feedback' }} />
           <Stack.Screen name="about" options={{ title: 'About and credits' }} />
           <Stack.Screen name="community" options={{ title: 'Community shows' }} />
           <Stack.Screen name="submit" options={{ presentation: 'modal', title: 'Add a show' }} />

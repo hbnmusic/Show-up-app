@@ -1,4 +1,5 @@
 /** Calls to the community database. Every function returns data or an error message; none throw. */
+import { track } from '../analyticsCore';
 import { supabase } from '../supabase';
 import { rowToShow, type SubmissionRow, type SubmitPayload } from './form';
 import type { Show } from '../types';
@@ -78,6 +79,7 @@ async function rpc(name: string, args: Record<string, unknown>): Promise<Result<
   try {
     const { data, error } = await supabase.rpc(name, args);
     if (error) throw error;
+    track('community_action', { action: name });
     return { ok: true, data: (data ?? {}) as Record<string, unknown> };
   } catch (e) {
     return fail(e);

@@ -20,14 +20,18 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
 
 | Play category → type | Collected? | Shared? | Purpose | Required or optional | Encrypted in transit | Deletable by user |
 | --- | --- | --- | --- | --- | --- | --- |
-| Personal info → Email address | Yes, only if the person signs in | No | Account management | Optional (needed only to add or confirm community shows) | Yes | Yes (in-app or web) |
+| Personal info → Email address | Yes: the sign-in email (Community), and the optional contact email typed into the feedback form | No | Account management; Developer communications (feedback reply) | Optional | Yes | Sign-in email: yes, in-app or web. Feedback contact email: on request by email |
 | App activity → Other user-generated content (shows people submit: bands, venue, date, price, links, genres) | Yes | No (see note 1) | App functionality | Optional | Yes | Yes for shows no one else confirmed; shows another person confirmed stay without the author (stated in the privacy policy and on the deletion page) |
 | App activity → Other actions (confirmations, reports, blocks, Terms acceptance with version and time) | Yes | No | App functionality; fraud prevention, security and compliance | Optional | Yes | Yes |
 | Location → Approximate location | **No** (note 2) | No | n/a | n/a | n/a | n/a |
 | Location → Precise location | No (permission removed from the app) | No | n/a | n/a | n/a | n/a |
 | Device or other IDs | No | No | n/a | n/a | n/a | n/a |
 | Messages, photos, videos, audio, files, contacts, calendar, health, financial info | No | No | n/a | n/a | n/a | n/a |
-| App info and performance (crash logs, diagnostics) | No (no crash reporting or analytics) | No | n/a | n/a | n/a | n/a |
+| App activity → App interactions (screens viewed, swipes, filters, feature use; see `src/lib/analyticsCore.ts`) | Yes | No | Analytics | Optional (Settings switch; on by default) | Yes | Yes: turning the switch off deletes the events already sent |
+| Device or other IDs → Other identifier (random install id made by the app; not an advertising id, not a device id, not linked to the account) | Yes | No | Analytics; App functionality (rate limiting feedback) | Optional | Yes | Yes (same switch deletes the events; feedback rows keep it until deleted on request) |
+| Messages → Other in-app messages (feedback and bug reports) | Yes, only if the person sends feedback | No | App functionality (developer communications) | Optional | Yes | On request by email; kept up to 24 months |
+| App info and performance → Diagnostics (app version, Android version, device model, attached to feedback; app and Android version also sent with usage events) | Yes | No | Analytics; App functionality | Optional | Yes | Same as above |
+| App info and performance → Crash logs | No (no crash reporting SDK) | No | n/a | n/a | n/a | n/a |
 | Web browsing, search history, installed apps | No | No | n/a | n/a | n/a | n/a |
 
 ## Notes behind the answers
@@ -47,7 +51,7 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
    Google's help text says to declare data a third party receives through the app's code unless an exception applies [inference]. The
    conservative answer is to leave Device or other IDs as "No" because the app collects no identifier, and rely on the privacy policy
    (which discloses it). Re-read the form's exceptions before submitting.
-4. **No ads, no analytics, no tracking SDKs.** Confirmed in `package.json` and the source tree; keep it that way or update this file.
+4. **No ads and no third-party analytics or tracking SDKs.** Usage statistics are first-party: the app calls `log_events` on your own Supabase project (readable only by you). The event list is `EVENT_NAMES` in `src/lib/analyticsCore.ts`, and the server rejects any other name. Add a new data type here before adding events that carry anything new.
 5. **Data on the device** (Going list, passes, filters, saved listings, session token) is stored in app storage, and `allowBackup` is
    false, so it is not copied to Google Drive backups.
 

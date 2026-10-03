@@ -7,6 +7,7 @@ import { isCommunityFeed, useListings } from '@/lib/listingsStore';
 import { ensureNotificationPermission, notificationsAllowed, syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
+import { analyticsEnabled, setAnalyticsEnabled } from '@/lib/analytics';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 import type { ReminderPrefs } from '@/lib/types';
 
@@ -16,11 +17,13 @@ export default function SettingsScreen() {
   const autoplay = useApp((s) => s.autoplay);
   const setAutoplay = useApp((s) => s.setAutoplay);
   const [allowed, setAllowed] = useState(true);
+  const [analyticsOn, setAnalyticsOn] = useState(true);
   const { shows, source, generatedAt, attribution, refreshing, error } = useListings();
   const cities = useListings((s) => Object.keys(s.feeds).filter((id) => !isCommunityFeed(id)).length);
 
   useEffect(() => {
     notificationsAllowed().then(setAllowed);
+    analyticsEnabled().then(setAnalyticsOn);
   }, []);
 
   const update = async (p: Partial<ReminderPrefs>) => {
@@ -124,6 +127,30 @@ export default function SettingsScreen() {
           </View>
         </>
       ) : null}
+
+      <Text style={styles.section}>PRIVACY AND FEEDBACK</Text>
+      <View style={styles.card}>
+        {communityEnabled ? (
+          <>
+            <Toggle
+              label="Share anonymous usage data"
+              detail="Which screens are used and how often. No name, email, location or show details. Turning it off also deletes what was sent."
+              value={analyticsOn}
+              onChange={(v) => {
+                setAnalyticsOn(v);
+                setAnalyticsEnabled(v);
+              }}
+            />
+            <View style={styles.divider} />
+            <Pressable style={styles.refreshRow} onPress={() => router.push('/feedback')} accessibilityRole="button">
+              <Text style={styles.label}>Send feedback or report a bug</Text>
+              <Text style={styles.detail}>Goes straight to the developer</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.about}>Usage data and feedback are not set up in this build.</Text>
+        )}
+      </View>
 
       <Text style={styles.section}>ABOUT</Text>
       <View style={styles.card}>

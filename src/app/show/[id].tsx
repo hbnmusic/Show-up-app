@@ -27,6 +27,7 @@ import { recordDecision, removeDecision } from '@/lib/decide';
 import type { Decision } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { COMMUNITY_PREFIX } from '@/lib/community/form';
+import { track } from '@/lib/analyticsCore';
 import { ModerationSheet } from '@/components/ModerationSheet';
 import { useListings } from '@/lib/listingsStore';
 import { resolveShow, useShowPreviews, type ActPreview } from '@/lib/previews';
@@ -44,6 +45,10 @@ import { formatDay, wall } from '@/lib/time';
 export default function ShowDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const show = useListings((s) => (id ? s.byId[id] : undefined));
+  const shownProvider = show?.source.provider;
+  useEffect(() => {
+    if (shownProvider) track('show_opened', { provider: shownProvider });
+  }, [id, shownProvider]);
   const decision = useApp((s) => (id ? s.decisions[id]?.decision : undefined));
   const remindersOn = useApp((s) => (id ? !s.reminderOff[id] : true));
   const calendarAt = useApp((s) => (id ? s.calendarAdded[id] : undefined));

@@ -1,6 +1,7 @@
 import { createEventInCalendarAsync } from 'expo-calendar/legacy';
 import { Platform } from 'react-native';
 
+import { track } from './analyticsCore';
 import { calendarLocation, doorsDate, endDate, fullBill, metaLine, showTitle } from './showText';
 import type { Show } from './types';
 
@@ -27,5 +28,6 @@ export async function addToCalendar(show: Show): Promise<boolean> {
     location: calendarLocation(show),
     notes,
   });
+  track('calendar_added');
   return true;
 }

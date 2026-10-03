@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 
+import { track } from './analyticsCore';
 import { explainFirst, LOCATION_EXPLAINER } from './explain';
 import { useApp } from './store';
 import { DEFAULT_METRO, METROS, metroById, nearestMetro, type Metro } from './metros';
@@ -24,9 +25,11 @@ export async function detectPlace(): Promise<Detected> {
       if (!perm.canAskAgain) return { ok: false, reason: 'denied' };
       // Explain in plain words before the system prompt appears.
       if (!(await explainFirst(LOCATION_EXPLAINER.title, LOCATION_EXPLAINER.message, LOCATION_EXPLAINER.continueLabel))) {
+        track('permission', { kind: 'location', result: 'explainer_declined' });
         return { ok: false, reason: 'denied' };
       }
       perm = await Location.requestForegroundPermissionsAsync();
+      track('permission', { kind: 'location', result: perm.granted ? 'granted' : 'denied' });
     }
     if (!perm.granted) return { ok: false, reason: 'denied' };
     const pos =

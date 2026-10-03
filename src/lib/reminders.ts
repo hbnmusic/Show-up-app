@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import { track } from './analyticsCore';
 import { explainFirst, NOTIFICATION_EXPLAINER } from './explain';
 import { getShow } from './listingsStore';
 import { planReminders } from './reminderPlan';
@@ -43,9 +44,11 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   // Explain in plain words before the system prompt appears.
   if (!(await explainFirst(NOTIFICATION_EXPLAINER.title, NOTIFICATION_EXPLAINER.message, NOTIFICATION_EXPLAINER.continueLabel))) {
     useApp.getState().setNotificationsAsked();
+    track('permission', { kind: 'notifications', result: 'explainer_declined' });
     return false;
   }
   const asked = await Notifications.requestPermissionsAsync();
+  track('permission', { kind: 'notifications', result: asked.granted ? 'granted' : 'denied' });
   useApp.getState().setNotificationsAsked();
   return asked.granted;
 }

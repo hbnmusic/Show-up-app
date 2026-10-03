@@ -111,4 +111,4 @@ Without `SUPABASE_URL` / `SUPABASE_ANON_KEY` build variables the feature is hidd
 The Play submission material is in `docs/`: public pages for GitHub Pages (`index.html`, `privacy.html`, `terms.html`,
 `delete-account.html`), and `docs/play/` for the Data safety answers, content rating draft, store listing text and the release
 guide (`RELEASING.md`, which also lists every placeholder to fill in). The signed bundle is built by the manual
-**Android release (Play AAB)** workflow; the per-push APK workflow is unchanged. Moderation: `supabase/MODERATION.md`.
+**Android release (Play AAB)** workflow; the per-push APK workflow is unchanged. Moderation: `supabase/MODERATION.md`. Usage statistics and feedback: `supabase/ANALYTICS.md`.

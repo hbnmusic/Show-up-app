@@ -29,7 +29,7 @@ ADD SHOWS WE MISSED
 Know about a gig that is not listed? Sign in with your email (no password) and add it. A second person confirms it before it appears for everyone. You can report a show or a person, block people whose shows you do not want to see, and delete your account at any time.
 
 PRIVATE BY DEFAULT
-No account is needed to browse. Your location, Going list and filters stay on your phone. No ads and no analytics.
+No account is needed to browse. Your location, Going list and filters stay on your phone. No ads. Optional anonymous usage statistics can be switched off in Settings.
 
 For ages 16 and up. Listings come from JamBase and Ticketmaster and from people like you. Times, prices and lineups can change, so check the ticket page before you go. Previews come from Deezer and may not match when band names are common.
 ```
