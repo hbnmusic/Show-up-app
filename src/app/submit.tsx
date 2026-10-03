@@ -17,6 +17,8 @@ import {
 
 import { Chip } from '@/components/Chip';
 import { SignIn } from '@/components/SignIn';
+import { TermsGate } from '@/components/TermsGate';
+import { useTerms } from '@/lib/useTerms';
 import { C, F } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { submitShow } from '@/lib/community/api';
@@ -31,6 +33,7 @@ import { ALL_GENRES, type Genre } from '@/lib/types';
 export default function SubmitScreen() {
   const { url, text } = useLocalSearchParams<{ url?: string; text?: string }>();
   const userId = useAuth((s) => s.userId);
+  const terms = useTerms(userId);
   const placeMetro = useApp((s) => s.filters.place?.metro) ?? DEFAULT_METRO.id;
   const known = useListings((s) => s.shows);
   const [form, setForm] = useState<SubmitForm>({ ...EMPTY_FORM, metro: placeMetro, sourceUrl: url ?? '' });
@@ -56,6 +59,21 @@ export default function SubmitScreen() {
     return (
       <View style={styles.screen}>
         <SignIn />
+      </View>
+    );
+  }
+
+  if (terms.accepted === null) {
+    return (
+      <View style={styles.screen}>
+        <ActivityIndicator color={C.muted} />
+      </View>
+    );
+  }
+  if (terms.accepted === false) {
+    return (
+      <View style={styles.screen}>
+        <TermsGate onAccept={terms.accept} error={terms.error} />
       </View>
     );
   }

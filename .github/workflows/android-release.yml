@@ -1,0 +1,110 @@
+name: Android release (Play AAB)
+
+# Builds a signed Android App Bundle for Google Play. Run it by hand from the Actions tab; it does not run on
+# push, and it does not publish anything. Download the .aab from the run's Artifacts and upload it in Play Console.
+# The sideload APK workflow (android-apk.yml) is unchanged.
+#
+# Needs these repository secrets (Settings > Secrets and variables > Actions): ANDROID_KEYSTORE_BASE64,
+# ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD. The keystore is the Play upload key. See docs/play/RELEASING.md.
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'versionCode (a whole number higher than every build already uploaded to Play). Blank uses the run number.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CI: 1
+      EXPO_NO_TELEMETRY: 1
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signing secrets exist
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KA: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for v in KS KSP KA KP; do
+            if [ -z "${!v}" ]; then echo "::error::A signing secret is missing. See docs/play/RELEASING.md."; exit 1; fi
+          done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck, lint and test
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+
+      - name: Generate the Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Check Play target SDK
+        run: scripts/check-target-sdk.sh
+
+      - name: Decode the keystore
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KS" | base64 --decode > "$RUNNER_TEMP/upload.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_ENV"
+
+      - name: Build signed bundle
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_VERSION_CODE: ${{ inputs.version_code || github.run_number }}
+        run: ./gradlew bundleRelease --no-daemon
+
+      - name: Verify the bundle is signed with the upload key
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          aab=android/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify "$aab" | tee verify.txt
+          grep -q "jar verified" verify.txt
+          if jarsigner -verify -verbose -certs "$aab" | grep -qi "CN=Android Debug"; then
+            echo "::error::The bundle is signed with the debug key."; exit 1
+          fi
+          cp "$aab" "pull-up-${{ inputs.version_code || github.run_number }}.aab"
+
+      - name: Remove the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.keystore"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pull-up-play-bundle-${{ inputs.version_code || github.run_number }}
+          path: pull-up-*.aab
+          retention-days: 30

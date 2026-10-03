@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { C, F } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 
 /** Email + one-time code. Calls onDone after a successful sign-in. */
 export function SignIn({ onDone, reason }: { onDone?: () => void; reason?: string }) {
@@ -88,6 +89,17 @@ export function SignIn({ onDone, reason }: { onDone?: () => void; reason?: strin
         </>
       )}
       {msg ? <Text style={styles.err}>{msg}</Text> : null}
+      <Text style={styles.fine}>
+        By continuing you agree to the{' '}
+        <Text style={styles.fineLink} onPress={() => Linking.openURL(TERMS_URL)}>
+          Terms of Use
+        </Text>{' '}
+        and acknowledge the{' '}
+        <Text style={styles.fineLink} onPress={() => Linking.openURL(PRIVACY_URL)}>
+          Privacy Policy
+        </Text>
+        .
+      </Text>
     </View>
   );
 }
@@ -112,4 +124,6 @@ const styles = StyleSheet.create({
   btnText: { fontFamily: F.uiBold, color: C.accentInk, fontSize: 15 },
   link: { fontFamily: F.ui, color: C.muted, fontSize: 13, textDecorationLine: 'underline', textAlign: 'center' },
   err: { fontFamily: F.ui, color: C.warn, fontSize: 13 },
+  fine: { fontFamily: F.uiRegular, color: C.faint, fontSize: 11, lineHeight: 16 },
+  fineLink: { color: C.muted, textDecorationLine: 'underline' },
 });

@@ -109,6 +109,14 @@ export function isHttpUrl(v: string): boolean {
   return /^https?:\/\/[^\s]+\.[^\s]+$/i.test(v.trim()) && v.trim().length <= 500;
 }
 
+/** Characters the database refuses (control characters other than tab and newline). */
+export function hasControlChars(v: string): boolean {
+  return /[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(v);
+}
+
+/** Field limits; the database enforces the same ones. */
+export const LIMITS = { venue: 120, area: 80, title: 120, address: 200, act: 100, acts: 12, url: 500, price: 2000 } as const;
+
 export type SubmitForm = {
   metro: string;
   venueName: string;
@@ -189,6 +197,17 @@ export function buildPayload(f: SubmitForm, today: Ymd): { ok: true; payload: Su
   const source = f.sourceUrl.trim();
   if (source && !isHttpUrl(source)) errors.push('The post link must start with http:// or https://.');
 
+  const rawActs = f.acts.split(/[\n,]+/).map((a) => a.trim().replace(/\s+/g, ' ')).filter(Boolean);
+  if (new Set(rawActs.map((a) => a.toLowerCase())).size > LIMITS.acts) errors.push(`List at most ${LIMITS.acts} bands.`);
+  if (rawActs.some((a) => a.length > LIMITS.act)) errors.push(`Each band name can be up to ${LIMITS.act} characters.`);
+  if (f.venueName.trim().length > LIMITS.venue) errors.push(`The venue can be up to ${LIMITS.venue} characters.`);
+  if (f.area.trim().length > LIMITS.area) errors.push(`The neighborhood can be up to ${LIMITS.area} characters.`);
+  if (title.length > LIMITS.title || f.title.trim().length > LIMITS.title) errors.push(`The event name can be up to ${LIMITS.title} characters.`);
+  if (f.address.trim().length > LIMITS.address) errors.push(`The address can be up to ${LIMITS.address} characters.`);
+  if ([f.venueName, f.area, f.title, f.address, f.acts].some(hasControlChars)) errors.push('Remove unusual characters from the text fields.');
+  if ((min !== null && (min < 0 || min > LIMITS.price)) || (max !== null && (max < 0 || max > LIMITS.price))) {
+    errors.push(`Prices must be between 0 and ${LIMITS.price}.`);
+  }
   if (errors.length || !metro || !date || !time) return { ok: false, errors };
   return {
     ok: true,
@@ -214,7 +233,7 @@ export function buildPayload(f: SubmitForm, today: Ymd): { ok: true; payload: Su
 /** A row of the submissions table, as the app reads it. */
 export type SubmissionRow = {
   id: string;
-  created_by: string;
+  created_by: string | null;
   created_at: string;
   status: 'pending' | 'live' | 'removed';
   metro: string;
@@ -272,7 +291,7 @@ export function rowToShow(row: SubmissionRow): Show | null {
     },
     ticketUrl: row.ticket_url ?? row.source_url ?? undefined,
     status: 'scheduled',
-    source: { provider: 'community', url: row.source_url ?? '', fetchedAt: row.created_at },
+    source: { provider: 'community', url: row.source_url ?? '', fetchedAt: row.created_at, ...(row.created_by ? { author: row.created_by } : {}) },
     updatedAt: row.created_at,
   });
 }

@@ -27,7 +27,7 @@ import { recordDecision, removeDecision } from '@/lib/decide';
 import type { Decision } from '@/lib/types';
 import { useAuth } from '@/lib/auth';
 import { COMMUNITY_PREFIX } from '@/lib/community/form';
-import { reportSubmission } from '@/lib/community/api';
+import { ModerationSheet } from '@/components/ModerationSheet';
 import { useListings } from '@/lib/listingsStore';
 import { resolveShow, useShowPreviews, type ActPreview } from '@/lib/previews';
 import { notificationsAllowed, syncReminders } from '@/lib/reminders';
@@ -51,6 +51,7 @@ export default function ShowDetail() {
   const player = useAudioPlayer(null, { updateInterval: 250 });
   const status = useAudioPlayerStatus(player);
   const [playingAct, setPlayingAct] = useState<string | null>(null);
+  const [moderating, setModerating] = useState(false);
   const [notifOk, setNotifOk] = useState(true);
   const { width } = useWindowDimensions();
   const flyerW = Math.min(width - 32, 460);
@@ -294,20 +295,10 @@ export default function ShowDetail() {
             style={styles.secondary}
             onPress={() => {
               if (!useAuth.getState().userId) return router.push('/community');
-              Alert.alert('Report this show?', 'Use this if it is fake, wrong, or spam. Three reports take it down.', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Report',
-                  style: 'destructive',
-                  onPress: async () => {
-                    const r = await reportSubmission(show.id.slice(COMMUNITY_PREFIX.length), 'detail');
-                    Alert.alert(r.ok ? 'Thanks' : 'That did not work', r.ok ? 'Your report was sent.' : r.error);
-                  },
-                },
-              ]);
+              setModerating(true);
             }}>
             <Ionicons name="flag-outline" size={16} color={C.text} />
-            <Text style={styles.secondaryText}>Report this show</Text>
+            <Text style={styles.secondaryText}>Report or block</Text>
           </Pressable>
         ) : null}
 
@@ -326,6 +317,7 @@ export default function ShowDetail() {
       </ScrollView>
       </Animated.View>
       </GestureDetector>
+      {moderating ? <ModerationSheet show={show} onClose={() => setModerating(false)} /> : null}
       {canSwipe ? (
         <>
           <Animated.View pointerEvents="none" style={[styles.swipeTag, styles.tagGoing, goingTag]}>

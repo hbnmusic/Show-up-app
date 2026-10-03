@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pull Up",
     "slug": "pull-up",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "pullup",
@@ -25,8 +25,12 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR",
-        "android.permission.SYSTEM_ALERT_WINDOW"
-      ]
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "allowBackup": false
     },
     "web": {
       "output": "single",
@@ -61,10 +65,20 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Pull Up uses your location once to show concerts near you. It is not stored on a server."
+          "locationWhenInUsePermission": "Pull Up uses your approximate location once, on this phone, to pick the nearest city. It is never sent to a server."
         }
       ],
-      "expo-share-intent"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
+          }
+        }
+      ],
+      "expo-share-intent",
+      "./plugins/withReleaseSigning"
     ],
     "experiments": {
       "typedRoutes": true

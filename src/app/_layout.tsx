@@ -140,6 +140,7 @@ export default function RootLayout() {
           <Stack.Screen name="filters" options={{ presentation: 'modal', title: 'Filters' }} />
           <Stack.Screen name="cities" options={{ presentation: 'modal', title: 'Choose a city' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          <Stack.Screen name="about" options={{ title: 'About and credits' }} />
           <Stack.Screen name="community" options={{ title: 'Community shows' }} />
           <Stack.Screen name="submit" options={{ presentation: 'modal', title: 'Add a show' }} />
         </Stack>

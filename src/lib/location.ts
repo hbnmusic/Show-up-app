@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 
+import { explainFirst, LOCATION_EXPLAINER } from './explain';
 import { useApp } from './store';
 import { DEFAULT_METRO, METROS, metroById, nearestMetro, type Metro } from './metros';
 import type { Place } from './types';
@@ -18,7 +19,15 @@ export type Detected =
 /** One-off position from the phone, turned into a Place. Never stored anywhere but on the phone. */
 export async function detectPlace(): Promise<Detected> {
   try {
-    const perm = await Location.requestForegroundPermissionsAsync();
+    let perm = await Location.getForegroundPermissionsAsync();
+    if (!perm.granted) {
+      if (!perm.canAskAgain) return { ok: false, reason: 'denied' };
+      // Explain in plain words before the system prompt appears.
+      if (!(await explainFirst(LOCATION_EXPLAINER.title, LOCATION_EXPLAINER.message, LOCATION_EXPLAINER.continueLabel))) {
+        return { ok: false, reason: 'denied' };
+      }
+      perm = await Location.requestForegroundPermissionsAsync();
+    }
     if (!perm.granted) return { ok: false, reason: 'denied' };
     const pos =
       (await Location.getLastKnownPositionAsync({ maxAge: 30 * 60_000 })) ??

@@ -75,7 +75,7 @@ export type Show = {
   flyerCredit?: string;
   ticketUrl?: string;
   status: ShowStatus;
-  source: { provider: string; url: string; fetchedAt: string };
+  source: { provider: string; url: string; fetchedAt: string; /** Community shows only: the person who added it (an opaque id), used for block and report. */ author?: string };
   updatedAt: string;
 };
 

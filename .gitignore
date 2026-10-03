@@ -50,3 +50,11 @@ listings/shows*.json
 listings/state.json
 listings/tm-state.json
 listings/raw-sample*.json
+
+# Signing material must never be committed
+*.jks
+*.keystore
+*.p12
+*.pepk
+keystore*.b64
+upload-keystore*

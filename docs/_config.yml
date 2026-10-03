@@ -1,0 +1,3 @@
+# GitHub Pages: publish the public pages only. The Play paperwork stays in the repo, not on the site.
+exclude:
+  - play

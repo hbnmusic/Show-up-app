@@ -52,6 +52,9 @@ jobs:
       - name: Generate the Android project
         run: npx expo prebuild --platform android --no-install
 
+      - name: Check Play target SDK
+        run: scripts/check-target-sdk.sh
+
       # arm64 only: covers nearly every Android phone from the last several
       # years and roughly halves build time and APK size.
       - name: Build release APK

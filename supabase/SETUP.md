@@ -6,7 +6,9 @@ Nothing else in the app depends on this.
 1. **Create the project.** supabase.com → New project (free plan). Choose a region near most users
    and save the database password somewhere safe. Pull Up never uses it.
 2. **Create the tables.** SQL Editor → New query → paste all of `supabase/schema.sql` → Run.
-   Running it twice is harmless.
+   Running it twice is harmless. (If the project already ran an older `schema.sql`, paste
+   `supabase/migrations/002_compliance.sql` instead; it adds terms acceptance, blocking, user reports, field
+   validation and account deletion, and is also safe to run twice.)
 3. **Make the email contain the code.** Authentication → Emails → Templates. Edit both **Confirm signup**
    (new people) and **Magic Link** (returning people) so the body shows `{{ .Token }}`, for example:
 
@@ -30,7 +32,8 @@ Nothing else in the app depends on this.
 - Trusted people skip the confirmation wait: Authentication → Users → copy the user's ID → Table Editor →
   `trusted_users` → insert row. Do this for yourself first.
 - Block someone who posts spam: same, in `banned_users`.
-- Remove a bad show: Table Editor → `submissions` → set `status` to `removed`.
+- Remove a bad show: Table Editor → `submissions` → set `status` to `removed`. More in `supabase/MODERATION.md`
+  (reports, bans, deletion requests, SQL to copy).
 - A person can post 5 shows per 24 hours (30 if trusted). Three different people reporting a show removes it.
 - The free plan pauses a project after a week with no activity; open the dashboard to resume it.
 

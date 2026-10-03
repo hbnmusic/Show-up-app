@@ -71,6 +71,7 @@ export function cleanShow(raw: unknown): Show | null {
       provider: str(source.provider) ?? 'unknown',
       url: str(source.url) ?? '',
       fetchedAt: str(source.fetchedAt) ?? '',
+      ...(str(source.author) ? { author: str(source.author) } : {}),
     },
     updatedAt: validDate(raw.updatedAt) ? raw.updatedAt : (raw.startsAt as string),
   };

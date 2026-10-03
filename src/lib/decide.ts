@@ -13,8 +13,8 @@ export async function recordDecision(showId: string, d: Decision) {
       () => {},
     );
   }
-  if (d === 'going') {
-    // First "going" is when the app asks for notification permission.
+  if (d === 'going' && !useApp.getState().notificationsAsked) {
+    // First "going" is when the app explains, then asks for, notification permission. Asked once; Settings can ask again.
     await ensureNotificationPermission().catch(() => false);
   }
   await syncReminders();

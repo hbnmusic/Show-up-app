@@ -5,8 +5,16 @@ import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, T
 import { SignIn } from '@/components/SignIn';
 import { C, F } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
+import { ModerationSheet } from '@/components/ModerationSheet';
+import { TermsGate } from '@/components/TermsGate';
+import { useTerms } from '@/lib/useTerms';
+import { DELETE_ACCOUNT_URL, PRIVACY_URL, TERMS_URL } from '@/lib/legal';
+import type { Show } from '@/lib/types';
 import {
   confirmSubmission,
+  deleteMyAccount,
+  fetchBlocked,
+  unblockUser,
   fetchMine,
   fetchQueue,
   reportSubmission,
@@ -31,12 +39,16 @@ export default function CommunityScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const [reload, setReload] = useState(0);
+  const [blocked, setBlocked] = useState<string[]>([]);
+  const [moderating, setModerating] = useState<Show | null>(null);
+  const terms = useTerms(userId);
 
   useEffect(() => {
     if (!userId) return;
     let live = true;
-    Promise.all([fetchQueue(userId, metro.id), fetchMine(userId)]).then(([q, m]) => {
+    Promise.all([fetchQueue(userId, metro.id), fetchMine(userId), fetchBlocked(userId)]).then(([q, m, b]) => {
       if (!live) return;
+      setBlocked(b.ok ? b.data : []);
       setQueue(q.ok ? q.data : null);
       setMine(m.ok ? m.data : null);
       setError(!q.ok ? q.error : !m.ok ? m.error : null);
@@ -63,6 +75,30 @@ export default function CommunityScreen() {
     await useListings.getState().refreshCommunity([metro.id]);
   };
 
+  const unblock = (id: string) => act(id, () => unblockUser(id));
+
+  const confirmDelete = () =>
+    Alert.alert(
+      'Delete your account?',
+      'This permanently deletes your sign-in, the shows you added that nobody else confirmed, your confirmations, blocks and reports. Shows that another person confirmed stay listed without your name. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete my account',
+          style: 'destructive',
+          onPress: async () => {
+            setBusyId('delete');
+            const res = await deleteMyAccount();
+            setBusyId(null);
+            if (!res.ok) return Alert.alert('Could not delete your account', `${res.error}\n\nYou can also request deletion at ${DELETE_ACCOUNT_URL}`);
+            await signOut();
+            await useListings.getState().refreshCommunity([metro.id]);
+            Alert.alert('Account deleted', 'Your account and your data were deleted.');
+          },
+        },
+      ],
+    );
+
   const withdraw = (r: SubmissionRow) =>
     Alert.alert('Remove this show?', 'It will no longer be listed for anyone.', [
       { text: 'Cancel', style: 'cancel' },
@@ -87,7 +123,13 @@ export default function CommunityScreen() {
         )}
       </View>
 
-      {userId ? (
+      {userId && terms.accepted === false ? (
+        <View style={styles.card}>
+          <TermsGate onAccept={terms.accept} error={terms.error} />
+        </View>
+      ) : null}
+
+      {userId && terms.accepted ? (
         <>
           <Pressable style={styles.add} onPress={() => router.push('/submit')} accessibilityRole="button">
             <Text style={styles.addText}>Add a show</Text>
@@ -127,9 +169,18 @@ export default function CommunityScreen() {
                     <Pressable
                       style={styles.btn}
                       disabled={busyId === r.id}
-                      onPress={() => act(r.id, () => reportSubmission(r.id, 'queue'))}
+                      onPress={() =>
+                        act(r.id, async () => {
+                          const res = await reportSubmission(r.id, 'Marked as not right');
+                          if (res.ok) Alert.alert('Report received', 'Thank you. Your report was recorded and the show is hidden from your list.');
+                          return res;
+                        })
+                      }
                       accessibilityRole="button">
                       <Text style={styles.btnText}>Not right</Text>
+                    </Pressable>
+                    <Pressable style={styles.btn} onPress={() => setModerating(s)} accessibilityRole="button">
+                      <Text style={styles.btnText}>Report / block</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -162,9 +213,47 @@ export default function CommunityScreen() {
               </View>
             );
           })}
+          {blocked.length ? <Text style={styles.section}>BLOCKED PEOPLE</Text> : null}
+          {blocked.map((id, i) => (
+            <View key={id} style={styles.card}>
+              <View style={[styles.accountRow, { paddingVertical: 10 }]}>
+                <Text style={[styles.label, { flex: 1 }]}>Blocked person {i + 1}</Text>
+                <Pressable onPress={() => unblock(id)} hitSlop={8} disabled={busyId === id} accessibilityRole="button">
+                  <Text style={styles.link}>Unblock</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))}
           {error ? <Text style={styles.err}>{error}</Text> : null}
         </>
       ) : null}
+
+      {userId ? (
+        <>
+          <Text style={styles.section}>YOUR ACCOUNT</Text>
+          <View style={styles.card}>
+            <Pressable style={styles.item} onPress={confirmDelete} disabled={busyId === 'delete'} accessibilityRole="button">
+              <Text style={[styles.label, { color: C.danger }]}>Delete my account</Text>
+              <Text style={styles.detail}>Removes your sign-in and your data. Also possible on the web.</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
+      <View style={styles.legalRow}>
+        <Pressable onPress={() => Linking.openURL(TERMS_URL)} hitSlop={6}>
+          <Text style={styles.link}>Terms of Use</Text>
+        </Pressable>
+        <Pressable onPress={() => Linking.openURL(PRIVACY_URL)} hitSlop={6}>
+          <Text style={styles.link}>Privacy Policy</Text>
+        </Pressable>
+        <Pressable onPress={() => Linking.openURL(DELETE_ACCOUNT_URL)} hitSlop={6}>
+          <Text style={styles.link}>Delete account (web)</Text>
+        </Pressable>
+      </View>
+      {moderating ? <ModerationSheet show={moderating} onClose={() => {
+            setModerating(null);
+            setReload((n) => n + 1);
+          }} /> : null}
     </ScrollView>
   );
 }
@@ -186,6 +275,7 @@ const styles = StyleSheet.create({
   linkDanger: { fontFamily: F.ui, color: C.danger, fontSize: 13, marginTop: 6 },
   status: { fontFamily: F.ui, color: C.warn, fontSize: 12, marginTop: 4 },
   err: { fontFamily: F.ui, color: C.warn, fontSize: 13 },
+  legalRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 14 },
   add: { height: 48, borderRadius: 999, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   addText: { fontFamily: F.uiBold, color: C.accentInk, fontSize: 15 },
   btnRow: { flexDirection: 'row', gap: 8, marginTop: 10 },

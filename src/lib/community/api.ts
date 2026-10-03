@@ -89,3 +89,34 @@ export const submitShow = (p: SubmitPayload) => rpc('submit_show', { p });
 export const confirmSubmission = (sid: string) => rpc('confirm_submission', { sid });
 export const reportSubmission = (sid: string, why?: string) => rpc('report_submission', { sid, why: why ?? null });
 export const withdrawSubmission = (sid: string) => rpc('withdraw_submission', { sid });
+
+export const acceptTerms = (version: string) => rpc('accept_terms', { v: version });
+export const blockUser = (target: string) => rpc('block_user', { target });
+export const unblockUser = (target: string) => rpc('unblock_user', { target });
+export const reportUser = (target: string, why: string, sid?: string) => rpc('report_user', { target, why, sid: sid ?? null });
+/** Deletes the signed-in account and its data on the server. See supabase/MODERATION.md for what is kept. */
+export const deleteMyAccount = () => rpc('delete_my_account', {});
+
+/** True when this person has accepted the current Terms. */
+export async function fetchTermsAccepted(userId: string, version: string): Promise<Result<boolean>> {
+  if (!supabase) return { ok: false, error: 'not configured' };
+  try {
+    const { data, error } = await supabase.from('terms_acceptances').select('version').eq('user_id', userId).eq('version', version).limit(1);
+    if (error) throw error;
+    return { ok: true, data: (data ?? []).length > 0 };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** People this person has blocked. */
+export async function fetchBlocked(userId: string): Promise<Result<string[]>> {
+  if (!supabase) return { ok: false, error: 'not configured' };
+  try {
+    const { data, error } = await supabase.from('user_blocks').select('blocked').eq('blocker', userId);
+    if (error) throw error;
+    return { ok: true, data: (data ?? []).map((r) => r.blocked as string) };
+  } catch (e) {
+    return fail(e);
+  }
+}

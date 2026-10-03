@@ -134,6 +134,31 @@ describe('building a submission', () => {
     const r = buildPayload({ ...good, date: '2028-01-01' }, TODAY);
     assert.ok(!r.ok);
   });
+
+  it('rejects over-long text, too many bands and control characters (same limits as the database)', () => {
+    const cases: [Partial<SubmitForm>, RegExp][] = [
+      [{ venueName: 'v'.repeat(121) }, /venue/i],
+      [{ area: 'a'.repeat(81) }, /neighborhood/i],
+      [{ title: 't'.repeat(121) }, /event name/i],
+      [{ address: 'x'.repeat(201) }, /address/i],
+      [{ acts: Array.from({ length: 13 }, (_, n) => `Band ${n}`).join(', ') }, /at most 12/i],
+      [{ acts: 'b'.repeat(101) }, /band name/i],
+      [{ venueName: 'Bad\u0007Name' }, /unusual characters/i],
+      [{ ticketUrl: `https://example.com/${'x'.repeat(500)}` }, /ticket link/i],
+      [{ free: false, price: '2500' }, /price/i],
+    ];
+    for (const [patch, re] of cases) {
+      const r = buildPayload({ ...good, ...patch }, TODAY);
+      assert.equal(r.ok, false, JSON.stringify(patch).slice(0, 60));
+      if (!r.ok) assert.ok(r.errors.some((e) => re.test(e)), `${JSON.stringify(patch).slice(0, 60)} -> ${r.errors.join('|')}`);
+    }
+  });
+
+  it('keeps the author id on community shows so they can be reported and blocked', () => {
+    const s = rowToShow({ ...row, created_by: 'author-1' });
+    assert.equal(s?.source.author, 'author-1');
+    assert.equal(rowToShow({ ...row, created_by: null })?.source.author, undefined);
+  });
 });
 
 const row: SubmissionRow = {

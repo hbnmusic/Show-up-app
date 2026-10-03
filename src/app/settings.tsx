@@ -7,6 +7,7 @@ import { isCommunityFeed, useListings } from '@/lib/listingsStore';
 import { ensureNotificationPermission, notificationsAllowed, syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
+import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 import type { ReminderPrefs } from '@/lib/types';
 
 export default function SettingsScreen() {
@@ -118,19 +119,31 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <Pressable style={styles.refreshRow} onPress={() => router.push('/community')} accessibilityRole="button">
               <Text style={styles.label}>Add or confirm shows</Text>
-              <Text style={styles.detail}>Add a show the listings missed, or confirm one someone else added</Text>
+              <Text style={styles.detail}>Add a show the listings missed, confirm one, manage blocks, or delete your account</Text>
             </Pressable>
           </View>
         </>
       ) : null}
 
-      <Text style={styles.section}>ABOUT THIS BUILD</Text>
+      <Text style={styles.section}>ABOUT</Text>
       <View style={styles.card}>
-        <Text style={styles.about}>
-          Prototype. Flyers are generated placeholders, not promoter artwork. Genre tags come from the listings
-          provider and are broad. Previews come from the Deezer public API, which allows non-commercial use only.
-        </Text>
+        <Pressable style={styles.refreshRow} onPress={() => router.push('/about')} accessibilityRole="button">
+          <Text style={styles.label}>About, credits and support</Text>
+          <Text style={styles.detail}>Data sources, image credits and contact</Text>
+        </Pressable>
+        <View style={styles.divider} />
+        <Pressable style={styles.refreshRow} onPress={() => Linking.openURL(PRIVACY_URL)} accessibilityRole="link">
+          <Text style={styles.label}>Privacy Policy</Text>
+        </Pressable>
+        <View style={styles.divider} />
+        <Pressable style={styles.refreshRow} onPress={() => Linking.openURL(TERMS_URL)} accessibilityRole="link">
+          <Text style={styles.label}>Terms of Use</Text>
+        </Pressable>
       </View>
+      <Text style={styles.help}>
+        Flyers without a promoter image are generated. Genre tags come from the listings providers and are broad.
+        Previews come from the Deezer public API, which allows non-commercial use only.
+      </Text>
 
       <Pressable style={styles.reset} onPress={confirmReset}>
         <Text style={styles.resetText}>Reset all data on this phone</Text>
