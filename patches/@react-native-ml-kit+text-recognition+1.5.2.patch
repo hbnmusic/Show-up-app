@@ -1,0 +1,53 @@
+diff --git a/node_modules/@react-native-ml-kit/text-recognition/android/build.gradle b/node_modules/@react-native-ml-kit/text-recognition/android/build.gradle
+index b5a9949..9b9a9ed 100644
+--- a/node_modules/@react-native-ml-kit/text-recognition/android/build.gradle
++++ b/node_modules/@react-native-ml-kit/text-recognition/android/build.gradle
+@@ -63,12 +63,4 @@ dependencies {
+     implementation 'com.facebook.react:react-native:+'  // From node_modules
+     // To recognize Latin script
+     implementation 'com.google.mlkit:text-recognition:16.0.0'
+-    // To recognize Chinese script
+-    implementation 'com.google.mlkit:text-recognition-chinese:16.0.0'
+-    // To recognize Devanagari script
+-    implementation 'com.google.mlkit:text-recognition-devanagari:16.0.0'
+-    // To recognize Japanese script
+-    implementation 'com.google.mlkit:text-recognition-japanese:16.0.0'
+-    // To recognize Korean script
+-    implementation 'com.google.mlkit:text-recognition-korean:16.0.0'
+ }
+diff --git a/node_modules/@react-native-ml-kit/text-recognition/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java b/node_modules/@react-native-ml-kit/text-recognition/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
+index 004bfb3..5d4b4bc 100644
+--- a/node_modules/@react-native-ml-kit/text-recognition/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
++++ b/node_modules/@react-native-ml-kit/text-recognition/android/src/main/java/com/rnmlkit/textrecognition/TextRecognitionModule.java
+@@ -25,10 +25,6 @@ import com.google.mlkit.vision.text.Text;
+ import com.google.mlkit.vision.text.TextRecognition;
+ import com.google.mlkit.vision.text.TextRecognizer;
+ import com.google.mlkit.vision.text.TextRecognizerOptionsInterface;
+-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions;
+-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions;
+-import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions;
+-import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions;
+ import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+ 
+ import java.io.IOException;
+@@ -144,18 +140,8 @@ public class TextRecognitionModule extends ReactContextBaseJavaModule {
+             return TextRecognizerOptions.DEFAULT_OPTIONS;
+         }
+ 
+-        switch (script) {
+-            case "Chinese":
+-                return new ChineseTextRecognizerOptions.Builder().build();
+-            case "Devanagari":
+-                return new DevanagariTextRecognizerOptions.Builder().build();
+-            case "Japanese":
+-                return new JapaneseTextRecognizerOptions.Builder().build();
+-            case "Korean":
+-                return new KoreanTextRecognizerOptions.Builder().build();
+-            default:
+-                return TextRecognizerOptions.DEFAULT_OPTIONS;
+-        }
++        // Pull Up bundles the Latin model only (smaller app); other scripts fall back to Latin.
++        return TextRecognizerOptions.DEFAULT_OPTIONS;
+     }
+ 
+     @ReactMethod

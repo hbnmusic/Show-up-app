@@ -9,6 +9,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+import { mergeFirstParty, parseFpRows, type FpRow } from './fpMerge';
+import { applySwitchesToAll, DEFAULT_LICENSED, parseSwitches, type LicensedSwitches } from './licensed';
 import { dedupeKey, withRetained } from './listings/merge';
 import { parseFeed } from './listings/validate';
 import { DEFAULT_METRO } from './metros';
@@ -26,6 +28,8 @@ export const LISTINGS_URL =
 export const listingsUrl = (metro: string) => LISTINGS_URL.replace('{metro}', metro);
 
 const CACHE_PREFIX = 'pull-up-listings-v2:';
+const FP_PREFIX = 'pull-up-fp-v1:';
+const SWITCH_KEY = 'pull-up-licensed-switches-v1';
 const INDEX_KEY = `${CACHE_PREFIX}index`;
 /** Before per-city feeds the app saved one New York feed under this key. */
 const LEGACY_KEY = 'pull-up-listings-cache-v1';
@@ -41,6 +45,10 @@ type ListingsState = {
   shows: Show[];
   byId: Record<string, Show>;
   feeds: Record<string, MetroFeed>;
+  /** First-party shows (venue pages, shared flyers) per city. */
+  fpRows: Record<string, FpRow[]>;
+  /** On/off switches for the licensed layer (JamBase listings, Ticketmaster price, photo, link). */
+  switches: LicensedSwitches;
   source: ListingsSource;
   generatedAt: string | null;
   attribution: string[];
@@ -55,6 +63,8 @@ type ListingsState = {
   refresh: (opts?: { force?: boolean; metros?: string[] }) => Promise<boolean>;
   /** Re-download the shows other people added (after submitting or confirming one). */
   refreshCommunity: (metros?: string[]) => Promise<boolean>;
+  /** Re-download first-party shows and the licensed-layer switches (after sharing a flyer, or on refresh). */
+  refreshFirstParty: (metros?: string[]) => Promise<boolean>;
 };
 
 /** Shows other people added are kept as one extra feed per city, under this prefix. */
@@ -63,11 +73,17 @@ export const isCommunityFeed = (id: string) => id.startsWith(COMMUNITY_FEED);
 
 const index = (shows: Show[]): Record<string, Show> => Object.fromEntries(shows.map((s) => [s.id, s]));
 
-function combine(feeds: Record<string, MetroFeed>) {
+function combine(feeds: Record<string, MetroFeed>, fpRows: Record<string, FpRow[]> = {}, switches: LicensedSwitches = DEFAULT_LICENSED) {
   const byId = new Map<string, Show>();
   const entries = Object.entries(feeds);
-  // Provider listings first, so a community copy of a show the provider already has is dropped.
-  for (const [id, f] of entries) if (!isCommunityFeed(id)) for (const s of f.shows) if (!byId.has(s.id)) byId.set(s.id, s);
+  // Provider listings first (with the licensed-layer switches applied and first-party shows merged in, one card per show),
+  // so a community copy of a show the provider already has is dropped.
+  const metros = new Set([...entries.filter(([id]) => !isCommunityFeed(id)).map(([id]) => id), ...Object.keys(fpRows)]);
+  for (const id of metros) {
+    const licensed = applySwitchesToAll(feeds[id]?.shows ?? [], switches);
+    const merged = fpRows[id]?.length ? mergeFirstParty(licensed, fpRows[id], id) : licensed;
+    for (const s of merged) if (!byId.has(s.id)) byId.set(s.id, s);
+  }
   const taken = new Set([...byId.values()].map(dedupeKey));
   for (const [id, f] of entries) {
     if (!isCommunityFeed(id)) continue;
@@ -106,6 +122,8 @@ export const useListings = create<ListingsState>()((set, get) => ({
   shows: [],
   byId: {},
   feeds: {},
+  fpRows: {},
+  switches: DEFAULT_LICENSED,
   source: 'none',
   generatedAt: null,
   attribution: [],
@@ -138,7 +156,18 @@ export const useListings = create<ListingsState>()((set, get) => ({
     } catch {
       // Damaged cache storage is the same as no cache.
     }
-    set({ feeds, ...combine(feeds), ready: true });
+    const fpRows: Record<string, FpRow[]> = {};
+    let switches = DEFAULT_LICENSED;
+    try {
+      switches = parseSwitches(JSON.parse((await AsyncStorage.getItem(SWITCH_KEY)) ?? '{}'));
+      for (const id of Object.keys(feeds)) {
+        const raw = await AsyncStorage.getItem(`${FP_PREFIX}${id}`);
+        if (raw) fpRows[id] = parseFpRows(JSON.parse(raw));
+      }
+    } catch {
+      // Damaged copies are the same as none.
+    }
+    set({ feeds, fpRows, switches, ...combine(feeds, fpRows, switches), ready: true });
   },
 
   refresh: async ({ force = false, metros } = {}) => {
@@ -171,7 +200,7 @@ export const useListings = create<ListingsState>()((set, get) => ({
         const shows = withRetained(feed.shows, have?.shows ?? [], Object.keys(useApp.getState().decisions));
         const metroFeed: MetroFeed = { generatedAt: feed.generatedAt, attribution: feed.attribution, shows, source: 'live' };
         const feeds = { ...cur.feeds, [id]: metroFeed };
-        set({ feeds, ...combine(feeds), checkedAt: { ...cur.checkedAt, [id]: Date.now() } });
+        set({ feeds, ...combine(feeds, cur.fpRows, cur.switches), checkedAt: { ...cur.checkedAt, [id]: Date.now() } });
         await save(id, metroFeed, Object.keys(cur.feeds));
         changed = true;
       } catch (e) {
@@ -187,8 +216,9 @@ export const useListings = create<ListingsState>()((set, get) => ({
       }
     }
     const communityChanged = await get().refreshCommunity(wanted);
+    const fpChanged = await get().refreshFirstParty(wanted);
     set({ refreshing: false, error: firstError });
-    return changed || communityChanged;
+    return changed || communityChanged || fpChanged;
   },
 
   refreshCommunity: async (metros) => {
@@ -206,10 +236,38 @@ export const useListings = create<ListingsState>()((set, get) => ({
       const shows = withRetained(res.data, have?.shows ?? [], Object.keys(useApp.getState().decisions));
       const feed: MetroFeed = { generatedAt: new Date().toISOString(), attribution: [], shows, source: 'live' };
       const feeds = { ...cur.feeds, [id]: feed };
-      set({ feeds, ...combine(feeds) });
+      set({ feeds, ...combine(feeds, cur.fpRows, cur.switches) });
       await save(id, feed, Object.keys(cur.feeds));
       changed = true;
     }
+    return changed;
+  },
+
+  refreshFirstParty: async (metros) => {
+    if (!communityEnabled) return false;
+    const { fetchFpShows, fetchSwitches } = await import('./fp/api');
+    let changed = false;
+    const sw = await fetchSwitches();
+    if (sw.ok) {
+      set({ switches: sw.data });
+      AsyncStorage.setItem(SWITCH_KEY, JSON.stringify(sw.data)).catch(() => {});
+      changed = true;
+    }
+    for (const metro of metros ?? currentMetros()) {
+      // A failure here is ignored: the provider listings are what the app depends on.
+      const res = await fetchFpShows(metro);
+      if (!res.ok) continue;
+      const cur = get();
+      const keep = new Set(Object.keys(useApp.getState().decisions));
+      const have = new Set(res.data.map((r) => r.id));
+      const retained = (cur.fpRows[metro] ?? []).filter((r) => !have.has(r.id) && keep.has(`fp:${r.id}`));
+      const rows = [...res.data, ...retained];
+      const fpRows = { ...cur.fpRows, [metro]: rows };
+      set({ fpRows, ...combine(cur.feeds, fpRows, get().switches) });
+      AsyncStorage.setItem(`${FP_PREFIX}${metro}`, JSON.stringify(rows)).catch(() => {});
+      changed = true;
+    }
+    if (changed) set(combine(get().feeds, get().fpRows, get().switches));
     return changed;
   },
 }));

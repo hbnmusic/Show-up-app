@@ -59,3 +59,7 @@ listings/raw-sample*.json
 keystore*.b64
 upload-keystore*
 dist-functions/
+
+# Real flyer text for the private accuracy check; never committed
+private-eval/
+private-eval-*/

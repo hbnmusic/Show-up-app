@@ -5,11 +5,12 @@ import { C, F } from '@/constants/theme';
 import { PRIVACY_URL, TERMS_URL, TERMS_VERSION } from '@/lib/legal';
 
 /** Shown before a person's first submission or confirmation. Records the version and time on the server. */
-export function TermsGate({ onAccept, error }: { onAccept: () => Promise<boolean>; error?: string | null }) {
+export function TermsGate({ onAccept, error, note }: { onAccept: () => Promise<boolean>; error?: string | null; note?: string }) {
   const [busy, setBusy] = useState(false);
   return (
     <View style={styles.box}>
       <Text style={styles.title}>Before you add or confirm shows</Text>
+      {note ? <Text style={styles.body}>{note}</Text> : null}
       <Text style={styles.body}>
         You must be 18 or older to use Pull Up. Shows you add are visible to other people. Only add real events, do not post anything offensive, misleading or
         private, and do not add shows you do not know to be real. Reports and blocks are available on every community

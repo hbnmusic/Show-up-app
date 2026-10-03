@@ -10,6 +10,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, G, Line, Pattern, Rect } from 'react-native-svg';
 
 import { F, hash, paletteFor, seeded, type PosterPalette } from '@/constants/theme';
+import { useFlyers } from '@/lib/flyer/store';
 import { useShowPreviews } from '@/lib/previews';
 import { headliner, showTitle, supportActs } from '@/lib/showText';
 import { MONTHS, WEEKDAYS, formatTime, wall } from '@/lib/time';
@@ -304,6 +305,11 @@ function ZinePoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
  */
 function useCardPhoto(show: Show): { url: string; credit: string } | undefined {
   const previews = useShowPreviews(show.id);
+  // Image order: the person's own shared flyer (kept on this phone), then the venue's page image or Ticketmaster
+  // (the listing's own image, below), then the Deezer artist photo, then the generated poster.
+  const fpId = show.provenance?.fpId;
+  const mine = useFlyers((s) => (fpId ? s.images[fpId] : undefined));
+  if (mine) return { url: mine, credit: '' };
   if (show.flyerImages?.[0]) return { url: show.flyerImages[0], credit: show.flyerCredit ?? '' };
   const first = previews?.acts.find((a) => a.order === Math.min(...show.acts.map((x) => x.order)));
   return first && first.status === 'found' && first.confidence === 'high' && first.picture

@@ -124,6 +124,10 @@ export default function SettingsScreen() {
               <Text style={styles.label}>Add or confirm shows</Text>
               <Text style={styles.detail}>Add a show the listings missed, confirm one, manage blocks, or delete your account</Text>
             </Pressable>
+            <Pressable style={styles.refreshRow} onPress={() => router.push('/flyers')} accessibilityRole="button">
+              <Text style={styles.label}>My flyers</Text>
+              <Text style={styles.detail}>Status of flyers you shared from Instagram or your gallery, and flyers waiting for a second person to confirm</Text>
+            </Pressable>
           </View>
         </>
       ) : null}

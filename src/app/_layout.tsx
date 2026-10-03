@@ -23,6 +23,7 @@ import { track } from '@/lib/analyticsCore';
 import { useAuth } from '@/lib/auth';
 import { extractUrl } from '@/lib/community/form';
 import { initPlace } from '@/lib/location';
+import { useFlyers } from '@/lib/flyer/store';
 import { useListings } from '@/lib/listingsStore';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
@@ -64,11 +65,14 @@ function ShareRouter() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
   useEffect(() => {
     if (!hasShareIntent) return;
+    const images = (shareIntent.files ?? []).filter((f) => (f.mimeType ?? '').startsWith('image/')).map((f) => f.path);
     const text = shareIntent.text ?? shareIntent.webUrl ?? '';
     const url = shareIntent.webUrl ?? extractUrl(text);
     resetShareIntent();
     track('share_received');
-    if (communityEnabled && (url || text)) router.push({ pathname: '/submit', params: { url: url ?? '', text } });
+    if (!communityEnabled) return;
+    // Images, or a link or text, go to the flyer reader. It offers the manual form if a link cannot be read.
+    if (images.length || url || text) router.push({ pathname: '/flyer', params: { uris: JSON.stringify(images), url: images.length ? '' : (url ?? ''), text: images.length ? '' : text } });
   }, [hasShareIntent, shareIntent, resetShareIntent]);
   return null;
 }
@@ -91,6 +95,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     useAuth.getState().init();
+    useFlyers.getState().load();
+  }, []);
+
+  // Check shared flyers for results now and whenever the app comes to the front (local notices only; there is no push service).
+  useEffect(() => {
+    const check = () => useFlyers.getState().poll().then((jobs) => (jobs.some((j) => j.result === 'published') ? useListings.getState().refreshFirstParty() : undefined));
+    check();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') check();
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
@@ -161,6 +176,8 @@ export default function RootLayout() {
           <Stack.Screen name="about" options={{ title: 'About and credits' }} />
           <Stack.Screen name="community" options={{ title: 'Community shows' }} />
           <Stack.Screen name="submit" options={{ presentation: 'modal', title: 'Add a show' }} />
+          <Stack.Screen name="flyer" options={{ presentation: 'modal', title: 'Share a flyer' }} />
+          <Stack.Screen name="flyers" options={{ title: 'My flyers' }} />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

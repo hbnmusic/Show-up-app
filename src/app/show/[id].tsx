@@ -40,6 +40,8 @@ import {
 } from '@/lib/showText';
 import { useDeckState } from '@/lib/deckState';
 import { useApp } from '@/lib/store';
+import { conflictNotes, isFirstParty, sourcesNote, ticketLabel } from '@/lib/fpText';
+import { reportFpShow, withdrawFpShow } from '@/lib/fp/api';
 import { formatDay, wall } from '@/lib/time';
 
 export default function ShowDetail() {
@@ -291,7 +293,7 @@ export default function ShowDetail() {
         {show.ticketUrl ? (
           <Pressable style={styles.secondary} onPress={() => Linking.openURL(show.ticketUrl!)}>
             <Ionicons name="open-outline" size={16} color={C.text} />
-            <Text style={styles.secondaryText}>{show.source.provider === 'jambase' ? 'View on JamBase' : show.source.provider === 'community' ? 'Open the link' : 'Open listing'}</Text>
+            <Text style={styles.secondaryText}>{ticketLabel(show)}</Text>
           </Pressable>
         ) : null}
 
@@ -307,6 +309,47 @@ export default function ShowDetail() {
           </Pressable>
         ) : null}
 
+        {show.provenance?.fpId && isFirstParty(show) ? (
+          show.provenance.pending ? (
+            <Pressable
+              style={styles.secondary}
+              onPress={async () => {
+                const r = await withdrawFpShow(show.provenance!.fpId!);
+                Alert.alert(r.ok ? 'Withdrawn' : 'Could not withdraw', r.ok ? 'The show was removed.' : r.error);
+                if (r.ok) useListings.getState().refreshFirstParty();
+              }}>
+              <Ionicons name="close-circle-outline" size={16} color={C.text} />
+              <Text style={styles.secondaryText}>Withdraw this show</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              style={styles.secondary}
+              onPress={() => {
+                if (!useAuth.getState().userId) return router.push('/community');
+                Alert.alert('Report this listing?', 'Use this if the show is fake, wrong or should not be listed. Three reports remove it.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Report',
+                    style: 'destructive',
+                    onPress: async () => {
+                      const r = await reportFpShow(show.provenance!.fpId!);
+                      Alert.alert(r.ok ? 'Thanks' : 'Could not send', r.ok ? 'We will review it.' : r.error);
+                    },
+                  },
+                ]);
+              }}>
+              <Ionicons name="flag-outline" size={16} color={C.text} />
+              <Text style={styles.secondaryText}>Report this listing</Text>
+            </Pressable>
+          )
+        ) : null}
+
+        {show.provenance?.pending ? <Text style={styles.note}>Only you can see this show until a second person confirms it.</Text> : null}
+        {show.provenance?.unconfirmed ? <Text style={styles.note}>The venue&apos;s page stopped listing this show. It may have been cancelled or moved; check with the venue.</Text> : null}
+        {conflictNotes(show).map((t) => (
+          <Text key={t} style={styles.note}>{t}</Text>
+        ))}
+
         {decision === 'passed' ? (
           <Pressable style={styles.secondary} onPress={() => removeDecision(show.id)}>
             <Ionicons name="refresh" size={16} color={C.text} />
@@ -316,6 +359,7 @@ export default function ShowDetail() {
 
         <Text style={styles.note}>
           {show.source.provider === 'jambase' ? 'Listing from JamBase. ' : show.source.provider === 'manual' ? 'Listing added by hand. ' : show.source.provider === 'community' ? 'Added by the Pull Up community and confirmed by a second person; not checked by the venue. ' : ''}
+          {sourcesNote(show) ? `${sourcesNote(show)} ` : ''}
           Times and prices can change; check the listing before you go. Previews come from Deezer and may not
           be the right artist when names are common.
         </Text>

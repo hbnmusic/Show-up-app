@@ -83,6 +83,8 @@ export type Show = {
   ticketUrl?: string;
   /** Fields filled in from Ticketmaster, so the licensed layer can be switched off or purged by field. Absent on older feeds. */
   fieldSources?: { price?: 'ticketmaster'; image?: 'ticketmaster'; ticketUrl?: 'ticketmaster' };
+  /** Set on cards that include first-party data (venue pages or shared flyers): where each part came from. See fpMerge.ts. */
+  provenance?: import('./fpMerge').Provenance;
   status: ShowStatus;
   source: { provider: string; url: string; fetchedAt: string; /** Community shows only: the person who added it (an opaque id), used for block and report. */ author?: string };
   updatedAt: string;
