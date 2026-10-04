@@ -1370,3 +1370,14 @@ alter table fp.licensed_switches drop constraint if exists licensed_switches_fam
 alter table fp.licensed_switches add constraint licensed_switches_family_check check (family = 'jambase_listings');
 alter table fp.licensed_links drop constraint if exists licensed_links_source_check;
 alter table fp.licensed_links add constraint licensed_links_source_check check (source = 'jambase');
+
+-- 019: notification analytics event names (names only; see migrations/019_notification_analytics_events.sql)
+do $$
+declare def text;
+begin
+  select pg_get_functiondef('public.log_events(jsonb)'::regprocedure) into def;
+  if def not like '%notif_scheduled%' then
+    def := replace(def, '''ai_quota''];', '''ai_quota'',''notif_scheduled'',''notif_opened'',''notif_setting_changed''];');
+    execute def;
+  end if;
+end $$;

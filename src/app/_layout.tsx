@@ -25,6 +25,7 @@ import { runFlagEffects } from '@/lib/flagEffects';
 import { useFlags } from '@/lib/flags';
 import { clearPreviews } from '@/lib/previews';
 import { cancelRetentionNotifications } from '@/lib/retention/cancel';
+import { noteSeen, onForeground, onNotificationTapped, syncRetentionTask } from '@/lib/retention/service';
 import { track } from '@/lib/analyticsCore';
 import { useAuth } from '@/lib/auth';
 import { extractUrl } from '@/lib/community/form';
@@ -47,6 +48,15 @@ function useNotificationRouting() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const go = (n: Notifications.Notification) => {
+      // "New shows" and "Shows tonight" notifications open the deck set up for them (see lib/retention).
+      if (onNotificationTapped(n.request.identifier, n.request.content.data as Record<string, unknown> | undefined, n.date)) {
+        try {
+          router.navigate('/' as never);
+        } catch {
+          // The deck is the first screen anyway when the app starts from the notification.
+        }
+        return;
+      }
       const url = n.request.content.data?.url;
       if (typeof url === 'string') router.push(url as never);
     };
@@ -129,6 +139,23 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
+  // Retention notifications: count this open, keep the "new shows" baseline, and keep the background task in step with the
+  // switches. After the flags are read (and again when they change) the task is registered or removed.
+  const flagsLoaded = useFlags((s) => s.loaded);
+  const notifFlag = useFlags((s) => s.flags.notifications_enabled.enabled);
+  useEffect(() => {
+    if (!hydrated) return;
+    onForeground().then(() => syncRetentionTask()).catch(() => {});
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') onForeground().then(() => syncRetentionTask()).catch(() => {});
+      else noteSeen({ background: true });
+    });
+    return () => sub.remove();
+  }, [hydrated]);
+  useEffect(() => {
+    if (hydrated && flagsLoaded) syncRetentionTask().catch(() => {});
+  }, [hydrated, flagsLoaded, notifFlag]);
+
   // Check shared flyers for results now and whenever the app comes to the front (local notices only; there is no push service).
   useEffect(() => {
     const check = () => useFlyers.getState().poll().then((jobs) => (jobs.some((j) => j.result === 'published') ? useListings.getState().refreshFirstParty() : undefined));
@@ -169,6 +196,7 @@ export default function RootLayout() {
     const run = async () => {
       await syncReminders();
       if (await useListings.getState().refresh()) await syncReminders();
+      noteSeen({ background: false }); // first look at a city records the baseline for "new shows"
     };
     run();
     const sub = AppState.addEventListener('change', (s) => {

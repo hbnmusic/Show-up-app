@@ -25,6 +25,6 @@ export const LOCATION_EXPLAINER = {
 export const NOTIFICATION_EXPLAINER = {
   title: 'Allow reminders?',
   message:
-    'Pull Up can remind you about shows you mark as going: the day before, the day of, and an hour before doors. Reminders are created on this phone and nothing is sent to a server.',
+    'Pull Up can remind you about shows you mark as going: the day before, the day of, and an hour before doors. It can also tell you now and then when new shows are added in your city or when several shows are on tonight, at most once a day. All of these are created on this phone and nothing is sent to a server. You can switch each kind off in Settings.',
   continueLabel: 'Continue',
 } as const;

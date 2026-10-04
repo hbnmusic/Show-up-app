@@ -102,9 +102,11 @@ export function buildQueue(
   decisions: Record<string, Decision | undefined>,
   now: Date,
   pinnedId?: string | null,
+  /** When set, only these shows are offered (the "New" chip after a notification). */
+  onlyIds?: ReadonlySet<string> | null,
 ): Show[] {
   const list = shows
-    .filter((s) => !decisions[s.id] && matchesFilters(s, filters, now))
+    .filter((s) => !decisions[s.id] && (!onlyIds || onlyIds.has(s.id)) && matchesFilters(s, filters, now))
     .sort(byStart);
   if (pinnedId) {
     const i = list.findIndex((s) => s.id === pinnedId);

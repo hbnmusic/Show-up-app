@@ -91,7 +91,7 @@ Turning the switch ON again does not bring the data back by itself; run **Refres
 
 **How long:** the next time a phone opens the app and reads the switch (within 15 minutes of opening). A notification that was already scheduled on a phone that has not opened the app yet can still appear until then; notifications are only scheduled a few hours ahead.
 
-To turn notifications off for one city only (not the whole app), change the city's setting in `src/lib/metros.ts` (`notifications: false`) and release an app update.
+To turn notifications off for one city only (not the whole app), change the city's setting in `src/lib/metros.ts` (`notificationsEnabled: false`) and release an app update.
 
 ## Other emergency tools (not switches)
 

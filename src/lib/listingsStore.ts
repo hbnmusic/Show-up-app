@@ -31,6 +31,7 @@ export const listingsUrl = (metro: string) => LISTINGS_URL.replace('{metro}', me
 const CACHE_PREFIX = 'pull-up-listings-v2:';
 const FP_PREFIX = 'pull-up-fp-v1:';
 const SWITCH_KEY = 'pull-up-licensed-switches-v1';
+const DOWNLOAD_KEY = 'pull-up-feed-downloaded-v1';
 const INDEX_KEY = `${CACHE_PREFIX}index`;
 /** Before per-city feeds the app saved one New York feed under this key. */
 const LEGACY_KEY = 'pull-up-listings-cache-v1';
@@ -54,6 +55,8 @@ type ListingsState = {
   generatedAt: string | null;
   attribution: string[];
   checkedAt: Record<string, number>;
+  /** When each city's feed was last downloaded successfully (kept across launches; notifications skip a stale one). */
+  lastDownloadAt: Record<string, number>;
   refreshing: boolean;
   error: string | null;
   /** The cached feeds have been read (or there were none); safe to show screens. */
@@ -125,6 +128,13 @@ async function save(metro: string, feed: MetroFeed, known: string[]) {
   }
 }
 
+/** Remember (on the phone) that a city's feed was just downloaded. */
+function noteDownload(id: string) {
+  const next = { ...useListings.getState().lastDownloadAt, [id]: Date.now() };
+  useListings.setState({ lastDownloadAt: next });
+  AsyncStorage.setItem(DOWNLOAD_KEY, JSON.stringify(next)).catch(() => {});
+}
+
 export const useListings = create<ListingsState>()((set, get) => ({
   shows: [],
   byId: {},
@@ -135,6 +145,7 @@ export const useListings = create<ListingsState>()((set, get) => ({
   generatedAt: null,
   attribution: [],
   checkedAt: {},
+  lastDownloadAt: {},
   refreshing: false,
   error: null,
   ready: false,
@@ -174,7 +185,14 @@ export const useListings = create<ListingsState>()((set, get) => ({
     } catch {
       // Damaged copies are the same as none.
     }
-    set({ feeds, fpRows, switches, ...combine(feeds, fpRows, switches), ready: true });
+    let lastDownloadAt: Record<string, number> = {};
+    try {
+      const raw = JSON.parse((await AsyncStorage.getItem(DOWNLOAD_KEY)) ?? '{}');
+      if (raw && typeof raw === 'object') lastDownloadAt = Object.fromEntries(Object.entries(raw).filter(([, v]) => typeof v === 'number')) as Record<string, number>;
+    } catch {
+      // none
+    }
+    set({ feeds, fpRows, switches, lastDownloadAt, ...combine(feeds, fpRows, switches), ready: true });
   },
 
   refresh: async ({ force = false, metros } = {}) => {
@@ -202,6 +220,7 @@ export const useListings = create<ListingsState>()((set, get) => ({
         if (have?.generatedAt && feed.generatedAt && feed.generatedAt < have.generatedAt) {
           // Older than what is already here (a stale mirror); keep what we have.
           set({ checkedAt: { ...cur.checkedAt, [id]: Date.now() } });
+          noteDownload(id);
           continue;
         }
         const jb = flagOn('jambase_enabled');
@@ -211,6 +230,7 @@ export const useListings = create<ListingsState>()((set, get) => ({
         const feeds = { ...cur.feeds, [id]: metroFeed };
         set({ feeds, ...combine(feeds, cur.fpRows, cur.switches), checkedAt: { ...cur.checkedAt, [id]: Date.now() } });
         await save(id, metroFeed, Object.keys(cur.feeds));
+        noteDownload(id);
         changed = true;
       } catch (e) {
         const message =

@@ -18,10 +18,19 @@ export type Metro = {
   radiusMi: number;
   /** Large market: refreshed daily. The rest are refreshed every few days to stay inside the API plan. */
   hot: boolean;
+  /** Soft-launch city: venue scanning and auto-approval trials prioritise it (see fp.metro_config.soft_launch). */
+  softLaunch: boolean;
+  /** Retention notifications ("new shows", "shows tonight") may be sent for this city. Off until the owner turns a city on. */
+  notificationsEnabled: boolean;
 };
+
+/** Cities the soft launch focuses on. Also the only cities with notifications on for now. */
+export const SOFT_LAUNCH_METROS: readonly string[] = ['nyc', 'la'];
 
 const m = (id: string, name: string, state: string, lat: number, lng: number, tz: string, hot: boolean): Metro => ({
   id, name, state, lat, lng, tz, radiusMi: 25, hot,
+  softLaunch: SOFT_LAUNCH_METROS.includes(id),
+  notificationsEnabled: SOFT_LAUNCH_METROS.includes(id),
 });
 
 export const METROS: readonly Metro[] = [

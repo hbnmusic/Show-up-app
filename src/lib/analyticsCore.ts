@@ -21,6 +21,9 @@ export const EVENT_NAMES = [
   'ai_quota',
   'permission',
   'feedback_sent',
+  'notif_scheduled',
+  'notif_opened',
+  'notif_setting_changed',
 ] as const;
 export type EventName = (typeof EVENT_NAMES)[number];
 

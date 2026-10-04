@@ -5,6 +5,10 @@ import { useEffect, useState } from 'react';
 import { C, F } from '@/constants/theme';
 import { isCommunityFeed, useListings } from '@/lib/listingsStore';
 import { ensureNotificationPermission, notificationsAllowed, syncReminders } from '@/lib/reminders';
+import { sendTestNotifications, setRetentionToggle, syncRetentionTask, type TestResult } from '@/lib/retention/service';
+import { cancelRetentionNotifications } from '@/lib/retention/cancel';
+import { useRetention } from '@/lib/retention/store';
+import { metroById } from '@/lib/metros';
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
 import { analyticsEnabled, setAnalyticsEnabled } from '@/lib/analytics';
@@ -19,6 +23,13 @@ export default function SettingsScreen() {
   const autoplay = useApp((s) => s.autoplay);
   const setAutoplay = useApp((s) => s.setAutoplay);
   const [allowed, setAllowed] = useState(true);
+  const notifOn = useFlag('notifications_enabled');
+  const typeA = useRetention((s) => s.typeA);
+  const typeB = useRetention((s) => s.typeB);
+  const placeMetro = useApp((s) => s.filters.place?.metro);
+  const cityNotifs = metroById(placeMetro)?.notificationsEnabled ?? false;
+  const [testing, setTesting] = useState(false);
+  const [testNote, setTestNote] = useState<string | null>(null);
   const [analyticsOn, setAnalyticsOn] = useState(true);
   const { shows, source, generatedAt, attribution, refreshing, error } = useListings();
   const cities = useListings((s) => Object.keys(s.feeds).filter((id) => !isCommunityFeed(id)).length);
@@ -36,8 +47,37 @@ export default function SettingsScreen() {
   const askPermission = async () => {
     const ok = await ensureNotificationPermission();
     setAllowed(ok);
-    if (ok) syncReminders();
-    else if (Platform.OS !== 'web') Linking.openSettings().catch(() => {});
+    if (ok) {
+      syncReminders();
+      syncRetentionTask().catch(() => {});
+    } else if (Platform.OS !== 'web') Linking.openSettings().catch(() => {});
+  };
+
+  const runTest = async () => {
+    setTesting(true);
+    setTestNote(null);
+    try {
+      if (!(await notificationsAllowed()) && !(await ensureNotificationPermission())) {
+        setAllowed(false);
+        setTestNote('Notifications are off for Pull Up. Turn them on in your phone settings to get a test.');
+        return;
+      }
+      setAllowed(true);
+      const r: TestResult = await sendTestNotifications();
+      setTestNote(
+        r.ok
+          ? 'Two test notifications are on their way (in a few seconds). Put the app in the background to see them.'
+          : r.reason === 'switched_off'
+            ? 'Notifications are paused for everyone at the moment, so no test was sent.'
+            : r.reason === 'city_off'
+              ? 'These notifications are not on for your city yet, so no test was sent.'
+              : r.reason === 'no_city'
+                ? 'Pick a city first, then try again.'
+                : 'Notifications are off for Pull Up. Turn them on in your phone settings to get a test.',
+      );
+    } finally {
+      setTesting(false);
+    }
   };
 
   const confirmReset = () =>
@@ -48,6 +88,8 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           useApp.getState().resetAll();
+          useRetention.getState().reset();
+          await cancelRetentionNotifications();
           await syncReminders();
         },
       },
@@ -95,6 +137,43 @@ export default function SettingsScreen() {
       </View>
       <Text style={styles.help}>
         These apply to every show you mark going. Turn reminders off for a single show from its detail page.
+      </Text>
+
+      <Text style={styles.section}>NOTIFICATIONS</Text>
+      <View style={styles.card}>
+        <Toggle
+          label="New shows in your city"
+          detail="“5 new shows just added in New York, check them out!” At most once every two days, in the early evening"
+          value={typeA}
+          onChange={(v) => setRetentionToggle('A', v)}
+        />
+        <View style={styles.divider} />
+        <Toggle
+          label="Shows tonight"
+          detail="“4 Rock shows tonight near you, check them out!” At most once a day, in the late afternoon"
+          value={typeB}
+          onChange={(v) => setRetentionToggle('B', v)}
+        />
+        <View style={styles.divider} />
+        <Pressable style={styles.refreshRow} disabled={testing} onPress={runTest} accessibilityRole="button">
+          <Text style={[styles.label, testing && { color: C.faint }]}>{testing ? 'Sending…' : 'Send me a test notification'}</Text>
+          <Text style={styles.detail}>Uses the real wording and the numbers for your city right now</Text>
+        </Pressable>
+        {Platform.OS !== 'web' ? (
+          <>
+            <View style={styles.divider} />
+            <Pressable style={styles.refreshRow} onPress={() => Linking.openSettings().catch(() => {})} accessibilityRole="button">
+              <Text style={styles.label}>Open phone notification settings</Text>
+              <Text style={styles.detail}>Change or silence each kind of notification there too</Text>
+            </Pressable>
+          </>
+        ) : null}
+      </View>
+      {testNote ? <Text style={styles.help}>{testNote}</Text> : null}
+      {!notifOn ? <Text style={styles.help}>These notifications are paused for everyone right now.</Text> : null}
+      {notifOn && !cityNotifs ? <Text style={styles.help}>These two notifications are not on for your city yet.</Text> : null}
+      <Text style={styles.help}>
+        Pull Up makes these on your phone from the listings it already downloaded; nothing about you is sent anywhere to make them. They are best effort: your phone decides when apps may run in the background, so one can arrive late or not at all, especially with battery saving on. No more than one a day, none at night, and they stop for two weeks if you ignore several in a row.
       </Text>
 
       <Text style={styles.section}>LISTINGS</Text>

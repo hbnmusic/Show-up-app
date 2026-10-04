@@ -18,6 +18,8 @@ import { recordDecision } from '@/lib/decide';
 import { useDeckState } from '@/lib/deckState';
 import { activeFilterCount, buildQueue, WHEN_LABELS } from '@/lib/filters';
 import { useListings } from '@/lib/listingsStore';
+import { clearNewChip, consumePendingOpen } from '@/lib/retention/service';
+import { useRetention } from '@/lib/retention/store';
 import { playableActs, usePreviewStore } from '@/lib/previews';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
@@ -52,10 +54,28 @@ export default function ShowsScreen() {
     return out;
   }, [decisionsRec]);
 
+  const newChip = useRetention((s) => s.newChip);
+  const pendingOpen = useRetention((s) => s.pendingOpen);
+  const listingsReady = useListings((s) => s.ready);
+  const hydrated = useApp((s) => s.hydrated);
+  const chipIds = useMemo(() => (newChip && newChip.city === stored.place?.metro ? new Set(newChip.ids) : null), [newChip, stored.place?.metro]);
+  // A tapped notification sets how the deck should look; apply it once the listings and a city are ready.
+  useEffect(() => {
+    if (pendingOpen && hydrated && listingsReady && stored.place?.metro) consumePendingOpen();
+  }, [pendingOpen, hydrated, listingsReady, stored.place?.metro]);
+  // Changing city ends the "New" chip.
+  useEffect(() => {
+    if (newChip && newChip.city !== stored.place?.metro) useRetention.getState().setNewChip(null);
+  }, [newChip, stored.place?.metro]);
+
   const queue = useMemo(
-    () => buildQueue(allShows, filters, decisions, now, pinnedId),
-    [allShows, filters, decisions, now, pinnedId],
+    () => buildQueue(allShows, filters, decisions, now, pinnedId, chipIds),
+    [allShows, filters, decisions, now, pinnedId, chipIds],
   );
+  // Once every new show has been decided, the chip has nothing left to show: put the filters back.
+  useEffect(() => {
+    if (chipIds && queue.length === 0 && allShows.length > 0) clearNewChip();
+  }, [chipIds, queue.length, allShows.length]);
   // A price filter picked earlier stops applying once the city has too few known prices to make it useful.
   useEffect(() => {
     if (allShows.length > 0 && !priceUi && filters.price !== 'any') setFilters({ price: 'any' });
@@ -147,6 +167,7 @@ export default function ShowsScreen() {
             onPress={() => router.push({ pathname: '/filters', params: { focus: 'where' } })}
             icon={<Ionicons name="location-outline" size={15} color={C.text} />}
           />
+          {chipIds ? <Chip label="New  ✕" on onPress={clearNewChip} /> : null}
           <Chip label="Tonight" on={filters.when === 'tonight'} onPress={() => toggleWhen('tonight')} />
           <Chip label="This weekend" on={filters.when === 'weekend'} onPress={() => toggleWhen('weekend')} />
           {priceUi ? (
