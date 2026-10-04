@@ -4,9 +4,11 @@
  */
 import { GEMINI_RESPONSE_SCHEMA } from './flyerSchema.ts';
 
-export type LlmRequest = { system: string; prompt: string; maxOutputTokens?: number };
+export type LlmRequest = { system: string; prompt: string; maxOutputTokens?: number; schema?: unknown };
 export type LlmUsage = { inputTokens: number; outputTokens: number };
-export type LlmResult = { json: unknown; usage: LlmUsage };
+/** What the model's reply looked like, for diagnosing unreadable answers (never contains personal data). */
+export type LlmMeta = { finish?: string; thoughtTokens?: number; textLength: number; head: string };
+export type LlmResult = { json: unknown; usage: LlmUsage; meta?: LlmMeta };
 
 export class QuotaError extends Error {
   constructor(public retryAfterSec?: number) {
@@ -50,7 +52,7 @@ export class GeminiProvider implements LlmProvider {
           temperature: 0,
           maxOutputTokens: req.maxOutputTokens ?? 4096,
           responseMimeType: 'application/json',
-          responseSchema: this.schema,
+          responseSchema: req.schema ?? this.schema,
         },
       }),
     });
@@ -61,7 +63,7 @@ export class GeminiProvider implements LlmProvider {
     if (!res.ok) throw new ProviderError(`gemini ${res.status}`);
     const body = (await res.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
-      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
     };
     const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
     let json: unknown = null;
@@ -73,6 +75,7 @@ export class GeminiProvider implements LlmProvider {
     return {
       json,
       usage: { inputTokens: body.usageMetadata?.promptTokenCount ?? 0, outputTokens: body.usageMetadata?.candidatesTokenCount ?? 0 },
+      meta: { finish: body.candidates?.[0]?.finishReason, thoughtTokens: body.usageMetadata?.thoughtsTokenCount, textLength: text.length, head: text.slice(0, 120).replace(/\s+/g, ' ') },
     };
   }
 }

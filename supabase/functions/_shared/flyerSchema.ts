@@ -89,3 +89,65 @@ export function parseModelOutput(raw: unknown, ocrText: string): ParsedFlyer {
   }
   return { isFlyer, isSafe, events };
 }
+
+// ---- venue pages: a compact schema (one evidence quote per event) so long calendars fit in the output limit -----------------
+
+const S = { type: 'STRING', nullable: true };
+
+/** Gemini `responseSchema` for venue event pages. Smaller than the flyer schema: values are plain strings and one quote backs each event. */
+export const VENUE_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    is_safe: { type: 'BOOLEAN' },
+    events: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: { headliner: S, supports: { type: 'ARRAY', items: { type: 'STRING' } }, date: S, weekday: S, start: S, doors: S, price: S, age_policy: S, ticket_url: S, genre: S, evidence: S },
+        required: ['headliner', 'date', 'evidence'],
+      },
+    },
+  },
+  required: ['is_safe', 'events'],
+};
+
+const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+
+/**
+ * Parses the model's answer for a venue page. An event is kept only if its headliner and its evidence quote both appear in the page
+ * text; start, doors and price are kept only if the printed value appears there too.
+ */
+export function parseVenueOutput(raw: unknown, pageText: string): ParsedFlyer {
+  let data: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      return { isFlyer: false, isSafe: true, events: [] };
+    }
+  }
+  if (!isObj(data)) return { isFlyer: false, isSafe: true, events: [] };
+  const isSafe = data.is_safe !== false;
+  const events: ParsedEvent[] = [];
+  if (isSafe && Array.isArray(data.events)) {
+    for (const e of data.events.slice(0, 80)) {
+      if (!isObj(e)) continue;
+      const evidence = str(e.evidence);
+      const headliner = str(e.headliner);
+      if (!headliner || !evidence || !appearsIn(evidence, pageText) || !appearsIn(headliner, pageText)) continue;
+      const mk = (v: unknown, check: boolean): Field | null => {
+        const value = str(v);
+        if (!value || (check && !appearsIn(value, pageText))) return null;
+        return { value, source: evidence, confidence: 0.9 };
+      };
+      const fields: ParsedEvent['fields'] = { headliner: { value: headliner, source: evidence, confidence: 0.9 } };
+      for (const [k, check] of [['date', false], ['weekday', false], ['start', true], ['doors', true], ['price', true], ['age_policy', false], ['ticket_url', true], ['genre', true]] as const) {
+        const got = mk(e[k], check);
+        if (got) fields[k] = got;
+      }
+      const supports = (Array.isArray(e.supports) ? e.supports : []).slice(0, 12).map((x) => mk(x, true)).filter((x): x is Field => x !== null);
+      events.push({ fields, supports });
+    }
+  }
+  return { isFlyer: events.length > 0, isSafe, events };
+}

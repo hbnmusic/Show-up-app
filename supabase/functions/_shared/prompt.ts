@@ -31,10 +31,10 @@ ${opts.text}
 """`;
 }
 
-export const VENUE_SYSTEM = `You read the text of a venue's own events page and return the upcoming music events as JSON.
-Use the same schema as for flyers: one event per show. Only include live music or performance events on a stage; skip classes, private events, tours of the venue, merchandise and navigation text.
-${FIELD_RULES}
-For "date" give the date exactly as printed on the page (with the year if printed).`;
+export const VENUE_SYSTEM = `You read the text of a venue's own events page and return its upcoming live music events as JSON.
+Return one event per show, in the order they appear on the page, at most 60. Only include live music or performances on a stage; skip classes, private events, venue tours, merchandise and navigation text.
+For each event give: headliner (top-billed act), supports (other acts in printed order), date (exactly as printed, with the year if printed), weekday (if printed separately), start (show time as printed), doors (as printed), price (as printed), age_policy (as printed), ticket_url (only a link printed on the page), genre (only a genre word printed on the page), and evidence: one short quote copied exactly from the page that contains the headliner and the date.
+Use null for anything the page does not state. Never infer or guess: do not add a genre from a band name, do not invent a year, price or time. If the page lists no upcoming events, return an empty events array.`;
 
 export function buildVenuePrompt(opts: { venue: string; metro: MetroContext; today: string; text: string }): string {
   return `Venue: ${opts.venue}, ${opts.metro.name}, ${opts.metro.state} (time zone ${opts.metro.tz}; expected language: ${languageFor(opts.metro) === 'fr' ? 'French, possibly bilingual' : 'English'}).

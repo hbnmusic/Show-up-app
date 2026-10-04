@@ -56,3 +56,18 @@ export function makeGeocoder(doFetch: FetchFn = fetch as unknown as FetchFn, ali
     }
   };
 }
+
+/**
+ * Inside-metro check that prefers coordinates already on the venue (from Wikidata, a source independent of the venue's own site)
+ * and falls back to the street-address geocoder only when there are none.
+ */
+export function withCoordinates(
+  fallback: (v: { id: string; metro: string; address?: string | null; name: string }) => Promise<boolean | null>,
+  metroOf: (id: string) => { lat: number; lng: number; radiusMi: number } | undefined,
+) {
+  return async (v: { id: string; metro: string; address?: string | null; name: string; lat?: number | null; lng?: number | null }): Promise<boolean | null> => {
+    const m = metroOf(v.metro);
+    if (m && typeof v.lat === 'number' && typeof v.lng === 'number') return milesBetween({ lat: v.lat, lng: v.lng }, m) <= m.radiusMi;
+    return fallback(v);
+  };
+}

@@ -3,11 +3,11 @@ import { describe, it } from 'node:test';
 
 import { evaluateVenue, isOwnDomain, shouldDisable, type VenueChecks } from '../supabase/functions/_shared/approval.ts';
 import { clip, extractIcal, extractJsonLd, extractRss, extractWidgetJson, htmlToText, rawToCandidate, sha256Hex, toLocal } from '../supabase/functions/_shared/extract.ts';
-import { parseModelOutput } from '../supabase/functions/_shared/flyerSchema.ts';
+import { parseModelOutput, parseVenueOutput } from '../supabase/functions/_shared/flyerSchema.ts';
 import { isAllowed, parseRobots, robotsFromStatus } from '../supabase/functions/_shared/robots.ts';
 import { validateVenuePage } from '../supabase/functions/_shared/validate.ts';
 import { assignWaves, decideWidening, planScan, type MetroSetting } from '../supabase/functions/_shared/waves.ts';
-import { ev, f, METROS, NOW, resp } from './fixtures/flyers.ts';
+import { ev, f, METROS, NOW, resp, vev, vresp } from './fixtures/flyers.ts';
 
 const venue = { id: 'v-parkside', name: 'Parkside Hall', metro: 'nyc', address: '100 Example Ave, Brooklyn, NY' };
 const nyc = METROS[0];
@@ -84,16 +84,36 @@ describe('extraction tiers', () => {
 
   it('model tier: validates dates, checks weekday, and publishes passing events with the venue fixed', () => {
     const page = 'Fri Oct 16 Velvet Automaton 8pm\nSat Oct 17 Salt Lick Division 9pm\nSat Oct 18 Wrong Day 9pm';
-    const parsed = parseModelOutput(resp([
-      ev({ headliner: f('Velvet Automaton', 'Velvet Automaton'), date: f('Fri Oct 16', 'Fri Oct 16'), start: f('8pm', 'Velvet Automaton 8pm') }),
-      ev({ headliner: f('Salt Lick Division', 'Salt Lick Division'), date: f('Sat Oct 17', 'Sat Oct 17') }),
-      ev({ headliner: f('Wrong Day', 'Wrong Day'), date: f('Sat Oct 18', 'Sat Oct 18') }),
+    const parsed = parseVenueOutput(vresp([
+      vev({ headliner: 'Velvet Automaton', date: 'Fri Oct 16', start: '8pm', evidence: 'Fri Oct 16 Velvet Automaton 8pm' }),
+      vev({ headliner: 'Salt Lick Division', date: 'Sat Oct 17', evidence: 'Sat Oct 17 Salt Lick Division 9pm' }),
+      vev({ headliner: 'Wrong Day', date: 'Sat Oct 18', weekday: 'Sat', evidence: 'Sat Oct 18 Wrong Day 9pm' }),
     ]), page);
     const r = validateVenuePage(parsed, venue, nyc, NOW, BASE);
     assert.deepEqual(r.candidates.map((c) => c.localDate), ['2026-10-16', '2026-10-17']);
     assert.deepEqual(r.rejects.map((x) => x.reason), ['weekday_mismatch']);
     assert.equal(r.candidates[0].venueId, 'v-parkside');
     assert.equal(r.candidates[0].sourceType, 'venue_site');
+  });
+});
+
+describe('venue page answers', () => {
+  const page = 'Fri Oct 16 Velvet Automaton 8pm $15\nSat Oct 17 Salt Lick Division 9pm';
+  it('drops events whose headliner or evidence is not on the page, and printed values that are not on the page', () => {
+    const p = parseVenueOutput(vresp([
+      vev({ headliner: 'Velvet Automaton', date: 'Fri Oct 16', start: '8pm', price: '$99', evidence: 'Fri Oct 16 Velvet Automaton 8pm' }),
+      vev({ headliner: 'Invented Band', date: 'Fri Oct 16', evidence: 'Fri Oct 16 Invented Band' }),
+      vev({ headliner: 'Salt Lick Division', date: 'Sat Oct 17', evidence: 'a quote that is not on the page' }),
+    ]), page);
+    assert.equal(p.events.length, 1);
+    assert.equal(p.events[0].fields.start?.value, '8pm');
+    assert.equal(p.events[0].fields.price, undefined); // "$99" is not printed on the page
+  });
+  it('does not need an is_flyer flag, and treats unreadable or unsafe answers as no events', () => {
+    assert.equal(parseVenueOutput({ is_safe: true, events: [vev({ headliner: 'Velvet Automaton', date: 'Fri Oct 16' })] }, page).isFlyer, true);
+    assert.deepEqual(parseVenueOutput(null, page).events, []);
+    assert.deepEqual(parseVenueOutput('{ truncated', page).events, []);
+    assert.deepEqual(parseVenueOutput({ is_safe: false, events: [vev({ headliner: 'Velvet Automaton', date: 'Fri Oct 16' })] }, page).events, []);
   });
 });
 

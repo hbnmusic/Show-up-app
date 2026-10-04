@@ -214,3 +214,17 @@ describe('address checks by metro', () => {
     assert.ok(milesBetween({ lat: 40.7128, lng: -74.006 }, { lat: 40.7128, lng: -74.006 }) < 0.01);
   });
 });
+
+describe('inside-metro check with coordinates', () => {
+  it('uses the venue coordinates when present and the address geocoder otherwise', async () => {
+    const { withCoordinates } = await import('../scripts/lib/geo.ts');
+    const nyc = { lat: 40.71, lng: -74.0, radiusMi: 25 };
+    let asked = 0;
+    const g = withCoordinates(async () => { asked++; return null; }, (id) => (id === 'nyc' ? nyc : undefined));
+    assert.equal(await g({ id: 'a', metro: 'nyc', name: 'A', lat: 40.7, lng: -73.95 }), true);
+    assert.equal(await g({ id: 'b', metro: 'nyc', name: 'B', lat: 34.05, lng: -118.2 }), false);
+    assert.equal(asked, 0);
+    assert.equal(await g({ id: 'c', metro: 'nyc', name: 'C' }), null);
+    assert.equal(asked, 1);
+  });
+});

@@ -8,7 +8,7 @@ import { norm, tokens } from '../../supabase/functions/_shared/text';
 import type { RobotsStatus } from '../../supabase/functions/_shared/types';
 import type { Outcome, PoliteFetcher } from './polite';
 
-export type PlanVenue = { id: string; metro: string; name: string; website?: string | null; eventsUrl?: string | null; publishMethod?: string | null; tier?: string | null; contentHash?: string | null; etag?: string | null; lastModified?: string | null; address?: string | null };
+export type PlanVenue = { id: string; metro: string; name: string; website?: string | null; eventsUrl?: string | null; publishMethod?: string | null; tier?: string | null; contentHash?: string | null; etag?: string | null; lastModified?: string | null; address?: string | null; lat?: number | null; lng?: number | null };
 export type Api = (action: string, body?: Record<string, unknown>) => Promise<Record<string, any>>;
 export type Geocode = (v: PlanVenue) => Promise<boolean | null>;
 

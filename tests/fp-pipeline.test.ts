@@ -5,7 +5,7 @@ import { ingestCandidate, processFlyerJob, processVenuePage, type FlyerJob } fro
 import { ProviderError, QuotaError, type LlmProvider, type LlmRequest } from '../supabase/functions/_shared/provider.ts';
 import { quotaDay } from '../supabase/functions/_shared/quota.ts';
 import { licenceFor, type Candidate } from '../supabase/functions/_shared/types.ts';
-import { BASEMENT, BROOKLYN, METROS, NOW, REGISTRY, UNSUPPORTED_FIELDS, ev, f, resp } from './fixtures/flyers.ts';
+import { BASEMENT, BROOKLYN, METROS, NOW, REGISTRY, UNSUPPORTED_FIELDS, ev, f, resp, vev, vresp } from './fixtures/flyers.ts';
 import { MemoryStore } from './fixtures/memoryStore.ts';
 
 /** Replays recorded model responses; records what it was sent. No live API calls. */
@@ -206,9 +206,9 @@ describe('quota handling', () => {
 
 describe('venue pages and disappearing shows', () => {
   const page = 'Fri Oct 16 Velvet Automaton 8pm\nSat Oct 17 Salt Lick Division 9pm';
-  const model = resp([
-    ev({ headliner: f('Velvet Automaton', 'Velvet Automaton'), date: f('Fri Oct 16', 'Fri Oct 16'), start: f('8pm', '8pm') }),
-    ev({ headliner: f('Salt Lick Division', 'Salt Lick Division'), date: f('Sat Oct 17', 'Sat Oct 17'), start: f('9pm', '9pm') }),
+  const model = vresp([
+    vev({ headliner: 'Velvet Automaton', date: 'Fri Oct 16', start: '8pm', evidence: 'Fri Oct 16 Velvet Automaton 8pm' }),
+    vev({ headliner: 'Salt Lick Division', date: 'Sat Oct 17', start: '9pm', evidence: 'Sat Oct 17 Salt Lick Division 9pm' }),
   ]);
 
   it('publishes validated events from the venue page and counts them', async () => {
@@ -229,5 +229,20 @@ describe('venue pages and disappearing shows', () => {
     assert.equal(second.merged.status, 'scheduled');
     await store.markUnconfirmed('v-parkside', keys, '2026-10-03');
     assert.equal(second.unconfirmed, false);
+  });
+});
+
+describe('venue page diagnostics', () => {
+  it('records why a reply gave no events (unreadable vs. empty)', async () => {
+    const store = new MemoryStore(METROS, REGISTRY);
+    class Meta implements LlmProvider {
+      readonly name = 'meta';
+      constructor(private json: unknown) {}
+      async extract() { return { json: this.json, usage: { inputTokens: 10, outputTokens: 5 }, meta: { finish: 'MAX_TOKENS', textLength: 8000, thoughtTokens: 0, head: '{"events":[' } }; }
+    }
+    const bad = await processVenuePage(REGISTRY[0], { url: 'u', text: 'Fri Oct 16 Velvet Automaton 8pm' }, { store, provider: new Meta(null), now: NOW });
+    assert.ok(bad.status === 'ok' && bad.note?.startsWith('unreadable_reply:MAX_TOKENS:8000'));
+    const empty = await processVenuePage(REGISTRY[0], { url: 'u', text: 'Fri Oct 16 Velvet Automaton 8pm' }, { store, provider: new Meta(vresp([])), now: NOW });
+    assert.ok(empty.status === 'ok' && empty.note === 'model_found_no_events');
   });
 });

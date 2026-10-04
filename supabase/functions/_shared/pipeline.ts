@@ -2,11 +2,11 @@
  * The server-side flow for flyers and venue pages, written against a small `Store` interface so it runs the
  * same against Supabase (Edge Functions) and an in-memory store (tests with recorded model responses).
  */
-import { parseModelOutput } from './flyerSchema.ts';
+import { parseModelOutput, parseVenueOutput, VENUE_RESPONSE_SCHEMA } from './flyerSchema.ts';
 import { cluster, mergeGroup, nightOf, sameShow, type MergedShow } from './match.ts';
 import { decidePublish, pendingReason, TRUSTED_AFTER_CONFIRMED, type PublishDecision } from './publish.ts';
 import { canSpend, planRetry, quotaDay, type QuotaConfig, type Usage } from './quota.ts';
-import { ProviderError, QuotaError, type LlmProvider, type LlmUsage } from './provider.ts';
+import { ProviderError, QuotaError, type LlmMeta, type LlmProvider, type LlmUsage } from './provider.ts';
 import { buildFlyerPrompt, buildVenuePrompt, FLYER_SYSTEM, VENUE_SYSTEM } from './prompt.ts';
 import { redactText } from './redact.ts';
 import { validateFlyer, validateVenuePage } from './validate.ts';
@@ -153,7 +153,7 @@ export async function processFlyerJob(job: FlyerJob, deps: { store: Store; provi
 // ---- venue pages (model tier) ---------------------------------------------------------------------------------------------
 
 export type VenuePageOutcome =
-  | { status: 'ok'; extracted: number; rejected: number; showIds: string[]; usage: LlmUsage }
+  | { status: 'ok'; extracted: number; rejected: number; showIds: string[]; usage: LlmUsage; note?: string }
   | { status: 'quota' | 'error'; retryAtMs?: number };
 
 export async function processVenuePage(
@@ -175,9 +175,11 @@ export async function processVenuePage(
   const prompt = buildVenuePrompt({ venue: venue.name, metro: { id: metro.id, name: metro.name, state: metro.state, tz: metro.tz }, today: `${t.y}-${String(t.m).padStart(2, '0')}-${String(t.d).padStart(2, '0')}`, text: page.text });
   let json: unknown;
   let usage: LlmUsage;
+  let meta: LlmMeta | undefined;
   try {
-    const r = await provider.extract({ system: VENUE_SYSTEM, prompt, maxOutputTokens: 8192 });
+    const r = await provider.extract({ system: VENUE_SYSTEM, prompt, maxOutputTokens: 8192, schema: VENUE_RESPONSE_SCHEMA });
     json = r.json;
+    meta = r.meta;
     usage = r.usage;
     await store.addUsage(day, 'venue', { requests: 1, usage });
   } catch (e) {
@@ -188,14 +190,15 @@ export async function processVenuePage(
     if (e instanceof ProviderError) return { status: 'error' };
     throw e;
   }
-  const parsed = parseModelOutput(json, page.text);
+  const parsed = parseVenueOutput(json, page.text);
   const { candidates, rejects } = validateVenuePage(parsed, venue, metro, now, page.url);
   const showIds: string[] = [];
   for (const c of candidates) {
     const r = await ingestCandidate(store, c, { submitter: null, trusted: true, metro: metro.id });
     if (!('skipped' in r)) showIds.push(r.showId);
   }
-  return { status: 'ok', extracted: candidates.length + rejects.length, rejected: rejects.length, showIds, usage };
+  const note = json == null ? `unreadable_reply:${meta?.finish ?? '?'}:${meta?.textLength ?? 0}:${meta?.thoughtTokens ?? 0}:${meta?.head ?? ''}`.slice(0, 300) : candidates.length + rejects.length === 0 ? 'model_found_no_events' : undefined;
+  return { status: 'ok', extracted: candidates.length + rejects.length, rejected: rejects.length, showIds, usage, note };
 }
 
 /** Submitters become trusted after enough of their shows were confirmed by other people. */

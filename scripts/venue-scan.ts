@@ -9,7 +9,8 @@
  */
 /// <reference types="node" />
 import { arg, flag, makeApi } from './lib/api';
-import { makeGeocoder } from './lib/geo';
+import { metroById } from '../src/lib/metros';
+import { makeGeocoder, withCoordinates } from './lib/geo';
 import { PoliteFetcher } from './lib/polite';
 import { scanVenue, trialVenue, type PlanVenue } from './lib/scan';
 
@@ -26,7 +27,7 @@ async function main() {
     const scan = ((plan.scan ?? []) as PlanVenue[]).slice(0, maxVenues);
     const trial = ((plan.trial ?? []) as (PlanVenue & { tz?: string })[]).slice(0, maxTrials);
     console.log(`Plan: ${scan.length} venues to read, ${trial.length} candidates to try, ${plan.skippedForBudget ?? 0} skipped for budget.`);
-    const geocode = makeGeocoder();
+    const geocode = withCoordinates(makeGeocoder(), (id) => metroById(id));
     const deadline = Date.now() + Number(arg('max-minutes', '40')) * 60_000;
     for (const v of trial) {
       if (Date.now() > deadline) break;

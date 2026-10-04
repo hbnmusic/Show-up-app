@@ -110,13 +110,13 @@ export async function planAction(deps: Deps, opts: { candidateLimit?: number } =
   const settings = await loadSettings(sql);
   const refreshDays = await aiConfigValue(sql, 'refresh_days', 7);
   const rows = await sql`
-    select id::text as id, metro, tier, status, last_checked_at::text as last, website, events_url, publish_method, canonical_name, content_hash, etag, last_modified
+    select id::text as id, metro, tier, status, last_checked_at::text as last, website, events_url, publish_method, canonical_name, content_hash, etag, last_modified, lat, lng
     from fp.venues where status in ('approved', 'candidate') and not takedown`;
   const approved = rows.filter((r) => r.status === 'approved').map((r) => ({ id: r.id, metro: r.metro, tier: r.tier ?? 'B', lastCheckedAt: r.last, status: r.status, needsAi: r.publish_method === 'ai' }));
   const plan = planScan(approved, settings, now, refreshDays);
   const due = new Set(plan.venues.map((v) => v.id));
   const enabled = new Set(settings.filter((s) => s.venueScanEnabled).map((s) => s.id));
-  const pick = (r: Row) => ({ id: r.id, metro: r.metro, name: r.canonical_name, website: r.website, eventsUrl: r.events_url, publishMethod: r.publish_method, tier: r.tier, contentHash: r.content_hash, etag: r.etag, lastModified: r.last_modified, tz: settings.find((s) => s.id === r.metro)?.tz });
+  const pick = (r: Row) => ({ id: r.id, metro: r.metro, name: r.canonical_name, website: r.website, eventsUrl: r.events_url, publishMethod: r.publish_method, tier: r.tier, contentHash: r.content_hash, etag: r.etag, lastModified: r.last_modified, lat: r.lat, lng: r.lng, tz: settings.find((s) => s.id === r.metro)?.tz });
   return ok({
     refreshDays,
     scan: rows.filter((r) => due.has(r.id)).map(pick),
@@ -197,7 +197,7 @@ export async function extractAi(deps: Deps, b: { venueId: string; url: string; t
   const t = todayIn(metro.tz, now);
   const keys = (await sql`select key from fp.shows where id = any (${out.showIds}::uuid[])`).map((r) => r.key as string);
   if (keys.length) await store.markUnconfirmed(venue.id, keys, `${t.y}-${String(t.m).padStart(2, '0')}-${String(t.d).padStart(2, '0')}`);
-  const disabled = await recordRun(sql, venue.id, { ...b.run, fetchOk: true, tier: 'ai', extracted: out.extracted, rejected: out.rejected });
+  const disabled = await recordRun(sql, venue.id, { ...b.run, fetchOk: true, tier: 'ai', extracted: out.extracted, rejected: out.rejected, note: out.note ?? b.run.note });
   return ok({ status: 'ok', extracted: out.extracted, rejected: out.rejected, ingested: out.showIds.length, disabled, tokens: out.usage });
 }
 

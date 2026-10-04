@@ -129,3 +129,10 @@ export const UNSUPPORTED_FIELDS = {
     }),
   ]),
 };
+
+/** A recorded model answer for a venue page (compact schema). */
+export const vev = (o: { headliner: string; date: string; evidence?: string; start?: string | null; price?: string | null; weekday?: string | null; supports?: string[] }) => ({
+  headliner: o.headliner, supports: o.supports ?? [], date: o.date, weekday: o.weekday ?? null, start: o.start ?? null, doors: null, price: o.price ?? null,
+  age_policy: null, ticket_url: null, genre: null, evidence: o.evidence ?? `${o.date} ${o.headliner}`,
+});
+export const vresp = (events: Record<string, unknown>[]) => ({ is_safe: true, events });

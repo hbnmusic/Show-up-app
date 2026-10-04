@@ -6,7 +6,7 @@ import type { PGlite } from '@electric-sql/pglite';
 import { approveVenue, coverage, extractAi, handleFlyerExtract, ingestEvents, licensedLink, maintenance, markFullScans, planAction, recordRun, runRetry, setWaves, upsertVenues } from '../supabase/functions/_shared/jobs.ts';
 import { QuotaError, type LlmProvider } from '../supabase/functions/_shared/provider.ts';
 import type { Sql } from '../supabase/functions/_shared/supabaseStore.ts';
-import { BROOKLYN, NOW, resp, ev, f } from './fixtures/flyers.ts';
+import { BROOKLYN, NOW, resp, ev, f, vev, vresp } from './fixtures/flyers.ts';
 import { freshDb } from './fixtures/pg.ts';
 
 let db: PGlite;
@@ -145,7 +145,7 @@ describe('venue scanning', () => {
   it('reads a model-tier page, counts the request and its tokens, and publishes valid events', async () => {
     const id = await newVenue('Parkside Hall', 'nyc');
     const page = 'Fri Oct 16 Velvet Automaton 8pm';
-    const model = resp([ev({ headliner: f('Velvet Automaton', 'Velvet Automaton'), date: f('Fri Oct 16', 'Fri Oct 16'), start: f('8pm', '8pm') })]);
+    const model = vresp([vev({ headliner: 'Velvet Automaton', date: 'Fri Oct 16', start: '8pm', evidence: 'Fri Oct 16 Velvet Automaton 8pm' })]);
     const r = await extractAi(deps(new Replay([model])), { venueId: id, url: 'https://parksidehall.example/events', text: page, run: { fetchOk: true, contentHash: 'abc' } });
     assert.deepEqual([r.body.status, r.body.extracted, r.body.ingested], ['ok', 1, 1]);
     const u = await sql`select requests, input_tokens::int as i, output_tokens::int as o from fp.ai_usage where kind = 'venue'`;
