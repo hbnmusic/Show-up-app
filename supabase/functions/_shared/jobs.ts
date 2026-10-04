@@ -244,9 +244,9 @@ export async function maintenance(deps: Deps): Promise<Reply> {
   const share = usage.map((u) => u.n / cap);
   const off = new Set((await sql`select metro from fp.metro_config where wave <= ${currentWave} and not venue_scan_enabled`).map((r) => r.metro as string));
   const d = decideWidening({ currentWave, settings, now, refreshDays, dailyUsageShare: share, headroom, offFlags: off });
-  await sql`insert into fp.widening_log (decision) values (${JSON.stringify({ at: now.toISOString(), currentWave, ...d, usageShare: share })}::jsonb)`;
+  await sql`insert into fp.widening_log (decision) values (${JSON.stringify({ at: now.toISOString(), currentWave, ...d, usageShare: share })}::text::jsonb)`;
   if (d.widen && d.nextWave) {
-    await sql`update fp.ai_config set value = ${JSON.stringify(d.nextWave)}::jsonb, updated_at = now() where key = 'current_wave'`;
+    await sql`update fp.ai_config set value = ${JSON.stringify(d.nextWave)}::text::jsonb, updated_at = now() where key = 'current_wave'`;
     await sql`update fp.metro_config set venue_scan_enabled = true, updated_at = now() where wave = ${d.nextWave}`;
   }
   return ok({ ...d, currentWave });

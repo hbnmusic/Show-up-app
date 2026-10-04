@@ -239,3 +239,13 @@ describe('licensed links and coverage', () => {
     assert.equal((await sql`select count(*)::int as n from fp.weekly_summaries`)[0].n, 1);
   });
 });
+
+describe('JSON parameters', () => {
+  it('are always sent as text and cast on the server (the postgres client double-encodes a string typed jsonb)', async () => {
+    const fs = await import('node:fs');
+    for (const f of ['jobs.ts', 'supabaseStore.ts']) {
+      const src = fs.readFileSync(new URL(`../supabase/functions/_shared/${f}`, import.meta.url), 'utf8');
+      assert.equal(/\$\{[^}]*\}::jsonb/.test(src.replace(/@> '[^']*'::jsonb/g, '')), false, `${f} has a bare ::jsonb parameter`);
+    }
+  });
+});

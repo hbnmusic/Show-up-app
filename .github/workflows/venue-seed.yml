@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Print instead of sending'
+        description: 'Tick to print the venues instead of adding them'
         type: boolean
-        default: true
+        default: false
 
 jobs:
   seed:
