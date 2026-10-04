@@ -50,4 +50,4 @@ jobs:
         run: |
           W=""
           if [ "${{ inputs.weekly }}" = "true" ] || [ "$(date -u +%u)" = "1" ]; then W="--weekly"; fi
-          npx tsx scripts/venue-scan.ts $W
+          npx tsx scripts/venue-scan.ts --max-trials 100 --max-minutes 40 $W
