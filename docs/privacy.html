@@ -28,7 +28,7 @@
 <tr><td><b>Feedback you send</b> (type, message, optional email you enter, app version, Android version, device model)</td><td>Read and answer bug reports and ideas.</td><td>Stored in our Supabase project, readable only by us. We use your email only to reply.</td></tr>
 <tr><td><b>Going list, passed shows, filters, settings, saved listings, sign-in session</b></td><td>Make the app work and remember your choices.</td><td>Stored on your phone only (app storage). Cleared by Settings, Reset all data, or uninstalling.</td></tr>
 <tr><td><b>Band names from the shows you see</b></td><td>Find a 30-second preview and an artist photo.</td><td>Sent to Deezer (api.deezer.com), which receives the band name and your IP address.</td></tr>
-<tr><td><b>Requests for listings and images</b></td><td>Download show listings and flyer images.</td><td>Listings come from GitHub (releases of this project). Flyer and event images load from the image servers of listing providers (JamBase, Ticketmaster) and Deezer. Each of them sees your IP address and device details in the ordinary way a web request works.</td></tr>
+<tr><td><b>Requests for listings and images</b></td><td>Download show listings and flyer images.</td><td>Listings come from GitHub (releases of this project). Flyer and event images load from the image servers of listing providers (JamBase), venue websites and Deezer. Each of them sees your IP address and device details in the ordinary way a web request works.</td></tr>
 <tr><td><b>Flyers and links you share</b> (text recognised from the flyer on your phone, with the venue, date and artists it contains; the link you shared; the city; your anonymous or signed-in account id)</td><td>Turn a flyer into a show listing, confirm it, and tell you when it goes live.</td><td>The flyer image is read on your phone and is <b>never uploaded</b>. Only recognised text (with emails, phone numbers, social handles and social links removed on your phone first) is sent to our Supabase project and, to pick out the show details, to Google's Gemini API on its free tier. Under the free tier terms, Google may use what is sent and what comes back to improve its products and human reviewers may read it, so do not share a flyer with text you would not want that to apply to. We do not send images to Google. Anonymous submissions use a temporary account with no email.</td></tr>
 <tr><td><b>Public venue pages</b></td><td>List shows from venues' own event pages.</td><td>Our server reads public event pages (obeying robots.txt) and stores show facts and a link to the page. No personal data is collected.</td></tr>
 </table>
@@ -41,7 +41,7 @@
 <li><b>Google (Gemini API, free tier)</b>: receives recognised flyer text (never images) and venue page text to extract show details. See the flyer row above for the terms that apply.</li>
 <li><b>Deezer</b>: previews and artist photos (band names, IP address).</li>
 <li><b>GitHub</b>: hosts listing files and app downloads.</li>
-<li><b>JamBase and Ticketmaster</b>: source of show data; their image servers deliver flyers.</li>
+<li><b>JamBase</b>: source of show data and ticket links.</li>
 <li>Our email sender for sign-in codes: <span class="ph">[EMAIL_PROVIDER, e.g. Supabase's built-in sender or Resend]</span>.</li>
 </ul>
 <p>We may disclose information if the law requires it or to protect people from harm.</p>

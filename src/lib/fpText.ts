@@ -1,7 +1,7 @@
 /** Text for the "Sources" line and conflict notes in show details. */
 import type { Show } from './types';
 
-const SOURCE_LABEL: Record<string, string> = { venue_site: "Venue's website", ticketmaster: 'Ticketmaster', jambase: 'JamBase', flyer: 'Shared flyer' };
+const SOURCE_LABEL: Record<string, string> = { venue_site: "Venue's website", jambase: 'JamBase', flyer: 'Shared flyer' };
 const FIELD_LABEL: Record<string, string> = { start: 'start time', doors: 'doors time', price: 'price', ticketUrl: 'ticket link', status: 'status', lineup: 'headliner', venue: 'venue', age: 'age limit', genres: 'genre', image: 'image' };
 
 export function sourcesNote(s: Show): string | null {
@@ -20,7 +20,6 @@ export function conflictNotes(s: Show): string[] {
 
 export function ticketLabel(s: Show): string {
   const src = s.provenance?.fieldSource.ticketUrl;
-  if (src === 'ticketmaster') return 'Tickets on Ticketmaster';
   if (src === 'venue_site') return "Open the venue's page";
   if (s.source.provider === 'jambase') return 'View on JamBase';
   if (s.source.provider === 'community') return 'Open the link';

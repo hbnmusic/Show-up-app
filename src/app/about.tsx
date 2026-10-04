@@ -28,14 +28,14 @@ export default function AboutScreen() {
       <Text style={styles.section}>DATA SOURCES AND CREDITS</Text>
       <View style={styles.card}>
         <Text style={styles.body}>
-          Show listings come from JamBase and Ticketmaster, and from people who add shows in the app. Listings are
+          Show listings come from JamBase, from venuesvenues' ownapos; own public event pages, and from people who share flyers or add shows in the app. Listings are
           informational; check the ticket page before you go.
         </Text>
         {attribution.length ? <Text style={[styles.body, { paddingTop: 0 }]}>{attribution.join('\n')}</Text> : null}
         <Text style={[styles.body, { paddingTop: 0 }]}>
-          Show data and flyer images: JamBase (jambase.com) and Ticketmaster (ticketmaster.com). Where a card shows a
-          flyer or event photo, it is the image supplied with that listing and belongs to its owner. Tap View on JamBase
-          or Open listing on a show to go to the original page.
+          Show data: JamBase (jambase.com). Where a card shows a flyer or event photo, it is the image on the venuevenue's ownapos;s own
+          page or a flyer you shared, and it belongs to its owner. Tap View on JamBase or Open listing on a show to go to
+          the original page.
         </Text>
         <Text style={[styles.body, { paddingTop: 0 }]}>
           30-second audio previews and artist photos: Deezer public API (deezer.com). Previews are for personal,

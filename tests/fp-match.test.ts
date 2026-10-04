@@ -42,7 +42,7 @@ describe('matching', () => {
   it('treats "X presents" and tour suffixes as the same act', () => {
     assert.equal(cleanActName('Parkside Hall presents: Velvet Automaton'), 'Velvet Automaton');
     assert.equal(cleanActName('Velvet Automaton Live'), 'Velvet Automaton');
-    assert.equal(sameShow(cand('venue_site', { headliner: 'Parkside Hall presents: Velvet Automaton' }), cand('ticketmaster')), true);
+    assert.equal(sameShow(cand('venue_site', { headliner: 'Parkside Hall presents: Velvet Automaton' }), cand('jambase')), true);
     assert.equal(similarity('Velvet Automaton', 'Velvet Orchestra') < 0.8, true);
   });
 
@@ -50,9 +50,9 @@ describe('matching', () => {
     const early = cand('venue_site', { startLocal: '18:00' });
     const late = cand('venue_site', { startLocal: '22:00' });
     assert.equal(sameShow(early, late), false);
-    const groups = cluster([early, late, cand('ticketmaster', { startLocal: '22:00' }), cand('jambase', { startLocal: '18:00' })]);
+    const groups = cluster([early, late, cand('flyer', { startLocal: '22:00' }), cand('jambase', { startLocal: '18:00' })]);
     assert.equal(groups.length, 2);
-    const merged = mergeAll([early, late, cand('ticketmaster', { startLocal: '22:00' }), cand('jambase', { startLocal: '18:00' })]);
+    const merged = mergeAll([early, late, cand('flyer', { startLocal: '22:00' }), cand('jambase', { startLocal: '18:00' })]);
     assert.deepEqual(merged.map((m) => [m.startLocal, m.sources.length]).sort(), [['18:00', 2], ['22:00', 2]]);
   });
 
@@ -73,42 +73,39 @@ describe('matching', () => {
 
 describe('merge priorities and provenance', () => {
   const venue = cand('venue_site', { startLocal: '20:00', doorsLocal: '19:00', price: { min: 20, max: 20 }, ticketUrl: 'https://venue.example/t', sourceUrl: 'https://venue.example/e/1', imageUrl: 'https://venue.example/p.jpg' });
-  const tm = cand('ticketmaster', { startLocal: '20:00', doorsLocal: '19:30', price: { min: 25, max: 25 }, ticketUrl: 'https://tm.example/t', imageUrl: 'https://tm.example/p.jpg' });
   const jb = cand('jambase', { startLocal: '20:30', doorsLocal: '19:30', ticketUrl: 'https://jb.example/t', status: 'scheduled' });
   const flyer = cand('flyer', { startLocal: '21:00', doorsLocal: '19:00', price: { min: 15, max: 15 }, ticketUrl: 'https://flyer.example/t' });
 
-  it('times and doors: venue site > Ticketmaster > JamBase > flyer', () => {
-    const m = mergeAll([flyer, jb, tm, venue])[0];
+  it('times and doors: venue site > JamBase > flyer', () => {
+    const m = mergeAll([flyer, jb, venue])[0];
     assert.equal(m.startLocal, '20:00');
     assert.equal(m.doorsLocal, '19:00');
     assert.equal(m.fieldSource.start, 'venue_site');
-    assert.equal(mergeAll([flyer, jb, tm])[0].startLocal, '20:00');
-    assert.equal(mergeAll([flyer, jb, tm])[0].fieldSource.start, 'ticketmaster');
     assert.equal(mergeAll([flyer, jb])[0].startLocal, '20:30');
+    assert.equal(mergeAll([flyer, jb])[0].fieldSource.start, 'jambase');
     assert.equal(mergeAll([flyer])[0].startLocal, '21:00');
   });
 
-  it('price and ticket link: Ticketmaster > venue site > flyer', () => {
-    const m = mergeAll([flyer, venue, tm])[0];
-    assert.deepEqual(m.price, { min: 25, max: 25 });
-    assert.equal(m.ticketUrl, 'https://tm.example/t');
-    assert.equal(m.fieldSource.price, 'ticketmaster');
-    const m2 = mergeAll([flyer, venue])[0];
-    assert.deepEqual(m2.price, { min: 20, max: 20 });
-    assert.equal(m2.fieldSource.ticketUrl, 'venue_site');
+  it('price and ticket link: venue site > JamBase > flyer', () => {
+    const m = mergeAll([flyer, venue, jb])[0];
+    assert.deepEqual(m.price, { min: 20, max: 20 });
+    assert.equal(m.ticketUrl, 'https://venue.example/t');
+    assert.equal(m.fieldSource.price, 'venue_site');
+    assert.equal(mergeAll([flyer, jb])[0].ticketUrl, 'https://jb.example/t');
+    assert.equal(mergeAll([flyer, venue])[0].fieldSource.ticketUrl, 'venue_site');
   });
 
   it('flags conflicts and records every value instead of resolving silently', () => {
-    const m = mergeAll([flyer, jb, tm, venue])[0];
+    const m = mergeAll([flyer, jb, venue])[0];
     const start = m.conflicts.find((c) => c.field === 'start')!;
     assert.deepEqual(start.values.map((v) => [v.source, v.value]), [['venue_site', '20:00'], ['jambase', '20:30'], ['flyer', '21:00']]);
     assert.ok(m.conflicts.some((c) => c.field === 'price'));
   });
 
-  it('status: a JamBase or Ticketmaster cancel flag beats the venue site, and the disagreement is flagged', () => {
-    const m = mergeAll([cand('venue_site', { status: 'scheduled' }), cand('ticketmaster', { status: 'cancelled' })])[0];
+  it('status: a JamBase cancel flag beats the venue site, and the disagreement is flagged', () => {
+    const m = mergeAll([cand('venue_site', { status: 'scheduled' }), cand('jambase', { status: 'cancelled' })])[0];
     assert.equal(m.status, 'cancelled');
-    assert.equal(m.fieldSource.status, 'ticketmaster');
+    assert.equal(m.fieldSource.status, 'jambase');
     assert.ok(m.conflicts.some((c) => c.field === 'status'));
     assert.equal(mergeAll([cand('venue_site', { status: 'moved' }), cand('jambase', { status: 'scheduled' })])[0].status, 'moved');
   });
@@ -119,34 +116,29 @@ describe('merge priorities and provenance', () => {
   });
 
   it('lists the sources shown in the details line', () => {
-    assert.equal(sourcesLine(mergeAll([flyer, tm, venue])[0]), "Venue's website, Ticketmaster, Shared flyer");
+    assert.equal(sourcesLine(mergeAll([flyer, jb, venue])[0]), "Venue's website, JamBase, Shared flyer");
   });
 
   it('never overwrites a source record: merging leaves the inputs unchanged', () => {
-    const before = JSON.stringify([flyer, jb, tm, venue]);
-    mergeAll([flyer, jb, tm, venue]);
-    assert.equal(JSON.stringify([flyer, jb, tm, venue]), before);
+    const before = JSON.stringify([flyer, jb, venue]);
+    mergeAll([flyer, jb, venue]);
+    assert.equal(JSON.stringify([flyer, jb, venue]), before);
   });
 });
 
 describe('licensed switches', () => {
-  const all = [cand('venue_site', { imageUrl: 'https://venue.example/p.jpg' }), cand('ticketmaster', { price: { min: 25, max: 25 }, ticketUrl: 'https://tm.example/t', imageUrl: 'https://tm.example/p.jpg' }), cand('jambase')];
+  const all = [cand('venue_site', { imageUrl: 'https://venue.example/p.jpg', price: { min: 20, max: 20 } }), cand('jambase')];
 
-  it('defaults keep everything on', () => {
-    assert.equal(applySwitches(all, DEFAULT_SWITCHES).length, 3);
-    assert.deepEqual(imageChain(all, DEFAULT_SWITCHES).map((i) => i.kind), ['venue', 'ticketmaster']);
+  it('defaults keep everything on, and the image order is the venue page image only', () => {
+    assert.equal(applySwitches(all, DEFAULT_SWITCHES).length, 2);
+    assert.deepEqual(imageChain(all).map((i) => i.kind), ['venue']);
   });
 
-  it('turns off each family on its own', () => {
-    assert.equal(applySwitches(all, { ...DEFAULT_SWITCHES, jambaseListings: false }).some((c) => c.sourceType === 'jambase'), false);
-    const noPrice = applySwitches(all, { ...DEFAULT_SWITCHES, ticketmasterPrice: false }).find((c) => c.sourceType === 'ticketmaster')!;
-    assert.equal(noPrice.price, undefined);
-    assert.equal(noPrice.ticketUrl, 'https://tm.example/t');
-    const noLink = applySwitches(all, { ...DEFAULT_SWITCHES, ticketmasterLink: false }).find((c) => c.sourceType === 'ticketmaster')!;
-    assert.equal(noLink.ticketUrl, undefined);
-    assert.deepEqual(imageChain(all, { ...DEFAULT_SWITCHES, ticketmasterPhoto: false }).map((i) => i.kind), ['venue']);
-    const merged = mergeAll(applySwitches(all, { ...DEFAULT_SWITCHES, ticketmasterPrice: false, ticketmasterLink: false, ticketmasterPhoto: false }))[0];
-    assert.equal(merged.price, undefined);
+  it('turning JamBase off removes its records and leaves the first-party card intact', () => {
+    const left = applySwitches(all, { jambaseListings: false });
+    assert.deepEqual(left.map((c) => c.sourceType), ['venue_site']);
+    const merged = mergeAll(left)[0];
+    assert.deepEqual(merged.price, { min: 20, max: 20 });
     assert.equal(merged.imageUrl, 'https://venue.example/p.jpg');
   });
 });

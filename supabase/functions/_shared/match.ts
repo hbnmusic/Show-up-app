@@ -78,17 +78,17 @@ export type Field = 'start' | 'doors' | 'price' | 'ticketUrl' | 'status' | 'line
 
 /** Highest priority first. Status is handled separately (cancel and move flags). */
 export const PRIORITY: Record<Exclude<Field, 'status'>, SourceType[]> = {
-  start: ['venue_site', 'ticketmaster', 'jambase', 'flyer'],
-  doors: ['venue_site', 'ticketmaster', 'jambase', 'flyer'],
-  price: ['ticketmaster', 'venue_site', 'jambase', 'flyer'],
-  ticketUrl: ['ticketmaster', 'venue_site', 'jambase', 'flyer'],
-  lineup: ['venue_site', 'ticketmaster', 'jambase', 'flyer'],
-  venue: ['venue_site', 'ticketmaster', 'jambase', 'flyer'],
-  age: ['venue_site', 'ticketmaster', 'jambase', 'flyer'],
-  genres: ['venue_site', 'flyer', 'jambase', 'ticketmaster'],
-  image: ['venue_site', 'ticketmaster', 'jambase', 'flyer'],
+  start: ['venue_site', 'jambase', 'flyer'],
+  doors: ['venue_site', 'jambase', 'flyer'],
+  price: ['venue_site', 'jambase', 'flyer'],
+  ticketUrl: ['venue_site', 'jambase', 'flyer'],
+  lineup: ['venue_site', 'jambase', 'flyer'],
+  venue: ['venue_site', 'jambase', 'flyer'],
+  age: ['venue_site', 'jambase', 'flyer'],
+  genres: ['venue_site', 'flyer', 'jambase'],
+  image: ['venue_site', 'jambase', 'flyer'],
 };
-const STATUS_PRIORITY: SourceType[] = ['jambase', 'ticketmaster', 'venue_site', 'flyer'];
+const STATUS_PRIORITY: SourceType[] = ['jambase', 'venue_site', 'flyer'];
 
 export type SourceRef = { sourceType: SourceType; licence: LicenceClass; url?: string; fetchedAt: string };
 export type Conflict = { field: Field; values: { source: SourceType; value: string }[] };
@@ -171,9 +171,9 @@ export function mergeGroup(group: readonly Candidate[]): MergedShow {
   out.agePolicy = pick(g, PRIORITY.age, (c) => c.agePolicy, (v) => v.toLowerCase(), 'age', out);
   out.imageUrl = pick(g, PRIORITY.image, (c) => c.imageUrl, (v) => v, 'image', out);
 
-  // Status: a cancel or move flag from JamBase or Ticketmaster counts, then the venue's own site; a disagreement is flagged.
+  // Status: a cancel or move flag from JamBase counts, then the venue's own site; a disagreement is flagged.
   const statusHave = g.filter((c) => c.status).sort(byPriority(STATUS_PRIORITY));
-  const flagged = statusHave.find((c) => c.status !== 'scheduled' && (c.sourceType === 'jambase' || c.sourceType === 'ticketmaster'));
+  const flagged = statusHave.find((c) => c.status !== 'scheduled' && c.sourceType === 'jambase');
   const winner = flagged ?? statusHave.find((c) => c.sourceType === 'venue_site') ?? statusHave[0];
   if (winner?.status) {
     out.status = winner.status;
@@ -215,8 +215,8 @@ export function mergeAll(cands: readonly Candidate[]): MergedShow[] {
   return cluster(cands).map(mergeGroup);
 }
 
-/** Text for the "Sources" line in show details, e.g. "Venue website, Ticketmaster, shared flyer". */
+/** Text for the "Sources" line in show details, e.g. "Venue website, JamBase, shared flyer". */
 export function sourcesLine(m: Pick<MergedShow, 'sources'>): string {
-  const label: Record<SourceType, string> = { venue_site: "Venue's website", ticketmaster: 'Ticketmaster', jambase: 'JamBase', flyer: 'Shared flyer' };
+  const label: Record<SourceType, string> = { venue_site: "Venue's website", jambase: 'JamBase', flyer: 'Shared flyer' };
   return [...new Set(m.sources.map((s) => label[s.sourceType]))].join(', ');
 }

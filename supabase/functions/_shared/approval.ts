@@ -1,11 +1,12 @@
 /** Automatic approval of candidate venues, automatic disabling of unhealthy ones, and wave planning. No manual review step. */
+import { BLOCKED_DOMAINS } from './blocked.ts';
 import type { RobotsStatus, VenueTier } from './types.ts';
 
 /** Hosts that are never a venue's own site: social networks, aggregators and ticket sellers we do not read. */
 const NOT_OWN_DOMAIN = [
   'instagram.com', 'facebook.com', 'fb.com', 'threads.net', 'tiktok.com', 'twitter.com', 'x.com', 'linktr.ee', 'youtube.com',
-  'songkick.com', 'bandsintown.com', 'ra.co', 'residentadvisor.net', 'dice.fm', 'eventbrite.com', 'eventbrite.ca', 'ticketmaster.com',
-  'ticketmaster.ca', 'livenation.com', 'axs.com', 'seatgeek.com', 'jambase.com', 'stubhub.com', 'vividseats.com', 'ticketweb.com', 'etix.com', 'yelp.com', 'tripadvisor.com',
+  'songkick.com', 'bandsintown.com', 'ra.co', 'residentadvisor.net', 'dice.fm', 'eventbrite.com', 'eventbrite.ca', ...BLOCKED_DOMAINS,
+  'axs.com', 'seatgeek.com', 'jambase.com', 'stubhub.com', 'vividseats.com', 'ticketweb.com', 'etix.com', 'yelp.com', 'tripadvisor.com',
 ];
 
 export function isOwnDomain(url: string | undefined | null): boolean {

@@ -47,7 +47,7 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
    [inference]; if you prefer to be conservative, declare Approximate location as collected, not shared, purpose App functionality,
    optional, and note the privacy policy says it stays on the phone.
 3. **Third-party requests.** The app sends artist names (and the phone's IP address, as any web request does) to Deezer to fetch previews
-   and photos, and loads listings from GitHub and images from JamBase, Ticketmaster and Deezer servers. No account data goes to them.
+   and photos, and loads listings from GitHub and images from venue websites and Deezer servers. No account data goes to them.
    Artist names from public listings are not personal data. IP addresses seen by these servers are the ordinary web-request exchange;
    Google's help text says to declare data a third party receives through the app's code unless an exception applies [inference]. The
    conservative answer is to leave Device or other IDs as "No" because the app collects no identifier, and rely on the privacy policy

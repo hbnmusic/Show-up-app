@@ -18,7 +18,7 @@ on:
     paths:
       - scripts/fetch-listings.ts
       - src/lib/listings/**
-      - scripts/enrich-ticketmaster.ts
+      - scripts/clean-feeds.ts
       - .github/workflows/refresh-listings.yml
   workflow_dispatch:
     inputs:
@@ -41,7 +41,6 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       JAMBASE_API_KEY: ${{ secrets.JAMBASE_API_KEY }}
-      TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
     steps:
       - name: Check for the API key
         id: key
@@ -77,12 +76,11 @@ jobs:
           [ -z "$MODE" ] && MODE=auto
           npx tsx scripts/fetch-listings.ts --mode "$MODE" --dump-sample listings/raw-sample.json
 
-      # Optional: fills price, age and a photo from Ticketmaster when the secret exists.
-      # Never blocks publishing; problems show up as warnings.
-      - name: Add Ticketmaster details
+      # Drops photos, prices, links and credit lines left over from the removed ticket-seller enrichment, so old
+      # feed files are cleaned once and never come back.
+      - name: Clean the feeds
         if: steps.key.outputs.have == 'true'
-        continue-on-error: true
-        run: npx tsx scripts/enrich-ticketmaster.ts
+        run: npx tsx scripts/clean-feeds.ts --dir listings
 
       # Licensed-layer switches (public RPC; the anon key is public by design). Missing values mean everything stays on.
       - name: Apply licensed-layer switches
@@ -111,7 +109,9 @@ jobs:
           gh release view listings >/dev/null 2>&1 || gh release create listings \
             --prerelease --latest=false --title "Listings feed" \
             --notes "Rolling listings feed downloaded by the app. Replaced by the Refresh listings workflow; not an app build."
-          gh release upload listings listings/shows-*.json listings/state.json $(ls listings/tm-state.json 2>/dev/null) --clobber
+          # Stale files from earlier versions (the single-file feed and the old enrichment ledger) are removed.
+          for a in shows.json tm-state.json; do gh release delete-asset listings "$a" --yes 2>/dev/null || true; done
+          gh release upload listings listings/shows-*.json listings/state.json --clobber
 
       - name: Keep a few raw records for checking the mapping
         if: steps.key.outputs.have == 'true' && always()

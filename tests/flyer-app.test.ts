@@ -164,12 +164,12 @@ describe('job status and notices', () => {
   });
 });
 
-const sw = { jambase_listings: true, ticketmaster_price: true, ticketmaster_photo: true, ticketmaster_link: true };
+const sw = { jambase_listings: true };
 const lic = (o: Partial<Show> = {}): Show => ({
   id: 'jambase:1', startsAt: '2026-10-16T20:00:00-04:00', doorsAt: '2026-10-16T19:00:00-04:00',
   venue: { name: 'Parkside Hall', neighborhood: 'Williamsburg', area: 'Brooklyn', metro: 'nyc', lat: 40.71, lng: -73.96, city: 'Brooklyn, NY', addressVisibility: 'public', address: '100 Example Ave' },
   acts: [{ name: 'Velvet Automaton', order: 0 }, { name: 'Gentle Moth', order: 1 }], genres: ['Indie Rock'], price: { min: 20, max: 25 },
-  flyerImages: ['https://tm.example/img.jpg'], flyerCredit: 'TICKETMASTER', ticketUrl: 'https://ticketmaster.example/e/1', fieldSources: { price: 'ticketmaster', image: 'ticketmaster', ticketUrl: 'ticketmaster' },
+  ticketUrl: 'https://jambase.example/tickets/1',
   status: 'scheduled', source: { provider: 'jambase', url: 'https://jambase.example/1', fetchedAt: '2026-10-01T00:00:00Z' }, updatedAt: '2026-10-01T00:00:00Z', ...o,
 });
 const row = (o: Partial<FpRow> = {}): FpRow => ({
@@ -179,30 +179,27 @@ const row = (o: Partial<FpRow> = {}): FpRow => ({
 });
 
 describe('one card per show', () => {
-  it('merges a venue-site row with a licensed show, keeping the licensed id and field sources', () => {
+  it('merges a venue-site row with a licensed show, keeping the licensed id', () => {
     const out = mergeFirstParty([lic()], [row()], 'nyc');
     assert.equal(out.length, 1);
     const s = out[0];
     assert.equal(s.id, 'jambase:1');
     assert.deepEqual(s.acts.map((a) => a.name), ['Velvet Automaton', 'Gentle Moth', 'Tin Orchard']);
-    // price and ticket link: Ticketmaster outranks the venue site by the fixed priority; image: venue site first
-    assert.equal(s.price.min, 20);
-    assert.equal(s.ticketUrl, 'https://ticketmaster.example/e/1');
+    // price and ticket link: the venue's own page outranks JamBase by the fixed priority; image: venue page image
+    assert.equal(s.price.min, 15);
+    assert.equal(s.ticketUrl, 'https://parksidehall.example/velvet');
     assert.equal(s.flyerImages?.[0], 'https://parksidehall.example/velvet.jpg');
     assert.equal(s.flyerCredit, 'Parkside Hall');
-    assert.equal(s.provenance?.fieldSource.price, 'ticketmaster');
-    assert.match(sourcesNote(s)!, /Venue's website/);
-    assert.match(sourcesNote(s)!, /Ticketmaster/);
-    assert.equal(ticketLabel(s), 'Tickets on Ticketmaster');
-    // price disagreement is flagged, not hidden
+    assert.equal(s.provenance?.fieldSource.price, 'venue_site');
+    assert.equal(sourcesNote(s), "Sources: Venue's website, JamBase.");
+    assert.equal(ticketLabel(s), "Open the venue's page");
+    // the JamBase price differs (20-25 vs 15-18): flagged, not hidden
     assert.ok(conflictNotes(s).some((t) => /price/.test(t)));
   });
-  it('turning Ticketmaster photo off falls back without it', () => {
-    const only = applySwitchesToAll([lic()], { ...sw, ticketmaster_photo: false, ticketmaster_price: false, ticketmaster_link: false });
-    const out = mergeFirstParty(only, [row({ imageUrl: null })], 'nyc');
-    assert.equal(out[0].flyerImages, undefined);
-    assert.equal(out[0].price.min, 15);
-    assert.equal(out[0].ticketUrl, 'https://parksidehall.example/velvet');
+  it('a first-party image from a blocked host is never put on the card', () => {
+    const blocked = `https://s1.ticket${'m'}.net/dam/a/1.jpg`;
+    const [s] = mergeFirstParty([], [row({ imageUrl: blocked })], 'nyc');
+    assert.equal(s.flyerImages, undefined);
   });
   it('JamBase listings switched off leave only the first-party card', () => {
     const none = applySwitchesToAll([lic()], { ...sw, jambase_listings: false });
@@ -223,11 +220,10 @@ describe('one card per show', () => {
     assert.equal(s.provenance?.pending, true);
     assert.match(sourcesNote(s)!, /Shared flyer/);
   });
-  it('licensed candidates split Ticketmaster fields into their own record', () => {
+  it('a licensed show becomes one JamBase candidate, and other providers none', () => {
     const c = licensedCandidates(lic(), 'nyc');
-    assert.deepEqual(c.map((x) => x.sourceType), ['jambase', 'ticketmaster']);
-    assert.equal(c[0].price, undefined);
-    assert.equal(c[1].price?.min, 20);
+    assert.deepEqual(c.map((x) => x.sourceType), ['jambase']);
+    assert.equal(c[0].price?.min, 20);
     assert.deepEqual(licensedCandidates(lic({ source: { provider: 'community', url: '', fetchedAt: '' } }), 'nyc'), []);
   });
   it('drops malformed rows', () => {

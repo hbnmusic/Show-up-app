@@ -47,7 +47,7 @@ type ListingsState = {
   feeds: Record<string, MetroFeed>;
   /** First-party shows (venue pages, shared flyers) per city. */
   fpRows: Record<string, FpRow[]>;
-  /** On/off switches for the licensed layer (JamBase listings, Ticketmaster price, photo, link). */
+  /** On/off switches for the licensed layer (JamBase listings). */
   switches: LicensedSwitches;
   source: ListingsSource;
   generatedAt: string | null;

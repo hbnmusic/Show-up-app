@@ -12,7 +12,6 @@ import { dedupeKey, dedupeShows, mergeFeed, withRetained } from '../src/lib/list
 import { buildFeed, collect, sanityProblem } from '../src/lib/listings/pipeline';
 import { localToIso } from '../src/lib/listings/tz';
 import { cleanShow, parseFeed } from '../src/lib/listings/validate';
-import { enrichShow, imageFrom, matchEvent, parseTmEvent, priceFrom } from '../src/lib/listings/ticketmaster';
 import type { Show } from '../src/lib/types';
 
 const OPTS = { fetchedAt: '2026-09-30T02:00:00.000Z', maxCapacity: 1500 };
@@ -347,74 +346,6 @@ function concertShow(): Show {
   if (!('show' in r)) throw new Error('fixture failed to map');
   return r.show;
 }
-
-describe('Ticketmaster enrichment', () => {
-  const tm = (over: Record<string, unknown> = {}) => ({
-    id: 'tm1',
-    url: 'https://www.ticketmaster.com/event/tm1',
-    info: 'All ages. Doors at 7.',
-    dates: { start: { localDate: '2026-10-05', dateTime: '2026-10-05T23:00:00Z' } },
-    priceRanges: [{ type: 'standard', currency: 'USD', min: 22.5, max: 35 }],
-    images: [
-      { url: 'https://img/small.jpg', width: 305, ratio: '16_9' },
-      { url: 'https://img/mid.jpg', width: 640, ratio: '16_9' },
-      { url: 'https://img/big.jpg', width: 1024, ratio: '16_9' },
-      { url: 'https://img/tall.jpg', width: 640, ratio: '3_2' },
-    ],
-    _embedded: { venues: [{ name: 'The Saint Vitus Bar' }], attractions: [{ name: 'Krallice' }] },
-    ...over,
-  });
-
-  it('summarises price ranges and picks a light, wide image', () => {
-    assert.deepEqual(priceFrom([{ min: 20, max: 30 }, { min: 15, max: 25 }]), { min: 15, max: 30 });
-    assert.equal(priceFrom([]), undefined);
-    assert.equal(imageFrom(tm().images), 'https://img/mid.jpg');
-    assert.equal(imageFrom([{ url: 'x', width: 100 }]), undefined);
-  });
-
-  it('matches by time plus venue or act, and fills only blanks', () => {
-    const show: Show = { ...concertShow(), price: {}, flyerImages: undefined }; // Saint Vitus, 2026-10-05 19:00 New York = 23:00Z
-    const ev = parseTmEvent(tm())!;
-    assert.equal(matchEvent(show, [ev])?.id, 'tm1');
-    const out = enrichShow(show, ev);
-    assert.deepEqual(out.fills, { price: true, image: true });
-    assert.deepEqual(out.show.price, { min: 23, max: 35 });
-    assert.equal(out.show.flyerImages?.[0], 'https://img/mid.jpg');
-    assert.equal(out.show.flyerCredit, 'TICKETMASTER');
-
-    // Existing facts are never overwritten.
-    const known: Show = { ...show, price: { min: 10, max: 10 }, flyerImages: ['https://mine'] };
-    const kept = enrichShow(known, ev);
-    assert.deepEqual(kept.fills, { price: false, image: false });
-    assert.deepEqual(kept.show.price, { min: 10, max: 10 });
-  });
-
-  it('does not match a different night or an unrelated room', () => {
-    const show = concertShow();
-    const nextDay = parseTmEvent(tm({ dates: { start: { dateTime: '2026-10-06T23:00:00Z' } } }))!;
-    assert.equal(matchEvent(show, [nextDay]), null);
-    const other = parseTmEvent(tm({ _embedded: { venues: [{ name: 'Terminal 5' }], attractions: [{ name: 'Someone Else' }] } }))!;
-    assert.equal(matchEvent(show, [other]), null);
-    // Same night, same act, venue named differently: still the same show.
-    const sameAct = parseTmEvent(tm({ _embedded: { venues: [{ name: 'Some Other Name' }], attractions: [{ name: 'KRALLICE' }] } }))!;
-    assert.equal(matchEvent(show, [sameAct])?.id, 'tm1');
-  });
-
-  it('a listing with only a date matches on the venue-local day', () => {
-    const show: Show = { ...concertShow(), timeTba: true };
-    const ev = parseTmEvent(tm({ dates: { start: { localDate: '2026-10-05' } } }))!;
-    assert.equal(matchEvent(show, [ev])?.id, 'tm1');
-  });
-
-  it('the ticket link upgrades only when JamBase had none of its own', () => {
-    const show = concertShow();
-    const ev = parseTmEvent(tm())!;
-    const fallback: Show = { ...show, ticketUrl: show.source.url };
-    assert.equal(enrichShow(fallback, ev).show.ticketUrl, 'https://www.ticketmaster.com/event/tm1');
-    const own: Show = { ...show, ticketUrl: 'https://seller.example/tix' };
-    assert.equal(enrichShow(own, ev).show.ticketUrl, 'https://seller.example/tix');
-  });
-});
 
 describe('genre rename', () => {
   it('old Club & Techno data reads as Electronic', () => {

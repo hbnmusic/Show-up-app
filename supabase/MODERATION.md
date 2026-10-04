@@ -64,14 +64,14 @@ select fp.takedown_show('<show id>', 'DMCA notice 2026-10-05');      -- hide one
 select fp.takedown_image('<image URL>', 'DMCA notice');             -- block that image URL everywhere
 select fp.takedown_venue('<venue id>', 'venue owner request');       -- disable a venue, hide its shows, stop scanning
 select fp.ban_user('<user id>', 'repeat infringer');                  -- bans the account and hides its flyer shows
-select fp.purge_licensed('ticketmaster');                            -- clears Ticketmaster link rows (also run the Purge licensed data workflow)
+select fp.purge_licensed('jambase');                                 -- clears JamBase link rows (also run the Purge licensed data workflow)
 ```
 
 Every takedown is recorded in `fp.takedowns`. DMCA notices go to the agent address on `docs/dmca.html`; act on a complete notice promptly, tell the
 person who added the show, and ban after repeated notices (repeat-infringer clause in the Terms). Counter-notices: restore with
 `update fp.shows set visibility = 'public' where id = '<id>'` after the waiting period in the DMCA page.
-Switch licensed data off without deleting anything: `update fp.licensed_switches set enabled = false where family = 'ticketmaster_photo';`
-(families: jambase_listings, ticketmaster_price, ticketmaster_photo, ticketmaster_link). Flyer shows waiting for a second person appear in the app's confirm queue.
+Switch licensed data off without deleting anything: `update fp.licensed_switches set enabled = false where family = 'jambase_listings';`
+(the only family is jambase_listings; see KILL_SWITCHES.md for the remote flags). Flyer shows waiting for a second person appear in the app's confirm queue.
 
 ## Deletion requests that arrive by email or from the web page
 

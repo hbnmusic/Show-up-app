@@ -24,7 +24,7 @@ Expected result: a rating around "Everyone 10+" or "Teen" because of user-genera
 questionnaire sets the actual rating; do not change answers to get a lower one.
 
 Notes:
-- Flyer and event images are loaded from JamBase, Ticketmaster and Deezer. We do not review them. If any image is inappropriate, it comes
+- Flyer and event images are loaded from JamBase, venue websites and Deezer. We do not review them. If any image is inappropriate, it comes
   from the provider; you cannot remove it, but you can hide the show via `supabase/MODERATION.md` if it is a community show.
 - **Target audience** (Play Console → App content → Target audience): the app's minimum age is 18 (Terms, Privacy Policy and in-app text).
   Select only the **16–17** and **18 and over** groups. Do not select any group under 16, which avoids the extra requirements for

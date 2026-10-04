@@ -689,7 +689,7 @@ select cron.schedule('ops-purge-old', '17 8 * * *', 'select ops.purge_old()');
 
 
 -- =============================================================================================
--- First-party listings layer: flyers shared by people and venues' own sites, kept apart from JamBase and Ticketmaster data.
+-- First-party listings layer: flyers shared by people and venues' own sites, kept apart from JamBase data.
 -- Everything lives in the "fp" schema, which is not exposed through the API. The app reads and writes only through the
 -- public.fp_* functions at the bottom; Edge Functions use the service role. Safe to run twice.
 
@@ -711,7 +711,7 @@ create table if not exists fp.metro_config (
   updated_at timestamptz not null default now()
 );
 
--- Venue registry. Seeded only from venues' own sites and Wikidata (CC0). Never from JamBase, Ticketmaster or OpenStreetMap.
+-- Venue registry. Seeded only from venues' own sites and Wikidata (CC0). Never from JamBase or OpenStreetMap.
 create table if not exists fp.venues (
   id uuid primary key default gen_random_uuid(),
   canonical_name text not null check (char_length(canonical_name) between 1 and 160),
@@ -754,7 +754,7 @@ create table if not exists fp.venue_runs (
 );
 create index if not exists fp_venue_runs_venue on fp.venue_runs (venue_id, at desc);
 
--- The merged first-party show. Licensed data (JamBase, Ticketmaster) is never stored here.
+-- The merged first-party show. Licensed data (JamBase) is never stored here.
 create table if not exists fp.shows (
   id uuid primary key default gen_random_uuid(),
   key text not null,
@@ -825,7 +825,7 @@ create or replace trigger fp_source_records_append_only before update or delete 
 -- Links from a first-party show to the same show in a licensed feed. Ids only, no licensed content.
 create table if not exists fp.licensed_links (
   show_id uuid not null references fp.shows (id) on delete cascade,
-  source text not null check (source in ('jambase', 'ticketmaster')),
+  source text not null check (source = 'jambase'),
   external_id text not null check (char_length(external_id) <= 120),
   created_at timestamptz not null default now(),
   primary key (show_id, source)
@@ -833,11 +833,11 @@ create table if not exists fp.licensed_links (
 
 -- On/off switches for the licensed layer. Defaults keep today's behaviour.
 create table if not exists fp.licensed_switches (
-  family text primary key check (family in ('jambase_listings', 'ticketmaster_price', 'ticketmaster_photo', 'ticketmaster_link')),
+  family text primary key check (family = 'jambase_listings'),
   enabled boolean not null default true,
   updated_at timestamptz not null default now()
 );
-insert into fp.licensed_switches (family) values ('jambase_listings'), ('ticketmaster_price'), ('ticketmaster_photo'), ('ticketmaster_link')
+insert into fp.licensed_switches (family) values ('jambase_listings')
   on conflict do nothing;
 
 -- Flyer jobs. Only redacted recognised text is stored; the image never leaves the phone.
@@ -1148,11 +1148,11 @@ create or replace function fp.purge_licensed(src text) returns integer
 language plpgsql security definer set search_path = fp, public as $$
 declare n integer;
 begin
-  if src not in ('jambase', 'ticketmaster') then raise exception 'source must be jambase or ticketmaster'; end if;
+  if src <> 'jambase' then raise exception 'source must be jambase'; end if;
   select count(*) into n from fp.licensed_links where source = src;
   perform fp.delete_licensed_links(src);
   update fp.licensed_switches set enabled = false, updated_at = now()
-    where (src = 'jambase' and family = 'jambase_listings') or (src = 'ticketmaster' and family like 'ticketmaster_%');
+    where family = 'jambase_listings';
   insert into fp.takedowns (kind, ref, note) values ('purge_licensed', src, null);
   return n;
 end $$;
@@ -1360,3 +1360,13 @@ language sql stable security definer set search_path = public, fp as $$
   from fp.flyer_jobs j
   where j.submitter = auth.uid() and j.created_at > now() - interval '30 days'
 $$;
+
+-- ---- 016: the retired seller is gone from the licence layer (existing databases) ----
+-- Run by hand in the SQL editor; the migration file 016_retire_seller_schema.sql has the same statements.
+-- (A fresh database already has the tightened definitions above; these are no-ops there.)
+delete from fp.licensed_switches where family <> 'jambase_listings';
+delete from fp.licensed_links where source <> 'jambase';
+alter table fp.licensed_switches drop constraint if exists licensed_switches_family_check;
+alter table fp.licensed_switches add constraint licensed_switches_family_check check (family = 'jambase_listings');
+alter table fp.licensed_links drop constraint if exists licensed_links_source_check;
+alter table fp.licensed_links add constraint licensed_links_source_check check (source = 'jambase');

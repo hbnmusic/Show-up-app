@@ -223,7 +223,7 @@ describe('licensed links and coverage', () => {
   it('stores ids only and lets a licensed match corroborate a high-confidence pending flyer', async () => {
     const hi = (await sql`insert into fp.shows (key, metro, venue_name, local_date, headliner, visibility, confidence) values ('a', 'nyc', 'V', current_date + 5, 'H', 'pending', 0.95) returning id::text as id`)[0].id;
     const lo = (await sql`insert into fp.shows (key, metro, venue_name, local_date, headliner, visibility, confidence) values ('b', 'nyc', 'V', current_date + 6, 'L', 'pending', 0.5) returning id::text as id`)[0].id;
-    await licensedLink(sql, [{ showId: hi, source: 'jambase', externalId: 'jb:123' }, { showId: lo, source: 'ticketmaster', externalId: 'tm:9' }]);
+    await licensedLink(sql, [{ showId: hi, source: 'jambase', externalId: 'jb:123' }, { showId: lo, source: 'jambase', externalId: 'jb:9' }]);
     const rows = await sql`select headliner, visibility, corroborated from fp.shows order by headliner`;
     assert.deepEqual(rows, [{ headliner: 'H', visibility: 'public', corroborated: true }, { headliner: 'L', visibility: 'pending', corroborated: true }]);
     assert.equal((await sql`select count(*)::int as n from fp.licensed_links`)[0].n, 2);

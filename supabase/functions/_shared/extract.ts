@@ -3,6 +3,7 @@
  * data, and only then the language model on stripped page text. Pure parsing; fetching is done by the caller.
  */
 import { parsePrice, parseTime, todayIn, dayNumber, type ParsedPrice } from './dates.ts';
+import { isBlockedUrl, safeImage } from './blocked.ts';
 import { mapStatedGenres } from './genres.ts';
 import { cleanActName } from './text.ts';
 import { licenceFor, type Candidate, type MetroRow, type ShowStatus, type VenueRow } from './types.ts';
@@ -254,7 +255,7 @@ export function rawToCandidate(
     candidate: {
       sourceType: 'venue_site',
       licence: licenceFor('venue_site'),
-      sourceUrl: raw.url ?? pageUrl,
+      sourceUrl: raw.url && !isBlockedUrl(raw.url) ? raw.url : pageUrl,
       fetchedAt: now.toISOString(),
       metro: metro.id,
       venueId: venue.id,
@@ -272,7 +273,7 @@ export function rawToCandidate(
       agePolicy: raw.agePolicy,
       address: venue.address,
       addressMode: venue.address ? 'registry' : 'withheld',
-      imageUrl: raw.image,
+      imageUrl: safeImage(raw.image),
       evidence: { tier },
     },
   };

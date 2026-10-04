@@ -1,14 +1,14 @@
 name: Purge licensed data
 
-# Removes one licensed source (ticketmaster or jambase) from the published feed. Run it when a provider asks or terms change.
-# Also switch the matching family off in Supabase (fp.licensed_switches) so later refreshes stay clean.
+# Removes JamBase listings from the published feed. Run it when the provider asks or terms change (see supabase/KILL_SWITCHES.md).
+# Also switch the family off in Supabase (fp.licensed_switches / the jambase_enabled flag) so later refreshes stay clean.
 on:
   workflow_dispatch:
     inputs:
       source:
         description: 'Source to purge'
         type: choice
-        options: [ticketmaster, jambase]
+        options: [jambase]
 
 permissions:
   contents: write

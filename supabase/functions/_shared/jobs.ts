@@ -287,7 +287,7 @@ export async function exportShows(sql: Sql): Promise<Reply> {
   return ok({ shows: rows });
 }
 
-export async function licensedLink(sql: Sql, links: { showId: string; source: 'jambase' | 'ticketmaster'; externalId: string }[]): Promise<Reply> {
+export async function licensedLink(sql: Sql, links: { showId: string; source: 'jambase'; externalId: string }[]): Promise<Reply> {
   let n = 0;
   for (const l of links.slice(0, 1000)) {
     await sql`insert into fp.licensed_links (show_id, source, external_id) values (${l.showId}::uuid, ${l.source}, ${l.externalId.slice(0, 120)}) on conflict (show_id, source) do update set external_id = excluded.external_id`;

@@ -3,6 +3,7 @@
  * a cached copy). Anything malformed is dropped rather than allowed to crash
  * a screen that assumes the Show type.
  */
+import { BLOCKED_TEXT, isBlockedUrl } from '../imageGuard';
 import { ALL_GENRES, type Genre, type Show } from '../types';
 
 type Obj = Record<string, unknown>;
@@ -10,14 +11,6 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
 const validDate = (v: unknown): v is string => typeof v === 'string' && !Number.isNaN(new Date(v).getTime());
 const STATUSES = ['scheduled', 'cancelled', 'moved'];
 const VISIBILITY = ['public', 'neighborhood_only', 'on_request'];
-
-const tmSources = (o: Obj): Show['fieldSources'] | undefined => {
-  const out: NonNullable<Show['fieldSources']> = {};
-  if (o.price === 'ticketmaster') out.price = 'ticketmaster';
-  if (o.image === 'ticketmaster') out.image = 'ticketmaster';
-  if (o.ticketUrl === 'ticketmaster') out.ticketUrl = 'ticketmaster';
-  return Object.keys(out).length ? out : undefined;
-};
 
 /** Returns a cleaned Show, or null when the record cannot be shown safely. */
 export function cleanShow(raw: unknown): Show | null {
@@ -41,6 +34,18 @@ export function cleanShow(raw: unknown): Show | null {
   const price = isObj(raw.price) ? raw.price : {};
   const source = isObj(raw.source) ? raw.source : {};
   const str = (x: unknown) => (typeof x === 'string' && x ? x : undefined);
+
+  // Feeds and caches written while the removed ticket seller's data was merged in carry its credit line, photos, prices
+  // and links. Drop them here so old data never shows: photos and credit always; the price only on shows it enriched
+  // (a stamp or the credit line marks them); the ticket link only when it is that seller's own page rather than a link
+  // JamBase supplied (those carry JamBase's tracking tag) - it falls back to the JamBase page, as before the enrichment.
+  const fs = isObj(raw.fieldSources) ? raw.fieldSources : {};
+  const credit = str(raw.flyerCredit);
+  const enriched = (credit !== undefined && BLOCKED_TEXT.test(credit)) || Object.values(fs).some((x) => typeof x === 'string' && BLOCKED_TEXT.test(x));
+  const images = (Array.isArray(raw.flyerImages) ? raw.flyerImages : []).filter((x): x is string => typeof x === 'string' && /^https?:\/\//i.test(x) && !isBlockedUrl(x));
+  const link = str(raw.ticketUrl);
+  const keepLink = link && (!isBlockedUrl(link) || /jambase/i.test(link));
+  const ticketUrl = keepLink ? link : link && source.url ? str(source.url) : undefined;
 
   return {
     id: raw.id,
@@ -66,15 +71,14 @@ export function cleanShow(raw: unknown): Show | null {
     acts,
     genres,
     price: {
-      min: typeof price.min === 'number' ? price.min : undefined,
-      max: typeof price.max === 'number' ? price.max : undefined,
-      isFree: price.isFree === true ? true : undefined,
-      notaflof: price.notaflof === true ? true : undefined,
+      min: !enriched && typeof price.min === 'number' ? price.min : undefined,
+      max: !enriched && typeof price.max === 'number' ? price.max : undefined,
+      isFree: !enriched && price.isFree === true ? true : undefined,
+      notaflof: !enriched && price.notaflof === true ? true : undefined,
     },
-    flyerImages: Array.isArray(raw.flyerImages) ? raw.flyerImages.filter((x): x is string => typeof x === 'string') : undefined,
-    flyerCredit: str(raw.flyerCredit),
-    ticketUrl: str(raw.ticketUrl),
-    fieldSources: isObj(raw.fieldSources) ? tmSources(raw.fieldSources) : undefined,
+    flyerImages: images.length ? images : undefined,
+    flyerCredit: images.length && credit && !BLOCKED_TEXT.test(credit) ? credit : undefined,
+    ticketUrl,
     status: STATUSES.includes(raw.status as string) ? (raw.status as Show['status']) : 'scheduled',
     source: {
       provider: str(source.provider) ?? 'unknown',
@@ -111,7 +115,7 @@ export function parseFeed(raw: unknown): { feed: Feed; dropped: number } | null 
     seen.add(s.id);
     shows.push(s);
   }
-  const attribution = Array.isArray(raw.attribution) ? raw.attribution.filter((x): x is string => typeof x === 'string') : [];
+  const attribution = Array.isArray(raw.attribution) ? raw.attribution.filter((x): x is string => typeof x === 'string' && !BLOCKED_TEXT.test(x)) : [];
   const u = isObj(raw.usage) ? raw.usage : null;
   const usage = u && typeof u.month === 'string' && typeof u.calls === 'number' ? { month: u.month, calls: u.calls } : undefined;
   return {

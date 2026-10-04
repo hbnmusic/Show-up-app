@@ -31,7 +31,7 @@ Know about a gig that is not listed? Sign in with your email (no password) and a
 PRIVATE BY DEFAULT
 No account is needed to browse. Your location, Going list and filters stay on your phone. No ads. Optional anonymous usage statistics can be switched off in Settings.
 
-For ages 18 and up. Listings come from JamBase and Ticketmaster and from people like you. Times, prices and lineups can change, so check the ticket page before you go. Previews come from Deezer and may not match when band names are common.
+For ages 18 and up. Listings come from JamBase, venue websites and people like you. Times, prices and lineups can change, so check the ticket page before you go. Previews come from Deezer and may not match when band names are common.
 ```
 Review this before publishing: the "about 45 metro areas" figure comes from `src/lib/metros.ts`; confirm it is still accurate.
 
@@ -70,4 +70,4 @@ Specs are Google's published ones as I remember them [inference]; confirm in Pla
 - [ ] **Privacy policy** page live and the placeholders filled in (see the README list in `docs/play/RELEASING.md`).
 - [ ] **Data safety**, **content rating**, **target audience**, **ads**, **app access** forms completed (`play-data-safety.md`, `content-rating.md`).
 - [ ] **Account deletion URL** entered in the Data safety form.
-- [ ] Brand check: do not use JamBase, Ticketmaster or Deezer logos in the icon, feature graphic or screenshots' captions.
+- [ ] Brand check: do not use JamBase or Deezer logos in the icon, feature graphic or screenshots' captions.

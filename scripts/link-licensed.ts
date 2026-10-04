@@ -1,6 +1,6 @@
 /**
  * Matches published first-party shows against the downloaded JamBase feed and records the match as ids only
- * (fp.licensed_links). No JamBase or Ticketmaster field is copied into first-party tables.
+ * (fp.licensed_links). No JamBase field is copied into first-party tables.
  * A match counts as a corroborating source, which lets a pending flyer show go live when its confidence is high.
  *
  *   FP_JOB_URL=... JOB_TOKEN=... npx tsx scripts/link-licensed.ts --dir listings

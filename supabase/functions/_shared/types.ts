@@ -1,10 +1,10 @@
 import type { AppGenre } from './genres.ts';
 import type { ParsedPrice } from './dates.ts';
 
-export type SourceType = 'flyer' | 'venue_site' | 'jambase' | 'ticketmaster';
-export type LicenceClass = 'first_party' | 'jambase' | 'ticketmaster' | 'deezer';
+export type SourceType = 'flyer' | 'venue_site' | 'jambase';
+export type LicenceClass = 'first_party' | 'jambase' | 'deezer';
 
-export const licenceFor = (t: SourceType): LicenceClass => (t === 'jambase' ? 'jambase' : t === 'ticketmaster' ? 'ticketmaster' : 'first_party');
+export const licenceFor = (t: SourceType): LicenceClass => (t === 'jambase' ? 'jambase' : 'first_party');
 
 export type ShowStatus = 'scheduled' | 'cancelled' | 'moved';
 

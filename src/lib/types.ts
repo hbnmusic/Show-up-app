@@ -81,8 +81,6 @@ export type Show = {
   /** Who to credit when flyerImages came from a provider rather than the promoter. */
   flyerCredit?: string;
   ticketUrl?: string;
-  /** Fields filled in from Ticketmaster, so the licensed layer can be switched off or purged by field. Absent on older feeds. */
-  fieldSources?: { price?: 'ticketmaster'; image?: 'ticketmaster'; ticketUrl?: 'ticketmaster' };
   /** Set on cards that include first-party data (venue pages or shared flyers): where each part came from. See fpMerge.ts. */
   provenance?: import('./fpMerge').Provenance;
   status: ShowStatus;

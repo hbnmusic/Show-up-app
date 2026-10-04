@@ -1,12 +1,13 @@
 /**
  * One card per show in the app. First-party shows (venue pages and shared flyers, from fp_public_shows) are matched
- * against the downloaded JamBase/Ticketmaster feed on venue + venue-local night + fuzzy headliner and merged field by
+ * against the downloaded JamBase feed on venue + venue-local night + fuzzy headliner and merged field by
  * field with the fixed priorities in supabase/functions/_shared/match.ts. Every field remembers its source and
- * disagreements are kept as conflicts, never resolved silently. Licensed data stays recognisable: Ticketmaster-supplied
+ * disagreements are kept as conflicts, never resolved silently. Licensed data stays recognisable: JamBase-supplied
  * price, photo and link are split into their own record so the on/off switches and purge can act on them.
  */
 import { mergeGroup, sameShow, sourcesLine, type Conflict, type Field } from '../../supabase/functions/_shared/match';
 import type { Candidate, SourceType } from '../../supabase/functions/_shared/types';
+import { safeImage } from './imageGuard';
 import { dedupeKey } from './listings/merge';
 import type { Genre, Show } from './types';
 
@@ -101,31 +102,18 @@ function fpCandidates(r: FpRow): Candidate[] {
   }];
 }
 
-/** A licensed (JamBase-feed) show as candidates: JamBase base record, plus a separate Ticketmaster record for the fields it supplied. */
+/** A licensed (JamBase-feed) show as a candidate record. */
 export function licensedCandidates(s: Show, metro: string): Candidate[] {
   const sorted = [...s.acts].sort((a, b) => a.order - b.order);
   if (!sorted.length || s.source.provider !== 'jambase') return [];
-  const f = s.fieldSources ?? {};
-  const tmPrice = f.price === 'ticketmaster';
-  const tmImage = f.image === 'ticketmaster' || s.flyerCredit === 'TICKETMASTER';
-  const tmLink = f.ticketUrl === 'ticketmaster';
   const base: Candidate = {
     sourceType: 'jambase', licence: 'jambase', sourceUrl: s.source.url, fetchedAt: s.source.fetchedAt, metro, venueId: null, venueName: s.venue.name, city: s.venue.city,
     localDate: clockDate(s.startsAt), startLocal: s.timeTba ? undefined : clockTime(s.startsAt), doorsLocal: s.doorsAt ? clockTime(s.doorsAt) : undefined,
     headliner: sorted[0].name, supports: sorted.slice(1).map((a) => a.name), title: s.title, status: s.status, genres: s.genres as Candidate['genres'], addressMode: 'withheld',
-    price: tmPrice ? undefined : s.price, ticketUrl: tmLink ? undefined : s.ticketUrl, imageUrl: tmImage ? undefined : s.flyerImages?.[0],
+    price: s.price, ticketUrl: s.ticketUrl, imageUrl: safeImage(s.flyerImages?.[0]),
   };
-  const out = [base];
-  if (tmPrice || tmImage || tmLink) {
-    out.push({
-      ...base, sourceType: 'ticketmaster', licence: 'ticketmaster', sourceUrl: undefined, supports: [], genres: [], title: undefined, status: undefined, doorsLocal: undefined,
-      price: tmPrice ? s.price : undefined, ticketUrl: tmLink ? s.ticketUrl : undefined, imageUrl: tmImage ? s.flyerImages?.[0] : undefined,
-    });
-  }
-  return out;
+  return [base];
 }
-
-const TM_CREDIT = 'TICKETMASTER';
 
 /** First-party row on its own (no licensed match). */
 function fromRow(r: FpRow): Show {
@@ -155,14 +143,12 @@ function build(r: FpRow, lic: Show | null, m: Fields, prov: Provenance, imageSou
     lat: r.lat ?? lic?.venue.lat ?? undefined, lng: r.lng ?? lic?.venue.lng ?? undefined, city: r.city ?? lic?.venue.city ?? '',
     address, addressVisibility: address ? ('public' as const) : ('on_request' as const),
   };
-  const tmImage = imageSource === 'ticketmaster';
   const show: Show = {
     id: lic?.id ?? `fp:${r.id}`, title: lic?.title, startsAt, doorsAt, timeTba: m.startLocal ? undefined : true, venue, acts,
     genres: m.genres as Genre[], price: m.price ?? {}, status: m.status,
-    flyerImages: m.imageUrl ? [m.imageUrl] : undefined,
-    flyerCredit: m.imageUrl ? (tmImage ? TM_CREDIT : imageSource === 'venue_site' ? m.venueName : lic?.flyerCredit) : undefined,
+    flyerImages: safeImage(m.imageUrl) ? [safeImage(m.imageUrl) as string] : undefined,
+    flyerCredit: safeImage(m.imageUrl) ? (imageSource === 'venue_site' ? m.venueName : lic?.flyerCredit) : undefined,
     ticketUrl: m.ticketUrl,
-    fieldSources: lic?.fieldSources,
     source: lic?.source ?? { provider: prov.sources[0]?.type === 'venue_site' ? 'venue_site' : 'flyer', url: prov.sources.find((s) => s.url)?.url ?? '', fetchedAt: r.sources[0]?.fetchedAt ?? new Date(0).toISOString(), author: r.author ?? undefined },
     updatedAt: lic?.updatedAt ?? new Date().toISOString(),
     provenance: prov,
