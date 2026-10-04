@@ -65,7 +65,7 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
 - **User-generated content:** the app has in-app reporting (show and person), blocking, Terms acceptance before posting, and a moderation
   runbook (`supabase/MODERATION.md`); these meet Google's UGC requirements as written in the policy [inference].
 - **Permissions:** the final manifest permissions are `ACCESS_COARSE_LOCATION`, `POST_NOTIFICATIONS`, `INTERNET`, `ACCESS_NETWORK_STATE`,
-  `VIBRATE`, `MODIFY_AUDIO_SETTINGS`, `RECEIVE_BOOT_COMPLETED` (reminders survive a restart). None need a Play permission declaration form.
+  `VIBRATE`, `MODIFY_AUDIO_SETTINGS`, `RECEIVE_BOOT_COMPLETED` (reminders survive a restart). The background task library (WorkManager) may merge in `WAKE_LOCK` [inference; check the final manifest of the built APK]. None need a Play permission declaration form.
 
 6. **Flyer sharing and Gemini.** Flyer images are read by ML Kit text recognition on the phone and never leave it. The app removes emails,
    phone numbers, social handles and social links from the recognised text, then sends the rest to our Supabase Edge Function, which
@@ -83,3 +83,11 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
    application "directed towards or likely to be accessed by individuals under the age of 18". Pull Up is 18+ (Terms, store rating, sign-in
    text), but a public app can still be reached by minors, so the owner must decide whether that risk is acceptable. The only way out is a
    paid service, which this project does not use (stop and decide before enabling billing).
+9. **Local retention notifications ("new shows", "shows tonight").** Created on the phone by a background task (Expo background task on
+   Android WorkManager, best effort, at most every couple of hours and only when the system allows). The task reads the saved listings,
+   downloads the selected city's public listing file if it is due (the same file the app downloads when opened), and schedules a local
+   notification. No new data is collected or sent: no push service, no FCM, no server-side targeting. The genre and counts are worked out on the
+   phone; Going swipes stay on the phone. Each kind has its own Android channel and its own switch in Settings; both stay off until the person
+   allows notifications (asked right after the first Going swipe, as before). The three analytics events `notif_scheduled`,
+   `notif_opened` and `notif_setting_changed` carry only the kind (`A` or `B`, or `on`/`off`), no show, city, genre or count, and fall under
+   the existing "app activity" answer for anonymous usage events: no change to the form answers.

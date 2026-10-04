@@ -39,7 +39,7 @@ Nothing else in the app depends on this.
 
 ## First-party listings (flyers and venue pages): one-time setup
 
-Do these once; the migrations 005-011 are already applied to the project.
+Do these once; the migrations 005-020 are already applied to the project (016-017 retire the old seller schema and scrub its data, 018 adds the `app_flags` kill switches, 019 allows the notification analytics events, 020 marks the soft-launch cities). A fresh project gets all of them by running `schema.sql`.
 1. Authentication → Sign In / Providers → turn on **Allow anonymous sign-ins** (needed so a first-time user can share a flyer).
 2. Google AI Studio: create an API key in a project where **billing was never enabled** (the free tier is the only allowed one). Read the model's
    free limits at aistudio.google.com/rate-limit and set `update fp.ai_config set value = '<requests per day>' where key = 'daily_cap';`.
@@ -48,6 +48,9 @@ Do these once; the migrations 005-011 are already applied to the project.
 5. GitHub → Settings → Secrets and variables → Actions: secret `JOB_TOKEN` (same value), secret `SUPABASE_ACCESS_TOKEN`, variables `FP_JOB_URL`
    (`https://<project ref>.supabase.co/functions/v1/fp-job`) and `SUPABASE_PROJECT_REF` (and `SUPABASE_ANON_KEY` if not already set).
 6. Run the Actions workflow **Deploy Supabase functions**, then **Seed venues** (dry run first), then **Venue scan**.
+7. Optional: run the Actions workflow **Readiness report** to see, for New York and Los Angeles, upcoming shows, share by source, approved venues, rejection reasons, shows per genre and whether the notification minimums are met.
+
+Soft launch: New York and Los Angeles have `soft_launch = true` in `fp.metro_config` (and a daily model-request budget of 40, others 10). They are scanned first and get more candidate trials per run; other cities are scanned after them. Every city still shows its JamBase listings. To change which cities are soft launch: `update fp.metro_config set soft_launch = true where metro = '<id>';`. Which cities get notifications is set separately, in `src/lib/metros.ts` (`notificationsEnabled`).
 
 ## What the rules do not stop
 

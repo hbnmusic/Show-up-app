@@ -39,6 +39,18 @@ previous one and keeps your Going list.
 - **Reminders** — local notifications at noon on show day and an hour before
   doors (day-before is optional). Rebuilt on every change and every app open,
   for the next 14 days.
+- **Heads-up notifications** — two optional local notifications, each with its
+  own Android channel and Settings switch: "N new shows just added in <city>"
+  (at least 5 new, at most once every 48 hours, 5 to 7 pm city time) and "N
+  <genre> shows tonight near you" (at least 3, at most once a day, 3:30 to 5:30
+  pm city time). At most 1 a day and 4 a week, none from 9 pm to 9 am, none
+  within 6 hours of opening the app, paused for 14 days after 5 unopened in a
+  row. They are made on the phone by a best-effort background task (Expo
+  background task, Android WorkManager); the phone decides when it runs, so a
+  notification can be late or missing, especially with battery saving on.
+  Rules: `src/lib/retention/planner.ts`. Cities with notifications on are set
+  in `src/lib/metros.ts` (New York and Los Angeles for now). The
+  `notifications_enabled` kill switch is in `supabase/KILL_SWITCHES.md`.
 
 ## Listings
 
@@ -83,6 +95,14 @@ no longer has event methods.
   the spec's audio section). Common band names can match the wrong artist.
 - **No server yet**, so a moved or cancelled show can't push an alert, and the
   Going list lives only on the phone.
+
+## Soft launch (New York and Los Angeles)
+
+Those two cities are the focus. Venue scanning and the venue auto-approval
+trials put them first (`fp.metro_config.soft_launch`, a bigger daily model
+budget, more trials per run); the other wave 1 cities follow. Every city still
+shows its JamBase listings. Check how ready they are with the **Readiness
+report** workflow (or `npx tsx scripts/readiness-report.ts`).
 
 ## Develop
 

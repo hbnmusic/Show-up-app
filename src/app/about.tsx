@@ -47,6 +47,10 @@ export default function AboutScreen() {
           </Text>
         ) : null}
         <Text style={[styles.body, { paddingTop: 0 }]}>
+          Notifications (reminders, new shows, shows tonight) are created on your phone from the listings it already downloaded. Nothing about
+          you is sent to make them, and each kind can be turned off in Settings.
+        </Text>
+        <Text style={[styles.body, { paddingTop: 0 }]}>
           Community accounts and community-added shows are hosted with Supabase (supabase.com).
         </Text>
         <Text style={[styles.body, { paddingTop: 0 }]}>
