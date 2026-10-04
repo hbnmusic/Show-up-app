@@ -24,6 +24,7 @@ export const EVENT_NAMES = [
   'notif_scheduled',
   'notif_opened',
   'notif_setting_changed',
+  'show_shared',
 ] as const;
 export type EventName = (typeof EVENT_NAMES)[number];
 

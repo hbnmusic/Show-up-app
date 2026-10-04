@@ -49,10 +49,10 @@ beforeEach(async () => {
 });
 
 describe('flag table and get_flags()', () => {
-  it('has six flags, all ON by default, and get_flags returns only the flags', async () => {
+  it('has seven flags, all ON by default, and get_flags returns only the flags', async () => {
     const r = await sql`select public.get_flags() as f`;
     const rows = r[0].f as { key: string; enabled: boolean; message: string | null }[];
-    assert.deepEqual(rows.map((x) => x.key), ['ai_extraction_enabled', 'deezer_enabled', 'flyer_intake_enabled', 'jambase_enabled', 'notifications_enabled', 'venue_scan_enabled']);
+    assert.deepEqual(rows.map((x) => x.key), ['ai_extraction_enabled', 'deezer_enabled', 'flyer_intake_enabled', 'going_counts_enabled', 'jambase_enabled', 'notifications_enabled', 'venue_scan_enabled']);
     assert.ok(rows.every((x) => x.enabled && x.message === null));
     assert.deepEqual(Object.keys(rows[0]).sort(), ['enabled', 'key', 'message']);
   });

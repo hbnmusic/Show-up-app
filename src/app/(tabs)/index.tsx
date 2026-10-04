@@ -9,6 +9,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { AudioBar } from '@/components/AudioBar';
 import { Chip } from '@/components/Chip';
 import { Deck, type DeckHandle } from '@/components/Deck';
+import { GoingNote } from '@/components/GoingNote';
+import { refreshGoingCounts } from '@/lib/going/service';
 import { C, F } from '@/constants/theme';
 import { useAppActive, useNow } from '@/hooks/useNow';
 import { usePriceUi } from '@/hooks/usePriceUi';
@@ -81,6 +83,12 @@ export default function ShowsScreen() {
     if (allShows.length > 0 && !priceUi && filters.price !== 'any') setFilters({ price: 'any' });
   }, [allShows.length, priceUi, filters.price, setFilters]);
   const top = queue[0];
+  // Going counts for the shows loaded in the deck: at most one fetch every 15 minutes (see lib/going/sync). Not used to rank or filter.
+  const deckHasCards = queue.length > 0;
+  useEffect(() => {
+    if (deckHasCards) refreshGoingCounts('deck', queue.slice(0, 150).map((s) => s.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deckHasCards, stored.place?.metro]);
   useEffect(() => {
     useDeckState.setState({ pinnedId: top?.id ?? null });
   }, [top?.id]);
@@ -185,6 +193,9 @@ export default function ShowsScreen() {
         </ScrollView>
       </View>
 
+      <View style={{ paddingHorizontal: 16 }}>
+        <GoingNote />
+      </View>
       <View style={styles.deckArea} onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
         {size.w > 0 && queue.length > 0 ? (
           <Deck

@@ -4,6 +4,10 @@
  */
 export const TERMS_VERSION = '2026-10-04';
 
+/** The app's name and the link shared with friends. Rename here only. Until there is a Play listing the link is the docs home page. */
+export const APP_NAME = 'Pull Up';
+export const APP_SHARE_URL = 'https://hbnmusic.github.io/Show-up-app';
+
 /** Where docs/ is published (GitHub Pages). */
 export const DOCS_URL = 'https://hbnmusic.github.io/Show-up-app';
 export const PRIVACY_URL = `${DOCS_URL}/privacy.html`;

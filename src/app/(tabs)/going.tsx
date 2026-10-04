@@ -6,6 +6,11 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FlyerThumb } from '@/components/FlyerArt';
+import { GoingChip } from '@/components/GoingChip';
+import { GoingNote } from '@/components/GoingNote';
+import { useGoingCount } from '@/lib/going/hooks';
+import { refreshGoingCounts } from '@/lib/going/service';
+import { shareShow } from '@/lib/share';
 import { C, F } from '@/constants/theme';
 import { useNow } from '@/hooks/useNow';
 import { recordDecision, removeDecision } from '@/lib/decide';
@@ -68,6 +73,12 @@ export default function GoingScreen() {
     };
   }, [decisions, byId, now]);
 
+  // Counts for the shows in this list: at most one fetch every 15 minutes, cached on the phone.
+  const goingKey = upcoming.map((s) => s.id).join('|');
+  useEffect(() => {
+    if (goingKey) refreshGoingCounts('going', goingKey.split('|'));
+  }, [goingKey]);
+
   const sections = useMemo(() => {
     if (tab === 'past') return past.length ? [{ title: '', data: past }] : [];
     if (tab === 'passed') return passed.length ? [{ title: '', data: passed }] : [];
@@ -116,6 +127,9 @@ export default function GoingScreen() {
         <Pressable onPress={() => router.push('/settings')} hitSlop={12} accessibilityLabel="Settings">
           <Ionicons name="settings-outline" size={22} color={C.muted} />
         </Pressable>
+      </View>
+      <View style={{ paddingHorizontal: 16 }}>
+        <GoingNote />
       </View>
       <View style={styles.segment}>
         <Seg label={`Upcoming · ${upcoming.length}`} on={tab === 'upcoming'} onPress={() => setTab('upcoming')} />
@@ -273,6 +287,7 @@ function ShowRow(p: {
   const more = supportActs(s).length;
   const start = wall(s.startsAt);
   const setAttendance = useApp((st) => st.setAttendance);
+  const count = useGoingCount(s.id);
   return (
     <Pressable style={styles.row} onPress={() => router.push(`/show/${s.id}`)} accessibilityRole="button">
       <FlyerThumb show={s} size={64} />
@@ -292,6 +307,7 @@ function ShowRow(p: {
         <Text style={styles.rowSub} numberOfLines={1}>
           {placeLabel(s)}
         </Text>
+        {p.tab === 'upcoming' ? <GoingChip n={count} /> : null}
         {p.tab === 'past' ? (
           <View style={styles.attendRow}>
             <AttendButton
@@ -322,6 +338,16 @@ function ShowRow(p: {
             color={p.reminders ? C.text : C.faint}
           />
         </View>
+      ) : null}
+      {p.tab === 'upcoming' ? (
+        <Pressable
+          onPress={() => shareShow(s, 'going', count).catch(() => {})}
+          hitSlop={10}
+          style={styles.removeBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`Send ${showTitle(s)} to a friend`}>
+          <Ionicons name="share-social-outline" size={19} color={C.muted} />
+        </Pressable>
       ) : null}
       {p.tab !== 'passed' ? (
         <Pressable

@@ -8,6 +8,8 @@ import { ensureNotificationPermission, notificationsAllowed, syncReminders } fro
 import { sendTestNotifications, setRetentionToggle, syncRetentionTask, type TestResult } from '@/lib/retention/service';
 import { cancelRetentionNotifications } from '@/lib/retention/cancel';
 import { useRetention } from '@/lib/retention/store';
+import { resetGoing, setIncludeInCounts } from '@/lib/going/service';
+import { useGoing } from '@/lib/going/store';
 import { metroById } from '@/lib/metros';
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
@@ -24,6 +26,7 @@ export default function SettingsScreen() {
   const setAutoplay = useApp((s) => s.setAutoplay);
   const [allowed, setAllowed] = useState(true);
   const notifOn = useFlag('notifications_enabled');
+  const includeGoing = useGoing((s) => s.include);
   const typeA = useRetention((s) => s.typeA);
   const typeB = useRetention((s) => s.typeB);
   const placeMetro = useApp((s) => s.filters.place?.metro);
@@ -89,6 +92,7 @@ export default function SettingsScreen() {
         onPress: async () => {
           useApp.getState().resetAll();
           useRetention.getState().reset();
+          resetGoing();
           await cancelRetentionNotifications();
           await syncReminders();
         },
@@ -215,6 +219,13 @@ export default function SettingsScreen() {
 
       <Text style={styles.section}>PRIVACY AND FEEDBACK</Text>
       <View style={styles.card}>
+        <Toggle
+          label="Include my Going in public counts"
+          detail="Counts are anonymous, only shown above 15, and removed a week after the show."
+          value={includeGoing}
+          onChange={setIncludeInCounts}
+        />
+        <View style={styles.divider} />
         {communityEnabled ? (
           <>
             <Toggle

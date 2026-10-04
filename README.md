@@ -52,6 +52,17 @@ previous one and keeps your Going list.
   in `src/lib/metros.ts` (New York and Los Angeles for now). The
   `notifications_enabled` kill switch is in `supabase/KILL_SWITCHES.md`.
 
+## Share and "N going"
+
+"Send to a friend" (show details and the Going list) opens the Android share sheet with plain text built on the phone
+(`src/lib/shareText.ts`); `APP_NAME` and `APP_SHARE_URL` are in `src/lib/legal.ts`. No server call, no deep link. Deep links later would need an Android
+intent filter, an `assetlinks.json` on the docs site, and a show id that stays the same after listings merge.
+
+"N going" is the number of app installs (not people) that currently have a show marked Going, shown only when 16 or more.
+The phone sends a random going id and the show id through three server functions only (`supabase/migrations/021_going_counts.sql`);
+queue, batching and cache are in `src/lib/going/`. Switch: Settings, Include my Going in public counts. Kill switch,
+purge and spoofing SQL: `supabase/KILL_SWITCHES.md` (item 7).
+
 ## Listings
 
 The app downloads one file per city (`shows-<city>.json`, cities listed in

@@ -319,6 +319,8 @@ export async function licensedLink(sql: Sql, links: { showId: string; source: 'j
       update fp.shows set corroborated = true, updated_at = now(),
         visibility = case when visibility = 'pending' and coalesce(confidence, 0) >= ${HIGH_CONFIDENCE} then 'public' else visibility end
       where id = ${l.showId}::uuid and visibility = 'pending'`;
+    // The venue-page show now shares a card with a JamBase listing: move its Going rows to the card's new id.
+    await sql`select going.rekey_show(${`fp:${l.showId}`}, ${l.externalId})`;
     n++;
   }
   return ok({ linked: n });

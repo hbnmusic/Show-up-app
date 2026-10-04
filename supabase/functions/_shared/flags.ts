@@ -2,7 +2,7 @@
  * Remote kill switches. One source of truth for the app, the Edge Functions and the scheduled jobs: the flag names, the
  * defaults (all ON), how a server reply is read, and when a cached copy is stale. Nothing here holds a secret.
  */
-export const FLAG_KEYS = ['jambase_enabled', 'deezer_enabled', 'ai_extraction_enabled', 'flyer_intake_enabled', 'venue_scan_enabled', 'notifications_enabled'] as const;
+export const FLAG_KEYS = ['jambase_enabled', 'deezer_enabled', 'ai_extraction_enabled', 'flyer_intake_enabled', 'venue_scan_enabled', 'notifications_enabled', 'going_counts_enabled'] as const;
 export type FlagKey = (typeof FLAG_KEYS)[number];
 export type FlagState = { enabled: boolean; message: string | null };
 export type Flags = Record<FlagKey, FlagState>;

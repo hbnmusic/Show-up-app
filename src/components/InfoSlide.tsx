@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { GoingChip } from '@/components/GoingChip';
 import { C, F } from '@/constants/theme';
+import { useGoingCount } from '@/lib/going/hooks';
 import { usePriceUi } from '@/hooks/usePriceUi';
 import { factsFor, timeLabel } from '@/lib/showText';
 import { formatDay, wall } from '@/lib/time';
@@ -9,6 +11,7 @@ import type { Show } from '@/lib/types';
 /** Last slide on every card: the facts, legible at phone size. */
 export function InfoSlide({ show, width, height }: { show: Show; width: number; height: number }) {
   const priceUi = usePriceUi();
+  const goingCount = useGoingCount(show.id);
   const acts = [...show.acts].sort((a, b) => a.order - b.order);
   const where =
     show.venue.addressVisibility === 'public'
@@ -17,6 +20,7 @@ export function InfoSlide({ show, width, height }: { show: Show; width: number; 
   return (
     <View style={[styles.wrap, { width, height }]}>
       <Text style={styles.kicker}>THE BILL</Text>
+      <GoingChip n={goingCount} />
       {show.title ? <Text style={styles.title}>{show.title}</Text> : null}
       <View style={{ gap: 6, marginTop: 8 }}>
         {acts.length === 0 ? <Text style={styles.act}>Lineup TBA</Text> : null}

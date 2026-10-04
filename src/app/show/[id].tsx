@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Switch,
   Text,
@@ -21,6 +20,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { FlyerArt } from '@/components/FlyerArt';
+import { GoingChip } from '@/components/GoingChip';
+import { GoingNote } from '@/components/GoingNote';
+import { useGoingCount } from '@/lib/going/hooks';
+import { shareShow } from '@/lib/share';
 import { C, F } from '@/constants/theme';
 import { addToCalendar } from '@/lib/calendar';
 import { recordDecision, removeDecision } from '@/lib/decide';
@@ -58,6 +61,7 @@ export default function ShowDetail() {
   const decision = useApp((s) => (id ? s.decisions[id]?.decision : undefined));
   const remindersOn = useApp((s) => (id ? !s.reminderOff[id] : true));
   const calendarAt = useApp((s) => (id ? s.calendarAdded[id] : undefined));
+  const goingCount = useGoingCount(id);
   const previews = useShowPreviews(id);
   const player = useAudioPlayer(null, { updateInterval: 250 });
   const status = useAudioPlayerStatus(player);
@@ -202,12 +206,7 @@ export default function ShowDetail() {
     }
   };
 
-  const onShare = () =>
-    Share.share({
-      message: `${showTitle(show)} at ${show.venue.name}, ${formatDay(wall(show.startsAt))} · ${timeLabel(show)}${
-        show.ticketUrl ? `\n${show.ticketUrl}` : ''
-      }`,
-    }).catch(() => {});
+  const onShare = () => shareShow(show, 'details', goingCount).catch(() => {});
 
   const onReminders = async (on: boolean) => {
     useApp.getState().setShowReminders(show.id, on);
@@ -248,6 +247,7 @@ export default function ShowDetail() {
           </Text>
           <Text style={styles.line}>{show.venue.name}</Text>
           <Text style={styles.sub}>{calendarLocation(show)}</Text>
+          <GoingChip n={goingCount} />
         </View>
 
         <View style={styles.factsRow}>
@@ -266,6 +266,12 @@ export default function ShowDetail() {
             {going ? 'Going · tap to undo' : cancelled ? 'Cancelled' : "I'm going"}
           </Text>
         </Pressable>
+
+        {going ? <GoingNote /> : null}
+
+        <View style={styles.card}>
+          <Row icon="paper-plane-outline" label="Send to a friend" detail="Opens your share sheet with the show details as text" onPress={onShare} />
+        </View>
 
         {going && cancelled ? (
           <Text style={styles.note}>This show was cancelled, so reminders are off. Tap above to remove it from Going.</Text>

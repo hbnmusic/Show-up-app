@@ -30,6 +30,8 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
 | Messages, photos, videos, audio, files, contacts, calendar, health, financial info | No | No | n/a | n/a | n/a | n/a |
 | App activity → App interactions (screens viewed, swipes, filters, feature use; see `src/lib/analyticsCore.ts`) | Yes | No | Analytics | Optional (Settings switch; on by default) | Yes | Yes: turning the switch off deletes the events already sent |
 | Device or other IDs → Other identifier (random install id made by the app; not an advertising id, not a device id, not linked to the account) | Yes | No | Analytics; App functionality (rate limiting feedback) | Optional | Yes | Yes (same switch deletes the events; feedback rows keep it until deleted on request) |
+| App activity → Other actions (Going list entries: random going id + show id + show date, for the anonymous "N going" counts) | Yes | No (note 10) | App functionality | Optional (Settings switch "Include my Going in public counts"; on by default) | Yes | Yes: the switch off, or Reset all data, deletes this phone's rows; otherwise deleted 7 days after the show |
+| Device or other IDs → Other identifier (the random going id; separate from the analytics install id; not an advertising id, not linked to the account) | Yes | No | App functionality | Optional | Yes | Same as the row above |
 | Messages → Other in-app messages (feedback and bug reports) | Yes, only if the person sends feedback | No | App functionality (developer communications) | Optional | Yes | On request by email; kept up to 24 months |
 | App info and performance → Diagnostics (app version, Android version, device model, attached to feedback; app and Android version also sent with usage events) | Yes | No | Analytics; App functionality | Optional | Yes | Same as above |
 | App info and performance → Crash logs | No (no crash reporting SDK) | No | n/a | n/a | n/a | n/a |
@@ -91,3 +93,19 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
    allows notifications (asked right after the first Going swipe, as before). The three analytics events `notif_scheduled`,
    `notif_opened` and `notif_setting_changed` carry only the kind (`A` or `B`, or `on`/`off`), no show, city, genre or count, and fall under
    the existing "app activity" answer for anonymous usage events: no change to the form answers.
+
+10. **Going counts ("N going").** The app sends a random going id (made on the phone, stored only there, separate from the analytics install id and
+    from any account), the show id, and the show's date to `set_going`; Supabase stores one row per going id per show. Clients cannot read the
+    tables; only the three functions exist (`set_going`, `forget_my_going`, `get_going_counts`). Counts are shown only when 16 or more; rows are
+    deleted 7 days after the show; the Settings switch deletes this phone's rows. The count is of installs, not people. Items to confirm in the
+    form (uncertain, [inference] from Google's help text as remembered):
+    - Whether the going id belongs under **Device or other IDs** (declared above, conservatively) or only under App activity. It is not a persistent
+      device identifier and not linked to the account, but it does identify one install.
+    - Whether "Collected" is right for data that is only counted: it is stored, so the form treats it as collected. Not shared with third parties
+      (Supabase is our processor).
+    - "Optional": the form wants this where users can switch collection off; the switch is in Settings, default on, so the first Going is sent before
+      the person has changed anything. An inline one-time note and the Privacy Policy disclose it, but Google may expect disclosure before collection
+      in the app's own UI; consider whether the note is enough or whether the default should be OFF in the Play build.
+    - Whether data is "deletable by user": yes via the switch or Reset; account deletion does not touch it (not linked), which the policy states.
+    - Sharing a show to a friend is plain text through the share sheet; nothing is sent to us, so no new row. The analytics event `show_shared`
+      (surface and completed true/false only) falls under the existing "app interactions" answer.

@@ -15,7 +15,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -32,6 +32,8 @@ import { extractUrl } from '@/lib/community/form';
 import { initPlace } from '@/lib/location';
 import { useFlyers } from '@/lib/flyer/store';
 import { useListings } from '@/lib/listingsStore';
+import { flushNow, resendAfterFlagOn, startGoingWatcher } from '@/lib/going/service';
+import { useGoing } from '@/lib/going/store';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
@@ -155,6 +157,31 @@ export default function RootLayout() {
   useEffect(() => {
     if (hydrated && flagsLoaded) syncRetentionTask().catch(() => {});
   }, [hydrated, flagsLoaded, notifFlag]);
+
+  // Going counts: read the saved id and switch, watch the Going list once the saved decisions are loaded, send what is queued
+  // when the app returns to the front, and send the Going list again if the kill switch comes back on after being off.
+  const goingFlag = useFlags((s) => s.flags.going_counts_enabled?.enabled !== false);
+  const goingLoaded = useGoing((s) => s.loaded);
+  const lastGoingFlag = useRef<boolean | null>(null);
+  useEffect(() => {
+    useGoing.getState().load().catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!hydrated || !goingLoaded) return;
+    const stop = startGoingWatcher();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') flushNow();
+    });
+    return () => {
+      stop();
+      sub.remove();
+    };
+  }, [hydrated, goingLoaded]);
+  useEffect(() => {
+    if (!hydrated || !goingLoaded || !flagsLoaded) return;
+    if (lastGoingFlag.current === false && goingFlag) resendAfterFlagOn();
+    lastGoingFlag.current = goingFlag;
+  }, [hydrated, goingLoaded, flagsLoaded, goingFlag]);
 
   // Check shared flyers for results now and whenever the app comes to the front (local notices only; there is no push service).
   useEffect(() => {
