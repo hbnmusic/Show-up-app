@@ -30,6 +30,62 @@ export function paceAi(api: Api, gapMs = 4500, now: () => number = Date.now, sle
   };
 }
 
+const MONTH = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+const DATE_LIKE = new RegExp(`\\b${MONTH}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?\\b|\\b\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH}\\b|\\b\\d{4}-\\d{2}-\\d{2}\\b|\\b\\d{1,2}/\\d{1,2}(?:/\\d{2,4})?\\b`, 'gi');
+
+/** Number of date-like strings (Oct 16, 16 October, 2026-10-16, 10/16) in the page text. */
+export const countDates = (text: string) => (text.match(DATE_LIKE) ?? []).length;
+
+/** A page with fewer than this many dates cannot list a calendar of shows, so the model is not asked about it. */
+export const MIN_DATES_FOR_EVENTS = 3;
+export const hasEventText = (text: string) => countDates(text) >= MIN_DATES_FOR_EVENTS;
+
+const LINK_WORDS: [RegExp, number][] = [[/calendar/, 5], [/\bshows?\b/, 5], [/\bevents?\b/, 4], [/upcoming/, 4], [/schedule/, 3], [/concerts?/, 3], [/tickets?/, 1]];
+const LINK_AVOID = /private|rental|rent|book(?:ing)?|host|gift|faq|archive|past|press|careers?|jobs?|contact|about|merch|shop|store|donat|volunteer|newsletter|login|account|cart/;
+const LINK_FILE = /\.(?:jpe?g|png|gif|webp|svg|pdf|ics|css|js|zip|mp3|mp4)(?:$|\?)/i;
+const hostOf = (u: string) => new URL(u).hostname.replace(/^www\./, '').toLowerCase();
+
+/**
+ * Finds the one link on a page that most likely leads to the venue's own list of shows: same site only (never a
+ * ticketing or social site), judged by the link text and path. Returns null when nothing looks like one.
+ */
+export function findEventsLink(html: string, pageUrl: string): string | null {
+  let base: URL;
+  try {
+    base = new URL(pageUrl);
+  } catch {
+    return null;
+  }
+  let best: { url: string; score: number } | null = null;
+  for (const m of html.matchAll(/<a\b[^>]*?href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const href = m[1].trim();
+    if (!href || href.startsWith('#') || /^(?:mailto|tel|javascript):/i.test(href) || LINK_FILE.test(href)) continue;
+    let u: URL;
+    try {
+      u = new URL(href, base);
+    } catch {
+      continue;
+    }
+    if (!/^https?:$/.test(u.protocol) || hostOf(u.toString()) !== hostOf(pageUrl)) continue;
+    u.hash = '';
+    const target = u.toString();
+    if (target === new URL(pageUrl).toString() || u.pathname === '/' || u.pathname === '') continue;
+    const label = `${decodeURIComponent(u.pathname).toLowerCase()} ${m[2].replace(/<[^>]+>/g, ' ').toLowerCase().trim()}`;
+    if (LINK_AVOID.test(label)) continue;
+    const score = LINK_WORDS.reduce((sum, [re, w]) => (re.test(label) ? Math.max(sum, w) : sum), 0);
+    if (score > 0 && (!best || score > best.score)) best = { url: target, score };
+  }
+  return best?.url ?? null;
+}
+
+/** When the page itself shows no event dates and has no structured data, tries the venue's own shows/events/calendar page. */
+async function discoverEventsPage(url: string, html: string, f: PoliteFetcher): Promise<{ url: string; html: string } | null> {
+  const link = findEventsLink(html, url);
+  if (!link) return null;
+  const r = await f.get(link);
+  return r.kind === 'ok' ? { url: link, html: r.body } : null;
+}
+
 const abs = (href: string, base: string) => {
   try {
     return new URL(href.replace(/^webcal:/i, 'https:'), base).toString();
@@ -102,23 +158,37 @@ export async function scanVenue(v: PlanVenue, f: PoliteFetcher, api: Api): Promi
     await api('record_run', { venueId: v.id, run: { fetchOk: true, note: 'not_modified' } });
     return out('not_modified');
   }
-  const fetchInfo = { etag: r.etag, lastModified: r.lastModified };
-  const s = await readStructured(url, r.body, f);
+  let page = { url, html: r.body };
+  let fetchInfo: { etag?: string; lastModified?: string } = { etag: r.etag, lastModified: r.lastModified };
+  let s = await readStructured(page.url, page.html, f);
+  let text = htmlToText(page.html);
+  if (!s && !hasEventText(text)) {
+    const found = await discoverEventsPage(page.url, page.html, f);
+    if (found) {
+      page = found;
+      fetchInfo = {}; // the validators belong to the first page, not this one
+      s = await readStructured(page.url, page.html, f);
+      text = htmlToText(page.html);
+    }
+  }
   if (s) {
     await api('ingest_events', { venueId: v.id, tier: s.tier, pageUrl: s.pageUrl, events: s.events, run: { fetchOk: true, ...fetchInfo } });
     return out('ingested');
   }
-  const text = htmlToText(r.body);
   if (text.length < 200) {
     await api('record_run', { venueId: v.id, run: { fetchOk: true, tier: 'ai', note: 'no_text', ...fetchInfo } });
     return out('no_text');
+  }
+  if (!hasEventText(text)) {
+    await api('record_run', { venueId: v.id, run: { fetchOk: true, tier: 'ai', note: 'no_event_text', ...fetchInfo } });
+    return out('no_text'); // nothing on the page looks like a show date, so no model request is spent
   }
   const hash = await sha256Hex(text);
   if (hash === v.contentHash) {
     await api('record_run', { venueId: v.id, run: { fetchOk: true, note: 'unchanged', ...fetchInfo } });
     return out('unchanged');
   }
-  const res = await api('extract_ai', { venueId: v.id, url, text: clip(text), run: { fetchOk: true, contentHash: hash, ...fetchInfo } });
+  const res = await api('extract_ai', { venueId: v.id, url: page.url, text: clip(text), run: { fetchOk: true, contentHash: hash, ...fetchInfo } });
   return out(res.status === 'quota' ? 'quota' : 'ai');
 }
 
@@ -129,8 +199,9 @@ export async function trialVenue(v: PlanVenue, f: PoliteFetcher, api: Api, geoco
   const url = v.eventsUrl ?? v.website;
   const base = { website: v.website ?? undefined, robots: 'unknown' as RobotsStatus, nameMatches: false, insideMetro: null as boolean | null, structuredEvents: 0, aiEventsWithEvidence: 0, venueTypeOk: !BIG_VENUE.test(v.name) };
   let method: string | null = null;
+  let eventsUrl: string | null = null;
   const finish = async (checks: typeof base) => {
-    const res = await api('approve', { venueId: v.id, checks, method });
+    const res = await api('approve', { venueId: v.id, checks, method, eventsUrl });
     return { venueId: v.id, decision: String(res.decision), reasons: (res.reasons ?? []) as string[] };
   };
   if (!url) return finish(base);
@@ -145,14 +216,25 @@ export async function trialVenue(v: PlanVenue, f: PoliteFetcher, api: Api, geoco
   if (!checks.nameMatches) return finish({ ...checks, insideMetro: true });
   checks.insideMetro = await geocode(v);
   if (checks.insideMetro === false) return finish(checks);
-  const s = await readStructured(url, r.body, f);
+  let page = { url, html: r.body };
+  let s = await readStructured(page.url, page.html, f);
+  let pageText = text;
+  if (!s && !hasEventText(pageText)) {
+    const found = await discoverEventsPage(page.url, page.html, f);
+    if (found) {
+      page = found;
+      eventsUrl = found.url;
+      s = await readStructured(page.url, page.html, f);
+      pageText = htmlToText(page.html);
+    }
+  }
   if (s) {
     method = s.tier;
-    const res = await api('ingest_events', { venueId: v.id, tier: s.tier, pageUrl: s.pageUrl, events: s.events, run: { fetchOk: true, etag: r.etag, lastModified: r.lastModified } });
+    const res = await api('ingest_events', { venueId: v.id, tier: s.tier, pageUrl: s.pageUrl, events: s.events, run: { fetchOk: true, ...(eventsUrl ? {} : { etag: r.etag, lastModified: r.lastModified }) } });
     checks.structuredEvents = Number(res.ingested ?? 0);
-  } else if (text.length >= 200) {
+  } else if (pageText.length >= 200 && hasEventText(pageText)) {
     method = 'ai';
-    const res = await api('extract_ai', { venueId: v.id, url, text: clip(text), run: { fetchOk: true, contentHash: await sha256Hex(text), etag: r.etag, lastModified: r.lastModified } });
+    const res = await api('extract_ai', { venueId: v.id, url: page.url, text: clip(pageText), run: { fetchOk: true, contentHash: await sha256Hex(pageText), ...(eventsUrl ? {} : { etag: r.etag, lastModified: r.lastModified }) } });
     checks.aiEventsWithEvidence = Number(res.ingested ?? 0);
     if (res.status === 'quota') return { venueId: v.id, decision: 'deferred', reasons: ['quota'] }; // try again on a later run
   }

@@ -201,10 +201,10 @@ export async function extractAi(deps: Deps, b: { venueId: string; url: string; t
   return ok({ status: 'ok', extracted: out.extracted, rejected: out.rejected, ingested: out.showIds.length, disabled, tokens: out.usage });
 }
 
-export async function approveVenue(sql: Sql, venueId: string, checks: VenueChecks, method: string | null): Promise<Reply> {
+export async function approveVenue(sql: Sql, venueId: string, checks: VenueChecks, method: string | null, eventsUrl: string | null = null): Promise<Reply> {
   const a = evaluateVenue(checks);
   await sql`
-    update fp.venues set status = ${a.decision}, tier = ${a.tier}, status_reasons = ${a.reasons}::text[], publish_method = coalesce(${method}, publish_method),
+    update fp.venues set status = ${a.decision}, tier = ${a.tier}, status_reasons = ${a.reasons}::text[], publish_method = coalesce(${method}, publish_method), events_url = coalesce(${eventsUrl}, events_url),
       robots_status = ${checks.robots}, updated_at = now() where id = ${venueId}::uuid and status in ('candidate', 'quarantined')`;
   return ok({ ...a });
 }

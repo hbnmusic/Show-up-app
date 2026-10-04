@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
       const disabled = await recordRun(sql, b.venueId, b.run);
       return json({ status: 200, body: { disabled } });
     }
-    case 'approve': return json(await approveVenue(sql, b.venueId, b.checks, b.method ?? null));
+    case 'approve': return json(await approveVenue(sql, b.venueId, b.checks, b.method ?? null, typeof b.eventsUrl === 'string' ? b.eventsUrl : null));
     case 'upsert_venues': return json(await upsertVenues(sql, b.venues ?? []));
     case 'set_waves': return json(await setWaves(sql, b.volumes ?? {}));
     case 'maintenance': {

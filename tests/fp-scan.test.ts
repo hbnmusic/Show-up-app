@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import { canadianCheck, makeGeocoder, milesBetween } from '../scripts/lib/geo.ts';
 import { looksBlocked, PoliteFetcher, USER_AGENT, type FetchFn } from '../scripts/lib/polite.ts';
-import { readStructured, scanVenue, trialVenue, type Api, type PlanVenue } from '../scripts/lib/scan.ts';
+import { countDates, findEventsLink, hasEventText, readStructured, scanVenue, trialVenue, type Api, type PlanVenue } from '../scripts/lib/scan.ts';
 import { sha256Hex, htmlToText } from '../supabase/functions/_shared/extract.ts';
 
 type Route = { status?: number; body?: string; headers?: Record<string, string> };
@@ -252,5 +252,59 @@ describe('model pacing and cut-off replies', () => {
     const data = JSON.parse(fixed as string);
     assert.deepEqual(data.events.map((e: { headliner: string }) => e.headliner), ['A, "x" {', 'C']);
     assert.equal(salvageTruncatedJson('{ "is_safe": true, "events": [ {"headliner":"A'), null);
+  });
+});
+
+describe('event-text check and events-page discovery', () => {
+  const home = 'https://parksidehall.example';
+  const homeHtml = `<nav><a href="/about">About</a><a href="/private-events">Private events</a><a href="https://dice.fm/venue/x">Tickets on DICE</a><a href="/calendar/">Calendar</a><a href="/shows">Shows</a></nav><main>${'Welcome to Parkside Hall, a music room. '.repeat(10)}</main>`;
+
+  it('counts date-like strings in several common formats', () => {
+    assert.equal(countDates('Fri Oct 16, 17th November, 2026-10-18 and 10/19'), 4);
+    assert.equal(countDates('Open Wednesday nights at 7:00pm, first and third Fridays'), 0);
+    assert.equal(hasEventText('Oct 16 and Oct 17'), false);
+    assert.equal(hasEventText(longText), true);
+  });
+
+  it('picks the venue\'s own shows page and never another site or a private-events page', () => {
+    assert.equal(findEventsLink(homeHtml, home), `${home}/calendar/`);
+    assert.equal(findEventsLink('<a href="https://dice.fm/events">Events</a><a href="/private-events">Events</a>', home), null);
+    assert.equal(findEventsLink('<a href="/events">Events</a><a href="/events.ics">Calendar</a>', home), `${home}/events`);
+    assert.equal(findEventsLink('<a href="/">Home</a><a href="#events">Events</a>', home), null);
+  });
+
+  it('asks no model question when a page shows no event dates (and records why)', async () => {
+    const { fetcher } = fakeNet({ ...ROBOTS_OK, [venue.eventsUrl!]: { body: homeHtml.replace(/<a [^>]*>[^<]*<\/a>/g, '') } });
+    const { api, calls } = fakeApi();
+    assert.equal((await scanVenue(venue, fetcher, api)).result, 'no_text');
+    assert.deepEqual(calls.map((c) => c.action), ['record_run']);
+    assert.equal(calls[0].body.run.note, 'no_event_text');
+  });
+
+  it('follows the shows page from a homepage, reads it, and drops the first page\'s validators', async () => {
+    const shows = `<main>${longText}</main>`;
+    const { fetcher, log } = fakeNet({ ...ROBOTS_OK, [home]: { body: homeHtml, headers: { etag: '"h"' } }, [`${home}/calendar/`]: { body: shows } });
+    const { api, calls } = fakeApi({ extract_ai: { status: 'ok' } });
+    const v = { ...venue, eventsUrl: home };
+    assert.equal((await scanVenue(v, fetcher, api)).result, 'ai');
+    assert.equal(calls[0].body.url, `${home}/calendar/`);
+    assert.equal(calls[0].body.run.etag, undefined);
+    assert.ok(log.some((l) => l.url === `${home}/calendar/`));
+  });
+
+  it('a trial stores the discovered page and approves from it', async () => {
+    const { fetcher } = fakeNet({ ...ROBOTS_OK, [home]: { body: homeHtml }, [`${home}/calendar/`]: { body: `<main>${longText}</main>` } });
+    const { api, calls } = fakeApi({ extract_ai: { status: 'ok', ingested: 5 }, approve: { decision: 'approved', reasons: [] } });
+    await trialVenue({ ...venue, eventsUrl: home }, fetcher, api, async () => true);
+    assert.equal(calls.find((c) => c.action === 'extract_ai')!.body.url, `${home}/calendar/`);
+    const ap = calls.find((c) => c.action === 'approve')!.body;
+    assert.deepEqual([ap.eventsUrl, ap.checks.aiEventsWithEvidence], [`${home}/calendar/`, 5]);
+  });
+
+  it('a trial with no event dates anywhere spends no model request', async () => {
+    const { fetcher } = fakeNet({ ...ROBOTS_OK, [home]: { body: homeHtml } , [`${home}/calendar/`]: { body: `<main>${'Parkside Hall mailing list sign up. '.repeat(10)}</main>` } });
+    const { api, calls } = fakeApi({ approve: { decision: 'quarantined', reasons: ['no_valid_events_in_trial'] } });
+    await trialVenue({ ...venue, eventsUrl: home }, fetcher, api, async () => true);
+    assert.ok(!calls.some((c) => c.action === 'extract_ai'));
   });
 });
