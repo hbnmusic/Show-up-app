@@ -11,7 +11,7 @@ import { quotaDay, submitLimit } from './quota.ts';
 import { redactText } from './redact.ts';
 import { PgStore, type Row, type Sql } from './supabaseStore.ts';
 import type { RobotsStatus, VenueRow } from './types.ts';
-import { assignWaves, decideWidening, planScan, type MetroSetting } from './waves.ts';
+import { assignWaves, decideWidening, pickTrials, planScan, TRIAL_LIMITS, type MetroSetting } from './waves.ts';
 
 export type Reply = { status: number; body: Record<string, unknown> };
 const ok = (body: Record<string, unknown>): Reply => ({ status: 200, body });
@@ -106,8 +106,8 @@ export async function runRetry(deps: Deps): Promise<Reply> {
 type Settings = (MetroSetting & { tz: string })[];
 
 async function loadSettings(sql: Sql): Promise<Settings> {
-  const rows = await sql`select metro, wave, venue_scan_enabled, daily_request_budget, last_full_scan_at::text as last, tz from fp.metro_config order by metro`;
-  return rows.map((r) => ({ id: r.metro, wave: r.wave, venueScanEnabled: r.venue_scan_enabled, dailyRequestBudget: r.daily_request_budget, lastFullScanAt: r.last, tz: r.tz }));
+  const rows = await sql`select metro, wave, venue_scan_enabled, daily_request_budget, last_full_scan_at::text as last, tz, soft_launch from fp.metro_config order by metro`;
+  return rows.map((r) => ({ id: r.metro, wave: r.wave, venueScanEnabled: r.venue_scan_enabled, dailyRequestBudget: r.daily_request_budget, lastFullScanAt: r.last, tz: r.tz, softLaunch: r.soft_launch === true }));
 }
 
 async function aiConfigValue(sql: Sql, key: string, fallback: number): Promise<number> {
@@ -128,12 +128,11 @@ export async function planAction(deps: Deps, opts: { candidateLimit?: number } =
   const approved = rows.filter((r) => r.status === 'approved').map((r) => ({ id: r.id, metro: r.metro, tier: r.tier ?? 'B', lastCheckedAt: r.last, status: r.status, needsAi: r.publish_method === 'ai' }));
   const plan = planScan(approved, settings, now, refreshDays);
   const due = new Set(plan.venues.map((v) => v.id));
-  const enabled = new Set(settings.filter((s) => s.venueScanEnabled).map((s) => s.id));
   const pick = (r: Row) => ({ id: r.id, metro: r.metro, name: r.canonical_name, website: r.website, eventsUrl: r.events_url, publishMethod: r.publish_method, tier: r.tier, contentHash: r.content_hash, etag: r.etag, lastModified: r.last_modified, lat: r.lat, lng: r.lng, tz: settings.find((s) => s.id === r.metro)?.tz });
   return ok({
     refreshDays,
     scan: rows.filter((r) => due.has(r.id)).map(pick),
-    trial: rows.filter((r) => r.status === 'candidate' && enabled.has(r.metro)).slice(0, opts.candidateLimit ?? 40).map(pick),
+    trial: pickTrials(rows.filter((r) => r.status === 'candidate') as (Row & { metro: string })[], settings, opts.candidateLimit ? { soft: opts.candidateLimit, other: opts.candidateLimit } : TRIAL_LIMITS).map(pick),
     aiPlanned: plan.aiUsed,
     skippedForBudget: plan.skippedForBudget,
     flags,
@@ -283,7 +282,9 @@ export async function coverage(deps: Deps, o: { weekly?: boolean } = {}): Promis
   const venues = (await sql`select id::text as id, metro, tier, status, last_checked_at::text as last from fp.venues`).map((v) => ({ id: v.id, metro: v.metro, tier: v.tier, status: v.status, lastCheckedAt: v.last }));
   const shows = (await sql`select metro, (select array_agg(distinct s ->> 'sourceType') from jsonb_array_elements(sources) s) as src from fp.shows where visibility = 'public' and local_date >= current_date`).map((s) => ({ metro: s.metro, sources: (s.src ?? []) as string[] }));
   const cov = coverageReport(metros, venues, shows, now, refreshDays);
-  if (!o.weekly) return ok({ coverage: cov });
+  // Why venues were turned away, per city (reason codes only), for the readiness report.
+  const rejections = (await sql`select metro, reason, count(*)::int as count from (select metro, unnest(status_reasons) as reason from fp.venues where status in ('rejected', 'quarantined')) t group by metro, reason order by count desc limit 200`) as { metro: string; reason: string; count: number }[];
+  if (!o.weekly) return ok({ coverage: cov, rejections });
   const cap = await aiConfigValue(sql, 'daily_cap', 200);
   const usage = (await sql`select sum(requests)::int as n from fp.ai_usage where day > current_date - 8 group by day order by day desc`).map((u) => u.n / cap);
   const dis = (await sql`select v.canonical_name as venue, v.status_reasons[1] as reason from fp.venues v where v.status = 'disabled' and v.updated_at > now() - interval '7 days'`).map((r) => ({ venue: r.venue, reason: r.reason ?? 'unknown' }));

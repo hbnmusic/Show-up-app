@@ -18,6 +18,7 @@ export async function freshDb(): Promise<{ db: PGlite; sql: Sql }> {
   await db.exec(readFileSync(new URL('../../supabase/migrations/007_seed_metro_config.sql', import.meta.url), 'utf8'));
   await db.exec(readFileSync(new URL('../../supabase/migrations/008_flyer_jobs_claimed_at.sql', import.meta.url), 'utf8'));
   await db.exec(readFileSync(new URL('../../supabase/migrations/018_app_flags.sql', import.meta.url), 'utf8'));
+  await db.exec(readFileSync(new URL('../../supabase/migrations/020_soft_launch.sql', import.meta.url), 'utf8'));
   await db.exec(`
     create table public.terms_acceptances (user_id uuid, version text);
     create function public.pu_terms_version() returns text language sql as $$ select '2026-10-04'::text $$;

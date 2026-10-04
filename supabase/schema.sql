@@ -1381,3 +1381,7 @@ begin
     execute def;
   end if;
 end $$;
+
+-- 020: soft launch (see migrations/020_soft_launch.sql)
+alter table fp.metro_config add column if not exists soft_launch boolean not null default false;
+update fp.metro_config set soft_launch = true, daily_request_budget = 40, updated_at = now() where metro in ('nyc', 'la') and (soft_launch = false or daily_request_budget < 40);

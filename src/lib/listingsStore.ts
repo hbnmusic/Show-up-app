@@ -13,20 +13,14 @@ import { flagOn } from './flags';
 import { mergeFirstParty, parseFpRows, type FpRow } from './fpMerge';
 import { applySwitchesToAll, DEFAULT_LICENSED, parseSwitches, type LicensedSwitches } from './licensed';
 import { dedupeKey, withRetained } from './listings/merge';
+import { LISTINGS_URL, listingsUrl } from './listings/url';
 import { parseFeed } from './listings/validate';
 import { DEFAULT_METRO } from './metros';
 import { useApp } from './store';
 import { communityEnabled } from './communityConfig';
 import type { Show } from './types';
 
-/**
- * Where the refresh job publishes each city's feed; {metro} is replaced by the
- * city id. Override at build time with EXPO_PUBLIC_LISTINGS_URL.
- */
-export const LISTINGS_URL =
-  process.env.EXPO_PUBLIC_LISTINGS_URL ?? 'https://github.com/hbnmusic/Show-up-app/releases/download/listings/shows-{metro}.json';
-
-export const listingsUrl = (metro: string) => LISTINGS_URL.replace('{metro}', metro);
+export { LISTINGS_URL, listingsUrl };
 
 const CACHE_PREFIX = 'pull-up-listings-v2:';
 const FP_PREFIX = 'pull-up-fp-v1:';

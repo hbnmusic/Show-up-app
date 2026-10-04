@@ -1,7 +1,15 @@
 /** Which metros are scanned, when the next wave opens, and which venues are due today. */
 import type { VenueTier } from './types.ts';
 
-export type MetroSetting = { id: string; wave: 1 | 2 | 3; venueScanEnabled: boolean; dailyRequestBudget: number; lastFullScanAt?: string | null };
+export type MetroSetting = {
+  id: string;
+  wave: 1 | 2 | 3;
+  venueScanEnabled: boolean;
+  dailyRequestBudget: number;
+  lastFullScanAt?: string | null;
+  /** Soft-launch city: scanned first, with more trials per run. All other cities keep working, with lower priority. */
+  softLaunch?: boolean;
+};
 
 /** Wave 1 = metros flagged hot; wave 2 = the next largest by show volume in our feeds; wave 3 = the rest. */
 export function assignWaves(metros: readonly { id: string; hot: boolean }[], showVolume: Readonly<Record<string, number>>, wave2Size = 12): Record<string, 1 | 2 | 3> {
@@ -54,7 +62,11 @@ export function planScan(venues: readonly ScanVenue[], settings: readonly MetroS
   const due = venues
     .filter((v) => v.status === 'approved' && byMetro.get(v.metro)?.venueScanEnabled)
     .filter((v) => !v.lastCheckedAt || now.getTime() - Date.parse(v.lastCheckedAt) >= refreshDays * 86400_000 * 0.9)
-    .sort((a, b) => Date.parse(a.lastCheckedAt ?? '1970-01-01') - Date.parse(b.lastCheckedAt ?? '1970-01-01'));
+    .sort(
+      (a, b) =>
+        Number(!!byMetro.get(b.metro)?.softLaunch) - Number(!!byMetro.get(a.metro)?.softLaunch) ||
+        Date.parse(a.lastCheckedAt ?? '1970-01-01') - Date.parse(b.lastCheckedAt ?? '1970-01-01'),
+    );
   const plan: ScanVenue[] = [];
   const aiUsed: Record<string, number> = {};
   let skipped = 0;
@@ -68,4 +80,25 @@ export function planScan(venues: readonly ScanVenue[], settings: readonly MetroS
     plan.push(v);
   }
   return { venues: plan, aiUsed, skippedForBudget: skipped };
+}
+
+/** How many candidate venues one run may try: soft-launch cities get the larger share, everything else a smaller one. */
+export const TRIAL_LIMITS = { soft: 60, other: 20 } as const;
+
+/**
+ * Candidates to trial in this run. Soft-launch cities come first (up to `soft`), then the rest in wave order, hot cities
+ * before the others (up to `other`). Cities with scanning switched off are skipped.
+ */
+export function pickTrials<T extends { metro: string }>(
+  candidates: readonly T[],
+  settings: readonly MetroSetting[],
+  limits: { soft: number; other: number } = TRIAL_LIMITS,
+): T[] {
+  const byMetro = new Map(settings.map((s) => [s.id, s]));
+  const on = candidates.filter((c) => byMetro.get(c.metro)?.venueScanEnabled);
+  const soft = on.filter((c) => byMetro.get(c.metro)?.softLaunch);
+  const rest = on
+    .filter((c) => !byMetro.get(c.metro)?.softLaunch)
+    .sort((a, b) => (byMetro.get(a.metro)?.wave ?? 3) - (byMetro.get(b.metro)?.wave ?? 3));
+  return [...soft.slice(0, limits.soft), ...rest.slice(0, limits.other)];
 }

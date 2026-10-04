@@ -1,0 +1,38 @@
+name: Readiness report
+
+# Run by hand (Actions -> Readiness report -> Run workflow). Prints, for New York and Los Angeles: upcoming shows, share by source,
+# approved venues, top rejection reasons, shows per genre tonight and this week, and whether the notification minimums would be met.
+# Counts only; nothing private is printed (logs of public repositories are public).
+on:
+  workflow_dispatch:
+    inputs:
+      metros:
+        description: 'Cities (comma separated ids)'
+        default: 'nyc,la'
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      FP_JOB_URL: ${{ vars.FP_JOB_URL }}
+      JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Report
+        run: |
+          TZ=UTC npx tsx scripts/readiness-report.ts --metros "${{ inputs.metros }}" --out report.txt --json report.json
+          { echo '```'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: readiness-report
+          path: |
+            report.txt
+            report.json
