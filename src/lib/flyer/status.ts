@@ -26,7 +26,9 @@ export function viewJob(j: Job): JobView {
   if (j.result === 'processing' || (j.status !== 'done' && j.status !== 'failed')) {
     return { id: j.id, tone: 'working', title: 'Reading your flyer', detail: j.status === 'retry' ? 'The reader is busy; we will try again automatically.' : 'This usually takes a few seconds.' };
   }
-  if (j.result === 'published') return { id: j.id, tone: 'live', title: names(j) ? `Live: ${names(j)}` : 'Live', detail: 'It is on the deck for everyone.' };
+  // A show another person confirmed after this job finished is live even though the job still says pending.
+  const confirmedSince = j.result === 'pending' && j.shows.length > 0 && j.shows.every((x) => x.visibility === 'public');
+  if (j.result === 'published' || confirmedSince) return { id: j.id, tone: 'live', title: names(j) ? `Live: ${names(j)}` : 'Live', detail: 'It is on the deck for everyone.' };
   if (j.result === 'pending') {
     return {
       id: j.id, tone: 'waiting', title: names(j) ? `Waiting: ${names(j)}` : 'Waiting for confirmation',
@@ -54,3 +56,46 @@ export function noticesFor(jobs: Job[]): Notice[] {
 
 /** A pending show is gone from the person's view once the jobs say it is live; used to refresh the deck once. */
 export const anyLive = (jobs: Job[]) => jobs.some((j) => j.result === 'published');
+
+/** What a person is told right after sharing a flyer that was accepted for review. */
+export const THANKS_TITLE = 'Thank you!';
+export const THANKS_BODY = 'We received your flyer and it is being reviewed to be added to the listings. Until it is confirmed, only you can see it.';
+/** The confirmation rules in plain words (they match publish.ts and the confirm button). */
+export const CONFIRMATION_RULES = 'A show is confirmed when the details are clear and one more source agrees: another person shares the same show, the venue lists it on its own site, or another signed-in person taps "Yes, this is real" in Help confirm. Once you have had three shows confirmed by others, your later flyers can go live straight away.';
+
+export type SubmittedState = 'reading' | 'verified' | 'waiting' | 'removed' | 'not_listed';
+export type SubmittedRow = { key: string; jobId: string; showId?: string; state: SubmittedState; label: string; title: string; when?: string; detail: string };
+
+const STATE_LABEL: Record<SubmittedState, string> = { reading: 'Reading', verified: 'Verified', waiting: 'Awaiting confirmation', removed: 'Removed', not_listed: 'Not listed' };
+
+/** "Fri, Oct 16" from a YYYY-MM-DD date, without time-zone shifts. */
+export function dayLabel(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return iso;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/** The Submitted tab: one row per show a person's flyers produced, plus rows for flyers still being read or not listed. */
+export function submittedRows(jobs: Job[]): SubmittedRow[] {
+  const rows: SubmittedRow[] = [];
+  for (const j of jobs) {
+    const row = (state: SubmittedState, title: string, detail: string, extra: Partial<SubmittedRow> = {}): SubmittedRow => ({ key: `${j.id}${extra.showId ? `:${extra.showId}` : ''}`, jobId: j.id, state, label: STATE_LABEL[state], title, detail, ...extra });
+    if (j.status !== 'done' && j.status !== 'failed') {
+      rows.push(row('reading', 'Reading your flyer', j.status === 'retry' ? 'The reader is busy; we will try again automatically.' : 'This usually takes a few seconds.'));
+      continue;
+    }
+    if ((j.result === 'published' || j.result === 'pending') && j.shows.length > 0) {
+      for (const s of j.shows) {
+        const when = [s.venueName, dayLabel(s.localDate)].filter(Boolean).join(' · ');
+        const common = { showId: s.id, when };
+        if (s.visibility === 'public') rows.push(row('verified', s.headliner, j.result === 'pending' ? 'Confirmed. It is on the deck for everyone.' : 'It is on the deck for everyone.', common));
+        else if (s.visibility === 'pending') rows.push(row('waiting', s.headliner, j.reason === 'low_confidence' ? 'Some details were hard to read. Only you can see it until a second source confirms it.' : 'Only you can see it until a second source confirms it.', common));
+        else rows.push(row('removed', s.headliner, 'This show was removed.', common));
+      }
+      continue;
+    }
+    rows.push(row('not_listed', 'Flyer not listed', reasonText(j.reason)));
+  }
+  return rows;
+}

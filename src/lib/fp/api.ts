@@ -30,7 +30,7 @@ export async function fetchSwitches(): Promise<Result<LicensedSwitches>> {
   }
 }
 
-export type JobShow = { id: string; headliner: string; localDate: string; visibility: 'public' | 'pending' | 'removed' };
+export type JobShow = { id: string; headliner: string; localDate: string; visibility: 'public' | 'pending' | 'removed'; venueName?: string; startLocal?: string | null };
 export type Job = { id: string; status: string; result: string | null; reason: string | null; createdAt: string; finishedAt: string | null; notified: boolean; shows: JobShow[] };
 
 export async function fetchMyJobs(): Promise<Result<Job[]>> {

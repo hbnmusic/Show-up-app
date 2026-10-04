@@ -5,7 +5,7 @@ import { conflictNotes, sourcesNote, ticketLabel } from '../src/lib/fpText.ts';
 import { licensedCandidates, mergeFirstParty, parseFpRows, type FpRow } from '../src/lib/fpMerge.ts';
 import { prepareOcr, layoutHints, withCaption, type OcrResult } from '../src/lib/flyer/prepare.ts';
 import { handleLink, handleText, readFlyerImage, sendPrepared, LINK_FAILED_MESSAGE, type FlyerDeps } from '../src/lib/flyer/share.ts';
-import { noticesFor, viewJob } from '../src/lib/flyer/status.ts';
+import { CONFIRMATION_RULES, dayLabel, noticesFor, submittedRows, THANKS_BODY, viewJob } from '../src/lib/flyer/status.ts';
 import type { Job } from '../src/lib/fp/api.ts';
 import { applySwitchesToAll } from '../src/lib/licensed.ts';
 import type { Show } from '../src/lib/types.ts';
@@ -149,14 +149,14 @@ const job = (o: Partial<Job>): Job => ({ id: 'j', status: 'done', result: 'publi
 describe('job status and notices', () => {
   it('describes each state in plain words', () => {
     assert.equal(viewJob(job({})).tone, 'live');
-    assert.equal(viewJob(job({ result: 'pending', reason: 'needs_confirmation' })).tone, 'waiting');
+    assert.equal(viewJob(job({ result: 'pending', reason: 'needs_confirmation', shows: [{ id: 's', headliner: 'Velvet Automaton', localDate: '2026-10-16', visibility: 'pending' }] })).tone, 'waiting');
     assert.equal(viewJob(job({ result: 'processing', status: 'retry' })).tone, 'working');
     assert.match(viewJob(job({ result: 'rejected', reason: 'not_a_flyer', shows: [] })).detail, /concert flyer/);
     assert.match(viewJob(job({ result: 'rejected', reason: 'something_new', shows: [] })).detail, /could not use/);
   });
   it('notifies once for live, waiting and rejected; never for working or already notified', () => {
     const n = noticesFor([
-      job({ id: 'a' }), job({ id: 'b', result: 'pending' }), job({ id: 'c', result: 'rejected', reason: 'no_events', shows: [] }),
+      job({ id: 'a' }), job({ id: 'b', result: 'pending', shows: [{ id: 's', headliner: 'Velvet Automaton', localDate: '2026-10-16', visibility: 'pending' }] }), job({ id: 'c', result: 'rejected', reason: 'no_events', shows: [] }),
       job({ id: 'd', result: 'processing', status: 'retry' }), job({ id: 'e', notified: true }),
     ]);
     assert.deepEqual(n.map((x) => x.jobId), ['a', 'b', 'c']);
@@ -233,5 +233,42 @@ describe('one card per show', () => {
   it('drops malformed rows', () => {
     assert.equal(parseFpRows([{ id: 'x' }, null, 5, { ...row(), startsAt: 'tomorrow' }, row()]).length, 1);
     assert.deepEqual(parseFpRows('nope'), []);
+  });
+});
+
+describe('Submitted tab rows and the thank-you text', () => {
+  const show = (visibility: 'public' | 'pending' | 'removed', id = 's1') => ({ id, headliner: 'Velvet Automaton', localDate: '2026-10-16', visibility, venueName: 'Parkside Hall', startLocal: '20:00' });
+  const job = (over: Partial<Job>): Job => ({ id: 'j1', status: 'done', result: 'pending', reason: 'needs_confirmation', createdAt: '2026-10-04T12:00:00Z', finishedAt: null, notified: false, shows: [], ...over });
+
+  it('labels each flyer: reading, verified, awaiting confirmation, removed, not listed', () => {
+    const rows = submittedRows([
+      job({ id: 'a', status: 'processing', result: 'processing' }),
+      job({ id: 'b', result: 'published', reason: null, shows: [show('public', 'b1')] }),
+      job({ id: 'c', shows: [show('pending', 'c1')] }),
+      job({ id: 'd', shows: [show('removed', 'd1')] }),
+      job({ id: 'e', result: 'rejected', reason: 'past_date', shows: [] }),
+    ]);
+    assert.deepEqual(rows.map((r) => r.label), ['Reading', 'Verified', 'Awaiting confirmation', 'Removed', 'Not listed']);
+    assert.equal(rows[1].when, 'Parkside Hall · Fri, Oct 16');
+    assert.match(rows[4].detail, /passed/);
+    assert.equal(new Set(rows.map((r) => r.key)).size, 5);
+  });
+
+  it('a pending flyer that another person confirmed later shows as verified, and no longer as waiting', () => {
+    const j = job({ shows: [show('public')] });
+    assert.equal(submittedRows([j])[0].label, 'Verified');
+    assert.equal(submittedRows([j])[0].detail, 'Confirmed. It is on the deck for everyone.');
+    assert.equal(viewJob(j).tone, 'live');
+  });
+
+  it('one flyer with several shows gives one row per show', () => {
+    const rows = submittedRows([job({ result: 'published', shows: [show('public', 'x'), show('pending', 'y')] })]);
+    assert.deepEqual(rows.map((r) => [r.showId, r.state]), [['x', 'verified'], ['y', 'waiting']]);
+  });
+
+  it('formats dates without shifting the day and states the confirmation rules', () => {
+    assert.equal(dayLabel('2026-10-16'), 'Fri, Oct 16');
+    assert.match(THANKS_BODY, /received.*reviewed to be added to the listings/);
+    assert.match(CONFIRMATION_RULES, /another person shares the same show/);
   });
 });

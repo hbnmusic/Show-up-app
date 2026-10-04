@@ -11,7 +11,7 @@ import { linkFetchViaServer, submitFlyerText } from '@/lib/fp/api';
 import { recognizeImage } from '@/lib/flyer/ocr';
 import { handleLink, handleText, LINK_FAILED_MESSAGE, phonePreview, readFlyerImage, sendPrepared, type FlyerDeps, type Outcome } from '@/lib/flyer/share';
 import { useFlyers } from '@/lib/flyer/store';
-import { reasonText } from '@/lib/flyer/status';
+import { CONFIRMATION_RULES, reasonText, THANKS_BODY, THANKS_TITLE } from '@/lib/flyer/status';
 import { TERMS_VERSION } from '@/lib/legal';
 import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
@@ -33,9 +33,9 @@ function describe(o: Outcome): { tone: 'good' | 'wait' | 'bad'; text: string } {
   switch (o.kind) {
     case 'submitted': {
       const r = o.reply;
-      if (r.result === 'published') return { tone: 'good', text: 'Sent. It is live.' };
-      if (r.result === 'pending') return { tone: 'wait', text: 'Sent. Only you can see it until a second person confirms it.' };
-      if (r.result === 'processing' || r.status === 'retry') return { tone: 'wait', text: 'Sent. The reader is busy, so it will be processed shortly. We will tell you when it is done.' };
+      if (r.result === 'published') return { tone: 'good', text: 'Received. It is already confirmed and live.' };
+      if (r.result === 'pending') return { tone: 'wait', text: 'Received. Awaiting confirmation; only you can see it until then.' };
+      if (r.result === 'processing' || r.status === 'retry') return { tone: 'wait', text: 'Received. The reader is busy, so it will be processed shortly. We will tell you when it is done.' };
       return { tone: 'bad', text: `Not listed. ${reasonText(r.reason)}` };
     }
     case 'link_failed': return { tone: 'bad', text: LINK_FAILED_MESSAGE };
@@ -126,6 +126,8 @@ export default function FlyerScreen() {
     return true;
   };
 
+  // "Received" means the server accepted it for review; flyers that were read but not listed get the reason instead.
+  const received = items.some((i) => i.outcome?.kind === 'submitted' && (i.outcome.reply.result === 'published' || i.outcome.reply.result === 'pending' || i.outcome.reply.result === 'processing' || i.outcome.reply.status === 'retry'));
   const failedLink = items.find((i) => i.outcome?.kind === 'link_failed');
 
   return (
@@ -162,10 +164,18 @@ export default function FlyerScreen() {
         );
       })}
 
+      {phase === 'done' && received ? (
+        <View style={styles.thanks}>
+          <Text style={styles.thanksTitle}>{THANKS_TITLE}</Text>
+          <Text style={styles.thanksBody}>{THANKS_BODY}</Text>
+          <Text style={styles.body}>{CONFIRMATION_RULES}</Text>
+        </View>
+      ) : null}
+
       {phase === 'done' ? (
         <View style={styles.actions}>
-          <Pressable style={styles.primary} onPress={() => router.replace('/flyers')} accessibilityRole="button">
-            <Text style={styles.primaryText}>See my flyers</Text>
+          <Pressable style={styles.primary} onPress={() => router.replace('/(tabs)/going')} accessibilityRole="button">
+            <Text style={styles.primaryText}>See my submissions</Text>
           </Pressable>
           {failedLink && account && !account.anonymous ? (
             <Pressable style={styles.secondary} onPress={() => router.replace({ pathname: '/submit', params: { url: inputs.url, text: inputs.text } })} accessibilityRole="button">
@@ -195,6 +205,9 @@ const styles = StyleSheet.create({
   card: { borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 12, gap: 6 },
   cardTitle: { fontFamily: F.uiBold, color: C.text, fontSize: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  thanks: { borderWidth: 1, borderColor: C.accent, borderRadius: 12, padding: 14, gap: 8 },
+  thanksTitle: { fontFamily: F.uiBold, color: C.text, fontSize: 18 },
+  thanksBody: { fontFamily: F.ui, color: C.text, fontSize: 14, lineHeight: 20 },
   actions: { gap: 10, marginTop: 6 },
   primary: { height: 46, borderRadius: 999, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
   primaryText: { fontFamily: F.uiBold, color: C.accentInk, fontSize: 15 },

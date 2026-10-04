@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Linking,
@@ -30,7 +30,7 @@ import { COMMUNITY_PREFIX } from '@/lib/community/form';
 import { track } from '@/lib/analyticsCore';
 import { ModerationSheet } from '@/components/ModerationSheet';
 import { useListings } from '@/lib/listingsStore';
-import { resolveShow, useShowPreviews, type ActPreview } from '@/lib/previews';
+import { playableActs, resolveShow, useShowPreviews, type ActPreview } from '@/lib/previews';
 import { notificationsAllowed, syncReminders } from '@/lib/reminders';
 import {
   calendarLocation,
@@ -110,6 +110,44 @@ export default function ShowDetail() {
     if (show) resolveShow(show);
   }, [show]);
 
+  // Opened from Going, Submitted or a reminder (not from the deck, whose own player keeps going behind this screen):
+  // start the first preview by itself when previews are ready, then follow the bill, same as the deck. Honours the autoplay setting.
+  const autoplay = useApp((s) => s.autoplay);
+  const playable = playableActs(previews);
+  const chain = useRef(false);
+  const startedFor = useRef<string | null>(null);
+  const live = useRef({ playable, playingAct });
+  useEffect(() => {
+    live.current = { playable, playingAct };
+  });
+  const firstUrl = playable[0]?.track.previewUrl;
+  const firstName = playable[0]?.actName;
+  useEffect(() => {
+    if (fromDeck || !autoplay || !id || !firstUrl || !firstName || startedFor.current === id) return;
+    startedFor.current = id;
+    chain.current = true;
+    useDeckState.setState({ detailsPlaying: true });
+    player.replace({ uri: firstUrl });
+    player.play();
+    setPlayingAct(firstName);
+  }, [fromDeck, autoplay, id, firstUrl, firstName, player]);
+  useEffect(() => {
+    const sub = player.addListener('playbackStatusUpdate', (st) => {
+      if (!st.didJustFinish || !chain.current) return;
+      const { playable: list, playingAct: cur } = live.current;
+      const next = list[list.findIndex((a) => a.actName === cur) + 1];
+      if (!next) {
+        chain.current = false;
+        setPlayingAct(null);
+        return;
+      }
+      player.replace({ uri: next.track.previewUrl });
+      player.play();
+      setPlayingAct(next.actName);
+    });
+    return () => sub.remove();
+  }, [player]);
+
   useEffect(() => {
     notificationsAllowed().then(setNotifOk);
   }, [decision]);
@@ -129,6 +167,7 @@ export default function ShowDetail() {
   const byName = new Map<string, ActPreview>((previews?.acts ?? []).map((a) => [a.actName, a]));
 
   const playAct = (name: string) => {
+    chain.current = false;
     const p = byName.get(name);
     if (!p || p.status !== 'found') return;
     if (playingAct === name && status.playing) {
