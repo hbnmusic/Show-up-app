@@ -2,7 +2,7 @@
 // Called by the scheduled GitHub workflow (venue scanning) and by pg_cron (flyer retries). Not for the app.
 import postgres from 'npm:postgres@3';
 
-import { approveVenue, coverage, exportShows, extractAi, ingestEvents, licensedLink, maintenance, markFullScans, planAction, recordRun, runRetry, setWaves, upsertVenues } from '../_shared/jobs.ts';
+import { approveVenue, coverage, exportShows, extractAi, ingestEvents, licensedLink, maintenance, markFullScans, planAction, readinessShows, recordRun, runRetry, setWaves, upsertVenues } from '../_shared/jobs.ts';
 import { readFlags } from '../_shared/flags.ts';
 import { json, providerFor, tokenOk } from '../_shared/http.ts';
 import { PgStore } from '../_shared/supabaseStore.ts';
@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
       return json(await maintenance(deps));
     }
     case 'coverage': return json(await coverage(deps, { weekly: b.weekly === true }));
+    case 'readiness_shows': return json(await readinessShows(sql, String(b.metro ?? '')));
     case 'export_shows': return json(await exportShows(sql));
     case 'licensed_link': return json(await licensedLink(sql, b.links ?? []));
     case 'purge_licensed': {

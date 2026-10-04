@@ -296,6 +296,13 @@ export async function coverage(deps: Deps, o: { weekly?: boolean } = {}): Promis
   return ok({ summary: body, coverage: cov });
 }
 
+/** What a phone would download for one city (first-party rows and live community submissions), for the readiness report. */
+export async function readinessShows(sql: Sql, metro: string): Promise<Reply> {
+  const fp = (await sql`select public.fp_public_shows(${metro}) as j`)[0]?.j ?? [];
+  const community = await sql`select * from public.submissions where metro = ${metro} and status = 'live' and starts_at > now() - interval '24 hours' order by starts_at limit 500`;
+  return ok({ fp, community });
+}
+
 /** Public and pending shows for matching against licensed feeds. Only ids and match keys leave; no licensed data comes in. */
 export async function exportShows(sql: Sql): Promise<Reply> {
   const rows = await sql`

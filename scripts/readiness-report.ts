@@ -3,9 +3,10 @@
  *
  *   npx tsx scripts/readiness-report.ts [--metros nyc,la] [--out report.txt] [--json report.json]
  *
- * Network mode (what the owner runs): downloads the published listings, reads first-party and community shows with the
- * project's public (anon) key, and venue counts from the fp-job function.
- *   needs  SUPABASE_URL, SUPABASE_ANON_KEY (public values), FP_JOB_URL and JOB_TOKEN (for venue counts; optional)
+ * Network mode (what the owner runs): downloads the published listings, reads venue counts and (with FP_JOB_URL and JOB_TOKEN)
+ * first-party and community shows from the fp-job function; without those, first-party and community shows are read with the
+ * project's public (anon) key.
+ *   needs  FP_JOB_URL and JOB_TOKEN, or SUPABASE_URL and SUPABASE_ANON_KEY (public values)
  * Venue counts can also come from a file: --venues-json <file> (same shape as venues.json below).
  * File mode: --data-dir <dir> holds feed-<metro>.json, fp-<metro>.json, community-<metro>.json (optional) and
  * venues.json ({ coverage: [...], rejections: [{ metro, reason, count }] }); --previous-dir <dir> holds an earlier feed-<metro>.json.
@@ -41,7 +42,8 @@ async function main() {
   const rest = key ? { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' } : undefined;
 
   const notes: string[] = [];
-  if (!dir && !(url && rest)) notes.push('First-party and community shows were NOT read: SUPABASE_URL or SUPABASE_ANON_KEY is not set, so those columns show 0.');
+  const viaJob = !!(process.env.FP_JOB_URL && process.env.JOB_TOKEN);
+  if (!dir && !viaJob && !(url && rest)) notes.push(`First-party and community shows were NOT read, so those columns show 0 (SUPABASE_URL set: ${url ? 'yes' : 'no'}; SUPABASE_ANON_KEY set: ${key ? 'yes' : 'no'}; FP_JOB_URL and JOB_TOKEN set: ${viaJob ? 'yes' : 'no'}).`);
   let coverage: { metro: string; approvedA: number; approvedB: number; quarantined: number; rejected: number; disabled: number; scannedInWindow: number; venuesTotal: number }[] = [];
   let rejections: { metro: string; reason: string; count: number }[] = [];
   try {
@@ -72,6 +74,10 @@ async function main() {
       if (dir) {
         fpRows = parseFpRows(readJson(join(dir, `fp-${id}.json`)) ?? []);
         community = ((readJson(join(dir, `community-${id}.json`)) as SubmissionRow[] | null) ?? []).map(rowToShow).filter((s): s is Show => s !== null);
+      } else if (viaJob) {
+        const r = (await getJson(process.env.FP_JOB_URL!, { method: 'POST', headers: { 'content-type': 'application/json', 'x-job-token': process.env.JOB_TOKEN! }, body: JSON.stringify({ action: 'readiness_shows', metro: id }) })) as { fp?: unknown; community?: SubmissionRow[] };
+        fpRows = parseFpRows(r.fp ?? []);
+        community = (r.community ?? []).map(rowToShow).filter((s): s is Show => s !== null);
       } else if (url && rest) {
         fpRows = parseFpRows(await getJson(`${url}/rest/v1/rpc/fp_public_shows`, { method: 'POST', headers: rest, body: JSON.stringify({ p_metro: id }) }));
         const since = new Date(Date.now() - 24 * 3600_000).toISOString();
