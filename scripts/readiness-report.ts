@@ -40,6 +40,8 @@ async function main() {
   const key = process.env.SUPABASE_ANON_KEY;
   const rest = key ? { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' } : undefined;
 
+  const notes: string[] = [];
+  if (!dir && !(url && rest)) notes.push('First-party and community shows were NOT read: SUPABASE_URL or SUPABASE_ANON_KEY is not set, so those columns show 0.');
   let coverage: { metro: string; approvedA: number; approvedB: number; quarantined: number; rejected: number; disabled: number; scannedInWindow: number; venuesTotal: number }[] = [];
   let rejections: { metro: string; reason: string; count: number }[] = [];
   try {
@@ -54,7 +56,7 @@ async function main() {
       rejections = r.rejections ?? [];
     }
   } catch (e) {
-    console.error(`Venue counts unavailable: ${(e as Error).message}`);
+    notes.push(`Venue counts unavailable: ${(e as Error).message}`);
   }
 
   const reports: Readiness[] = [];
@@ -77,7 +79,7 @@ async function main() {
         community = rows.map(rowToShow).filter((s): s is Show => s !== null);
       }
     } catch (e) {
-      console.error(`First-party or community shows unavailable for ${id}: ${(e as Error).message}`);
+      notes.push(`First-party or community shows unavailable for ${id}: ${(e as Error).message}`);
     }
     const prev = prevDir ? parseFeed(readJson(join(prevDir, `feed-${id}.json`))) : null;
     const cov = coverage.find((c) => c.metro === id);
@@ -96,7 +98,7 @@ async function main() {
       }),
     );
   }
-  const text = renderReadiness(reports, now);
+  const text = (notes.length ? `${notes.map((n) => `NOTE: ${n}`).join('\n')}\n\n` : '') + renderReadiness(reports, now);
   console.log(text);
   const out = arg('out', '');
   if (out) writeFileSync(out, text);
