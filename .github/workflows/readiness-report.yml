@@ -30,6 +30,8 @@ jobs:
         run: |
           TZ=UTC npx tsx scripts/readiness-report.ts --metros "${{ inputs.metros }}" --out report.txt --json report.json
           { echo '```'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          # Also as one annotation, so the report can be read from the run's page and through the API.
+          echo "::notice title=Readiness report::$(awk '{printf "%s%%0A", $0}' report.txt)"
       - uses: actions/upload-artifact@v4
         with:
           name: readiness-report
