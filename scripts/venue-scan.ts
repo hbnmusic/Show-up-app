@@ -12,10 +12,10 @@ import { arg, flag, makeApi } from './lib/api';
 import { metroById } from '../src/lib/metros';
 import { makeGeocoder, withCoordinates } from './lib/geo';
 import { PoliteFetcher } from './lib/polite';
-import { scanVenue, trialVenue, type PlanVenue } from './lib/scan';
+import { paceAi, scanVenue, trialVenue, type PlanVenue } from './lib/scan';
 
 async function main() {
-  const api = makeApi();
+  const api = paceAi(makeApi());
   const maxVenues = Number(arg('max-venues', '150'));
   const maxTrials = Number(arg('max-trials', '40'));
   const fetcher = new PoliteFetcher();

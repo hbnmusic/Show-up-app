@@ -14,6 +14,22 @@ export type Geocode = (v: PlanVenue) => Promise<boolean | null>;
 
 export type ScanResult = { venueId: string; result: 'ingested' | 'ai' | 'unchanged' | 'not_modified' | 'robots' | 'bot_wall' | 'error' | 'quota' | 'no_text' };
 
+/**
+ * Keeps model requests under the free-tier per-minute limit (15/min): at least `gapMs` between the starts of two
+ * extract_ai calls. Other actions pass through untouched.
+ */
+export function paceAi(api: Api, gapMs = 4500, now: () => number = Date.now, sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))): Api {
+  let last = -Infinity;
+  return async (action, body) => {
+    if (action === 'extract_ai') {
+      const wait = last + gapMs - now();
+      if (wait > 0) await sleep(wait);
+      last = now();
+    }
+    return api(action, body);
+  };
+}
+
 const abs = (href: string, base: string) => {
   try {
     return new URL(href.replace(/^webcal:/i, 'https:'), base).toString();

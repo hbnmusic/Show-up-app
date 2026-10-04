@@ -228,3 +228,29 @@ describe('inside-metro check with coordinates', () => {
     assert.equal(asked, 1);
   });
 });
+
+describe('model pacing and cut-off replies', () => {
+  it('spaces extract_ai calls and leaves other actions alone', async () => {
+    const { paceAi } = await import('../scripts/lib/scan.ts');
+    let t = 0;
+    const slept: number[] = [];
+    const api = paceAi(async () => ({}), 4500, () => t, async (ms) => { slept.push(ms); t += ms; });
+    await api('extract_ai');
+    await api('plan');
+    t += 1000;
+    await api('extract_ai');
+    assert.deepEqual(slept, [3500]);
+    t += 10000;
+    await api('extract_ai');
+    assert.deepEqual(slept, [3500]);
+  });
+
+  it('keeps complete events from a reply cut off at the output limit', async () => {
+    const { salvageTruncatedJson } = await import('../supabase/functions/_shared/provider.ts');
+    const cut = '{ "is_safe": true, "events": [ {"headliner":"A, \\"x\\" {","supports":["B"],"evidence":"A"}, {"headliner":"C","evidence":"C"}, {"headliner":"D","evid';
+    const fixed = salvageTruncatedJson(cut);
+    const data = JSON.parse(fixed as string);
+    assert.deepEqual(data.events.map((e: { headliner: string }) => e.headliner), ['A, "x" {', 'C']);
+    assert.equal(salvageTruncatedJson('{ "is_safe": true, "events": [ {"headliner":"A'), null);
+  });
+});

@@ -10,6 +10,33 @@ export type LlmUsage = { inputTokens: number; outputTokens: number };
 export type LlmMeta = { finish?: string; thoughtTokens?: number; textLength: number; head: string };
 export type LlmResult = { json: unknown; usage: LlmUsage; meta?: LlmMeta };
 
+/**
+ * For a reply shaped `{ ..., "events": [ {...}, {...}, {...<cut off` : keeps everything up to the last complete
+ * event object and closes the array and the outer object. Returns null when no complete event exists.
+ */
+export function salvageTruncatedJson(text: string): string | null {
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  let cut = -1;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{' || c === '[') depth++;
+    else if (c === '}' || c === ']') {
+      depth--;
+      if (c === '}' && depth === 2) cut = i + 1; // closed an object inside the events array
+    }
+  }
+  return cut > 0 ? `${text.slice(0, cut)}]}` : null;
+}
+
 export class QuotaError extends Error {
   constructor(public retryAfterSec?: number) {
     super('quota');
@@ -70,7 +97,13 @@ export class GeminiProvider implements LlmProvider {
     try {
       json = JSON.parse(text);
     } catch {
-      json = null;
+      // A reply cut off at the output limit still holds complete events before the cut.
+      try {
+        const fixed = salvageTruncatedJson(text);
+        json = fixed ? JSON.parse(fixed) : null;
+      } catch {
+        json = null;
+      }
     }
     return {
       json,
