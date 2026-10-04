@@ -2,6 +2,7 @@
 import { evaluateVenue, shouldDisable, type RunHealth, type VenueChecks } from './approval.ts';
 import { coverageReport, weeklySummary } from './coverage.ts';
 import { todayIn } from './dates.ts';
+import { isOn, readFlags } from './flags.ts';
 import { rawToCandidate, type RawEvent, type Tier } from './extract.ts';
 import { ingestCandidate, processFlyerJob, processVenuePage, type JobOutcome } from './pipeline.ts';
 import type { LlmProvider } from './provider.ts';
@@ -49,10 +50,16 @@ export async function handleFlyerExtract(user: { id: string; anonymous: boolean 
   const used = Number((await sql`select count(*) as n from fp.flyer_jobs where submitter = ${user.id}::uuid and created_at > now() - interval '24 hours'`)[0].n);
   if (used >= limit) return fail(429, 'limit', { limit });
 
+  // Kill switches: with intake off nothing is stored; with AI off the flyer is kept in the queue and read when the switch comes back.
+  const flags = await readFlags(sql);
+  if (!isOn(flags, 'flyer_intake_enabled')) return ok({ jobId: null, status: 'paused', result: 'paused', reason: 'intake_paused', message: flags.flyer_intake_enabled.message });
+  const aiOn = isOn(flags, 'ai_extraction_enabled');
+
   const rows = await sql`
     insert into fp.flyer_jobs (submitter, anonymous, origin, metro_hint, ocr_text, layout, status)
-    values (${user.id}::uuid, ${user.anonymous}, ${origin}, ${metro}, ${text}, ${layout}, 'processing') returning id::text as id`;
+    values (${user.id}::uuid, ${user.anonymous}, ${origin}, ${metro}, ${text}, ${layout}, ${aiOn ? 'processing' : 'queued'}) returning id::text as id`;
   const id = rows[0].id as string;
+  if (!aiOn) return ok({ jobId: id, status: 'paused', result: 'processing', reason: 'ai_paused', message: flags.ai_extraction_enabled.message });
 
   if (!provider) {
     await sql`update fp.flyer_jobs set status = 'retry', result = 'processing', reason = 'not_configured', next_attempt_at = now() + interval '30 minutes' where id = ${id}::uuid`;
@@ -68,6 +75,8 @@ export async function handleFlyerExtract(user: { id: string; anonymous: boolean 
 export async function runRetry(deps: Deps): Promise<Reply> {
   const { sql, provider, now } = deps;
   if (!provider) return ok({ processed: 0, note: 'not_configured' });
+  // AI switched off: queued flyers stay queued and no model request is made.
+  if (!isOn(await readFlags(sql), 'ai_extraction_enabled')) return ok({ processed: 0, note: 'ai_paused' });
   const store = new PgStore(sql);
   // A job stuck in "processing" for 10 minutes (function crashed) goes back to the queue.
   await sql`update fp.flyer_jobs set status = 'retry' where status = 'processing' and finished_at is null and claimed_at < now() - interval '10 minutes'`;
@@ -78,6 +87,8 @@ export async function runRetry(deps: Deps): Promise<Reply> {
   jobs.sort((a, b) => new Date(a.next_attempt_at).getTime() - new Date(b.next_attempt_at).getTime());
   const results: { id: string; status: string; result: string }[] = [];
   for (const j of jobs) {
+    // Checked between jobs too, so a switch takes effect within the run.
+    if (results.length && !isOn(await readFlags(sql), 'ai_extraction_enabled')) break;
     const outcome = await processFlyerJob(
       { id: j.id, ocrText: j.ocr_text ?? '', layout: j.layout, metroHint: j.metro_hint, submitter: j.submitter, anonymous: j.anonymous, attempts: j.attempts },
       { store, provider, now },
@@ -107,6 +118,8 @@ async function aiConfigValue(sql: Sql, key: string, fallback: number): Promise<n
 /** What the scanner should do now: approved venues due for a read, and candidate venues awaiting a trial. */
 export async function planAction(deps: Deps, opts: { candidateLimit?: number } = {}): Promise<Reply> {
   const { sql, now } = deps;
+  const flags = await readFlags(sql);
+  if (!isOn(flags, 'venue_scan_enabled')) return ok({ paused: 'venue_scan', scan: [], trial: [], aiPlanned: 0, skippedForBudget: 0, flags });
   const settings = await loadSettings(sql);
   const refreshDays = await aiConfigValue(sql, 'refresh_days', 7);
   const rows = await sql`
@@ -123,6 +136,7 @@ export async function planAction(deps: Deps, opts: { candidateLimit?: number } =
     trial: rows.filter((r) => r.status === 'candidate' && enabled.has(r.metro)).slice(0, opts.candidateLimit ?? 40).map(pick),
     aiPlanned: plan.aiUsed,
     skippedForBudget: plan.skippedForBudget,
+    flags,
   });
 }
 
@@ -184,6 +198,8 @@ export async function ingestEvents(deps: Deps, b: { venueId: string; tier: Tier;
 export async function extractAi(deps: Deps, b: { venueId: string; url: string; text: string; run: RunInfo }): Promise<Reply> {
   const { sql, provider, now } = deps;
   if (!provider) return ok({ status: 'not_configured' });
+  // AI switched off: no model request, and nothing is recorded, so the page is read again when it returns.
+  if (!isOn(await readFlags(sql), 'ai_extraction_enabled')) return ok({ status: 'paused' });
   const store = new PgStore(sql);
   const venue = await loadVenue(sql, b.venueId);
   if (!venue) return fail(404, 'venue');

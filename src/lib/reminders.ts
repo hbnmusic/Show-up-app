@@ -5,6 +5,7 @@ import { track } from './analyticsCore';
 import { explainFirst, NOTIFICATION_EXPLAINER } from './explain';
 import { getShow } from './listingsStore';
 import { planReminders } from './reminderPlan';
+import { RETENTION_KIND } from './retention/cancel';
 import { useApp } from './store';
 
 export const REMINDER_CHANNEL = 'show-reminders';
@@ -76,7 +77,10 @@ async function doSync() {
   const perm = await Notifications.getPermissionsAsync();
   if (!perm.granted) return;
   await ensureChannel();
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // Only show reminders are rebuilt here; scheduled retention notifications are left alone.
+  for (const n of await Notifications.getAllScheduledNotificationsAsync()) {
+    if (n.content.data?.kind !== RETENTION_KIND) await Notifications.cancelScheduledNotificationAsync(n.identifier);
+  }
   const { decisions, reminderPrefs, reminderOff } = useApp.getState();
   const now = new Date();
   for (const [id, rec] of Object.entries(decisions)) {

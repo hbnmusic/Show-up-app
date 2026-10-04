@@ -19,6 +19,10 @@ on:
       - scripts/fetch-listings.ts
       - src/lib/listings/**
       - scripts/clean-feeds.ts
+      - scripts/apply-switches.ts
+      - src/lib/licensed.ts
+      - src/lib/flagsCore.ts
+      - supabase/functions/_shared/flags.ts
       - .github/workflows/refresh-listings.yml
   workflow_dispatch:
     inputs:
@@ -69,8 +73,27 @@ jobs:
         if: steps.key.outputs.have == 'true'
         run: gh release download listings --dir listings --clobber || echo "No feed published yet."
 
-      - name: Fetch listings
+      # Kill switches and licensed-layer switches (public RPCs; the anon key is public by design). Missing values mean everything stays on.
+      - name: Read the kill switches
         if: steps.key.outputs.have == 'true'
+        id: flags
+        env:
+          SB_URL: ${{ vars.SUPABASE_URL }}
+          SB_ANON: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          mkdir -p listings
+          if [ -n "$SB_URL" ] && [ -n "$SB_ANON" ]; then
+            curl -fsS -X POST "$SB_URL/rest/v1/rpc/get_flags" -H "apikey: $SB_ANON" -H "content-type: application/json" -d '{}' -o listings/flags.json || echo "::warning::Could not read the kill switches; keeping defaults."
+            curl -fsS -X POST "$SB_URL/rest/v1/rpc/fp_licensed_switches" -H "apikey: $SB_ANON" -H "content-type: application/json" -d '{}' -o listings/licensed-switches.json || echo "::warning::Could not read switches; keeping defaults."
+          fi
+          npx tsx scripts/apply-switches.ts --dir listings --gate
+
+      # With JamBase switched off this step is skipped, so the run makes zero JamBase calls.
+      - name: Fetch listings
+        if: steps.key.outputs.have == 'true' && steps.flags.outputs.jambase == 'true'
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
           MODE="${{ inputs.mode }}"
           [ -z "$MODE" ] && MODE=auto
@@ -82,17 +105,10 @@ jobs:
         if: steps.key.outputs.have == 'true'
         run: npx tsx scripts/clean-feeds.ts --dir listings
 
-      # Licensed-layer switches (public RPC; the anon key is public by design). Missing values mean everything stays on.
-      - name: Apply licensed-layer switches
+      # Rebuilds the feeds without JamBase records or credit line when JamBase is switched off.
+      - name: Apply the switches to the feeds
         if: steps.key.outputs.have == 'true'
-        env:
-          SB_URL: ${{ vars.SUPABASE_URL }}
-          SB_ANON: ${{ vars.SUPABASE_ANON_KEY }}
-        run: |
-          if [ -n "$SB_URL" ] && [ -n "$SB_ANON" ]; then
-            curl -fsS -X POST "$SB_URL/rest/v1/rpc/fp_licensed_switches" -H "apikey: $SB_ANON" -H "content-type: application/json" -d '{}' -o listings/licensed-switches.json || echo "::warning::Could not read switches; keeping defaults."
-          fi
-          npx tsx scripts/apply-switches.ts --dir listings
+        run: npx tsx scripts/apply-switches.ts --dir listings
 
       - name: Match first-party shows to the feed (ids only)
         if: steps.key.outputs.have == 'true'

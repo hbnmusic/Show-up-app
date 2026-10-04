@@ -31,6 +31,8 @@ import { track } from '@/lib/analyticsCore';
 import { ModerationSheet } from '@/components/ModerationSheet';
 import { useListings } from '@/lib/listingsStore';
 import { playableActs, resolveShow, useShowPreviews, type ActPreview } from '@/lib/previews';
+import { usePriceUi } from '@/hooks/usePriceUi';
+import { useFlag } from '@/lib/flags';
 import { notificationsAllowed, syncReminders } from '@/lib/reminders';
 import {
   calendarLocation,
@@ -45,6 +47,8 @@ import { reportFpShow, withdrawFpShow } from '@/lib/fp/api';
 import { formatDay, wall } from '@/lib/time';
 
 export default function ShowDetail() {
+  const priceUi = usePriceUi();
+  const deezerOn = useFlag('deezer_enabled');
   const { id } = useLocalSearchParams<{ id: string }>();
   const show = useListings((s) => (id ? s.byId[id] : undefined));
   const shownProvider = show?.source.provider;
@@ -247,7 +251,7 @@ export default function ShowDetail() {
         </View>
 
         <View style={styles.factsRow}>
-          {factsFor(show).map((f) => (
+          {factsFor(show, priceUi).map((f) => (
             <Fact key={f.label} label={f.label} value={f.value} />
           ))}
         </View>
@@ -305,22 +309,24 @@ export default function ShowDetail() {
               <View key={a.name}>
                 {i > 0 ? <View style={styles.divider} /> : null}
                 <Pressable style={styles.row} onPress={() => playAct(a.name)} disabled={!found}>
-                  <View style={[styles.playDot, found ? styles.playOn : styles.playOff]}>
+                  {deezerOn ? <View style={[styles.playDot, found ? styles.playOn : styles.playOff]}>
                     <Ionicons
                       name={!p ? 'ellipsis-horizontal' : found ? (isPlaying ? 'pause' : 'play') : 'volume-mute'}
                       size={14}
                       color={found ? C.accentInk : C.faint}
                     />
-                  </View>
+                  </View> : null}
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.rowLabel, i === 0 && { fontFamily: F.uiBold }]}>{a.name}</Text>
-                    <Text style={styles.rowDetail} numberOfLines={1}>
-                      {!p
-                        ? 'Looking for a preview…'
-                        : p.status === 'found'
-                          ? `${p.track.title}${p.confidence === 'possible' ? ' · possible match' : ''}`
-                          : 'No preview found'}
-                    </Text>
+                    {deezerOn ? (
+                      <Text style={styles.rowDetail} numberOfLines={1}>
+                        {!p
+                          ? 'Looking for a preview…'
+                          : p.status === 'found'
+                            ? `${p.track.title}${p.confidence === 'possible' ? ' · possible match' : ''}`
+                            : 'No preview found'}
+                      </Text>
+                    ) : null}
                   </View>
                   {i === 0 ? <Text style={styles.tag}>HEADLINER</Text> : null}
                 </Pressable>
@@ -399,8 +405,7 @@ export default function ShowDetail() {
         <Text style={styles.note}>
           {show.source.provider === 'jambase' ? 'Listing from JamBase. ' : show.source.provider === 'manual' ? 'Listing added by hand. ' : show.source.provider === 'community' ? 'Added by the Pull Up community and confirmed by a second person; not checked by the venue. ' : ''}
           {sourcesNote(show) ? `${sourcesNote(show)} ` : ''}
-          Times and prices can change; check the listing before you go. Previews come from Deezer and may not
-          be the right artist when names are common.
+          Times and prices can change; check the listing before you go.{deezerOn ? ' Previews come from Deezer and may not be the right artist when names are common.' : ''}
         </Text>
       </ScrollView>
       </Animated.View>

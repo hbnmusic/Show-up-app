@@ -11,7 +11,8 @@ import { linkFetchViaServer, submitFlyerText } from '@/lib/fp/api';
 import { recognizeImage } from '@/lib/flyer/ocr';
 import { handleLink, handleText, LINK_FAILED_MESSAGE, phonePreview, readFlyerImage, sendPrepared, type FlyerDeps, type Outcome } from '@/lib/flyer/share';
 import { useFlyers } from '@/lib/flyer/store';
-import { CONFIRMATION_RULES, reasonText, THANKS_BODY, THANKS_TITLE } from '@/lib/flyer/status';
+import { CONFIRMATION_RULES, FLYER_PAUSED_MESSAGE, intakeGate, reasonText, READER_PAUSED_TEXT, THANKS_BODY, THANKS_TITLE } from '@/lib/flyer/status';
+import { useFlag, useFlags } from '@/lib/flags';
 import { TERMS_VERSION } from '@/lib/legal';
 import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
@@ -33,6 +34,7 @@ function describe(o: Outcome): { tone: 'good' | 'wait' | 'bad'; text: string } {
   switch (o.kind) {
     case 'submitted': {
       const r = o.reply;
+      if (r.status === 'paused') return r.reason === 'ai_paused' ? { tone: 'wait', text: READER_PAUSED_TEXT } : { tone: 'bad', text: FLYER_PAUSED_MESSAGE };
       if (r.result === 'published') return { tone: 'good', text: 'Received. It is already confirmed and live.' };
       if (r.result === 'pending') return { tone: 'wait', text: 'Received. Awaiting confirmation; only you can see it until then.' };
       if (r.result === 'processing' || r.status === 'retry') return { tone: 'wait', text: 'Received. The reader is busy, so it will be processed shortly. We will tell you when it is done.' };
@@ -49,6 +51,8 @@ function describe(o: Outcome): { tone: 'good' | 'wait' | 'bad'; text: string } {
 export default function FlyerScreen() {
   const params = useLocalSearchParams<{ uris?: string; url?: string; text?: string }>();
   const metro = useApp((s) => s.filters.place?.metro);
+  const intakeOn = useFlag('flyer_intake_enabled');
+  const flagsLoaded = useFlags((s) => s.loaded);
   const [phase, setPhase] = useState<'start' | 'terms' | 'running' | 'done' | 'failed'>('start');
   const [account, setAccount] = useState<{ id: string; anonymous: boolean } | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -99,8 +103,11 @@ export default function FlyerScreen() {
 
   // Step 1: an account (anonymous if the person never signed in) and one-tap Terms acceptance.
   useEffect(() => {
-    if (started.current) return;
+    const gate = intakeGate(flagsLoaded, intakeOn);
+    if (started.current || gate === 'wait') return;
     started.current = true;
+    // flyer_intake_enabled off: no sign-in, no OCR, no server contact.
+    if (gate === 'paused') return;
     (async () => {
       const a = await useAuth.getState().ensureAccount();
       if ('error' in a) {
@@ -113,7 +120,7 @@ export default function FlyerScreen() {
       if (t.ok && t.data) run();
       else setPhase('terms');
     })();
-  }, [run]);
+  }, [run, flagsLoaded, intakeOn]);
 
   const accept = async () => {
     setTermsError(null);
@@ -135,7 +142,15 @@ export default function FlyerScreen() {
       <Text style={styles.title}>Share a flyer</Text>
       <Text style={styles.body}>Pull Up reads the text on your phone. The picture itself is never uploaded.</Text>
 
-      {phase === 'start' ? <ActivityIndicator color={C.accent} /> : null}
+      {!intakeOn && flagsLoaded ? (
+        <View style={styles.card}>
+          <Text style={styles.body}>{FLYER_PAUSED_MESSAGE}</Text>
+          <Pressable style={styles.secondary} onPress={() => router.back()} accessibilityRole="button">
+            <Text style={styles.secondaryText}>Close</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {phase === 'start' && intakeOn ? <ActivityIndicator color={C.accent} /> : null}
       {phase === 'failed' ? <Text style={styles.err}>{err}</Text> : null}
       {phase === 'terms' ? (
         <TermsGate

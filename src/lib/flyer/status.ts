@@ -3,6 +3,17 @@ import type { Job } from '../fp/api';
 
 export type JobView = { id: string; tone: 'working' | 'live' | 'waiting' | 'no'; title: string; detail: string };
 
+/** Shown when the flyer_intake_enabled switch is off. Nothing is read or sent. */
+export const FLYER_PAUSED_MESSAGE = 'Flyer sharing is paused right now. Nothing was sent.';
+/**
+ * What the share screen does before touching anything: wait for the saved switch values, stop with the paused message
+ * (no sign-in, no OCR, no server contact), or go.
+ */
+export const intakeGate = (flagsLoaded: boolean, intakeOn: boolean): 'wait' | 'paused' | 'go' => (!flagsLoaded ? 'wait' : intakeOn ? 'go' : 'paused');
+
+/** Shown when flyers are received but the reader (ai_extraction_enabled) is paused. */
+export const READER_PAUSED_TEXT = 'Received. Reading flyers is paused for a short while, so yours is in line and will be processed when it resumes.';
+
 const REASONS: Record<string, string> = {
   banned: 'This account cannot share flyers.',
   not_a_flyer: 'That did not look like a concert flyer.',
@@ -24,7 +35,8 @@ const names = (j: Job) => j.shows.map((s) => s.headliner).filter(Boolean).slice(
 
 export function viewJob(j: Job): JobView {
   if (j.result === 'processing' || (j.status !== 'done' && j.status !== 'failed')) {
-    return { id: j.id, tone: 'working', title: 'Reading your flyer', detail: j.status === 'retry' ? 'The reader is busy; we will try again automatically.' : 'This usually takes a few seconds.' };
+    const detail = j.status === 'retry' ? 'The reader is busy; we will try again automatically.' : j.status === 'queued' ? 'In line. Reading is paused for a short while; it will be read when it resumes.' : 'This usually takes a few seconds.';
+    return { id: j.id, tone: 'working', title: 'Reading your flyer', detail };
   }
   // A show another person confirmed after this job finished is live even though the job still says pending.
   const confirmedSince = j.result === 'pending' && j.shows.length > 0 && j.shows.every((x) => x.visibility === 'public');

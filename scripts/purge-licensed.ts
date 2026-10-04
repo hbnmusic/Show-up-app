@@ -11,7 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { purgeLicensed } from '../src/lib/licensed';
+import { rebuildFeed } from '../src/lib/licensed';
 import { arg } from './lib/api';
 
 const source = arg('source', '');
@@ -24,9 +24,8 @@ let total = 0;
 for (const f of fs.readdirSync(dir).filter((n) => /^shows-.+\.json$/.test(n))) {
   const p = path.join(dir, f);
   const feed = JSON.parse(fs.readFileSync(p, 'utf8'));
-  const r = purgeLicensed(feed.shows, source);
-  feed.shows = r.shows;
-  total += r.changed;
-  fs.writeFileSync(p, JSON.stringify(feed));
+  const r = rebuildFeed(feed, false);
+  total += r.removed;
+  fs.writeFileSync(p, JSON.stringify(r.feed));
 }
 console.log(`Purged ${total} ${source} records from ${dir}.`);

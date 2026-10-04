@@ -5,12 +5,15 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { C, F } from '@/constants/theme';
 import { communityEnabled } from '@/lib/communityConfig';
 import { DELETE_ACCOUNT_URL, PRIVACY_URL, SUPPORT_EMAIL, SUPPORT_MAILTO, TERMS_URL } from '@/lib/legal';
+import { useFlag } from '@/lib/flags';
 import { useListings } from '@/lib/listingsStore';
 
 const open = (url: string) => Linking.openURL(url).catch(() => {});
 
 export default function AboutScreen() {
   const attribution = useListings((s) => s.attribution);
+  const jambaseOn = useFlag('jambase_enabled');
+  const deezerOn = useFlag('deezer_enabled');
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.name}>Pull Up</Text>
@@ -28,19 +31,21 @@ export default function AboutScreen() {
       <Text style={styles.section}>DATA SOURCES AND CREDITS</Text>
       <View style={styles.card}>
         <Text style={styles.body}>
-          Show listings come from JamBase, from venues&apos; own public event pages, and from people who share flyers or add shows in the app. Listings are
+          Show listings come from {jambaseOn ? 'JamBase, from ' : ''}venues&apos; own public event pages, and from people who share flyers or add shows in the app. Listings are
           informational; check the ticket page before you go.
         </Text>
         {attribution.length ? <Text style={[styles.body, { paddingTop: 0 }]}>{attribution.join('\n')}</Text> : null}
         <Text style={[styles.body, { paddingTop: 0 }]}>
-          Show data: JamBase (jambase.com). Where a card shows a flyer or event photo, it is the image on the venue&apos;s own
-          page or a flyer you shared, and it belongs to its owner. Tap View on JamBase or Open listing on a show to go to
+          {jambaseOn ? 'Show data: JamBase (jambase.com). ' : ''}Where a card shows a flyer or event photo, it is the image on the venue&apos;s own
+          page or a flyer you shared, and it belongs to its owner. Tap {jambaseOn ? 'View on JamBase or ' : ''}Open listing on a show to go to
           the original page.
         </Text>
-        <Text style={[styles.body, { paddingTop: 0 }]}>
-          30-second audio previews and artist photos: Deezer public API (deezer.com). Previews are for personal,
-          non-commercial listening. Deezer is not affiliated with Pull Up.
-        </Text>
+        {deezerOn ? (
+          <Text style={[styles.body, { paddingTop: 0 }]}>
+            30-second audio previews and artist photos: Deezer public API (deezer.com). Previews are for personal,
+            non-commercial listening. Deezer is not affiliated with Pull Up.
+          </Text>
+        ) : null}
         <Text style={[styles.body, { paddingTop: 0 }]}>
           Community accounts and community-added shows are hosted with Supabase (supabase.com).
         </Text>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { flagOn } from './flags';
 import { chooseArtist, isCollaboration, searchArtists, topTrack, type Confidence, type Track } from './deezer';
 import { useApp } from './store';
 import type { Show } from './types';
@@ -115,6 +116,8 @@ function setShow(showId: string, value: ShowPreviews) {
  * act comes back, so the card can start playing before the whole bill is done.
  */
 export async function resolveShow(show: Show, force = false): Promise<void> {
+  // deezer_enabled off: no lookups at all, so there is no preview, no artist photo and nothing to show an error for.
+  if (!flagOn('deezer_enabled')) return;
   const existing = usePreviewStore.getState().byShow[show.id];
   if (existing && !force) return;
   const acts = [...show.acts].sort((a, b) => a.order - b.order);
@@ -132,6 +135,12 @@ export async function resolveShow(show: Show, force = false): Promise<void> {
   const others = await Promise.all(rest.map((a) => cachedAct(a.name)));
   others.forEach((r, i) => results.push({ ...r, order: rest[i].order } as ActPreview));
   setShow(show.id, { state: 'done', acts: results.sort((a, b) => a.order - b.order) });
+}
+
+/** Forget every preview and artist-photo result (the Deezer kill switch went off). */
+export function clearPreviews() {
+  actCache.clear();
+  usePreviewStore.setState({ byShow: {} });
 }
 
 /** Drop a show's results and resolve again (after a "wrong artist" report). */

@@ -13,6 +13,7 @@ import { byStart } from '@/lib/filters';
 import { CONFIRMATION_RULES, submittedRows, type SubmittedRow, type SubmittedState } from '@/lib/flyer/status';
 import { useFlyers } from '@/lib/flyer/store';
 import { useListings } from '@/lib/listingsStore';
+import { usePriceUi } from '@/hooks/usePriceUi';
 import { metaLine, placeLabel, showTitle, supportActs, timeLabel } from '@/lib/showText';
 import { useApp } from '@/lib/store';
 import { addDays, formatDay, relativeDay, sameDay, startOfDay, wall, wallNow } from '@/lib/time';
@@ -268,6 +269,7 @@ function ShowRow(p: {
   attendance?: 'went' | 'skipped';
 }) {
   const s = p.show;
+  const priceUi = usePriceUi();
   const more = supportActs(s).length;
   const start = wall(s.startsAt);
   const setAttendance = useApp((st) => st.setAttendance);
@@ -304,9 +306,9 @@ function ShowRow(p: {
             />
           </View>
         ) : (
-          metaLine(s) ? (
+          metaLine(s, priceUi) ? (
             <Text style={styles.rowMeta} numberOfLines={1}>
-              {metaLine(s)}
+              {metaLine(s, priceUi)}
             </Text>
           ) : null
         )}

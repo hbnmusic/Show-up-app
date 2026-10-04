@@ -28,6 +28,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { ATTRIBUTION, buildFeed, collect, sanityProblem } from '../src/lib/listings/pipeline';
+import { fetchFlagsHttp, isOn, parseFlags } from '../src/lib/flagsCore';
 import { parseFeed, type Feed } from '../src/lib/listings/validate';
 import { METROS, type Metro } from '../src/lib/metros';
 
@@ -180,7 +181,22 @@ function seedFromLegacy(state: State) {
   console.log(`Seeded ${by.size} cities from the earlier single-file feed.`);
 }
 
+/**
+ * The jambase_enabled kill switch. Read live (public RPC, anon key) at the start and again before each city, so a switch
+ * takes effect within a run; falls back to the flags file the workflow saved, and to ON if neither can be read.
+ */
+async function jambaseAllowed(): Promise<boolean> {
+  const live = await fetchFlagsHttp(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+  if (live) return isOn(live, 'jambase_enabled');
+  const saved = readJson(path.join(dir, 'flags.json'));
+  return saved ? isOn(parseFlags(saved), 'jambase_enabled') : true;
+}
+
 async function main() {
+  if (!(await jambaseAllowed())) {
+    console.log('JamBase is switched off (jambase_enabled). No JamBase calls were made.');
+    return;
+  }
   console.log(`Key: ${key!.slice(0, 9)}... (${key!.length} characters)`);
   if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Key shape::starts ${key!.slice(0, 9)}, ${key!.length} characters, raw secret ${process.env.JAMBASE_API_KEY!.length} characters`);
 
@@ -216,6 +232,10 @@ async function main() {
   let dumped = false;
 
   for (const { metro, mode } of jobs) {
+    if (!(await jambaseAllowed())) {
+      console.log('JamBase was switched off during the run; stopping before the next city.');
+      break;
+    }
     const allowed = Math.min(budget, runBudget - runCalls, monthlyCap - state.calls);
     if (allowed <= 0) {
       console.log(`Stopping: ${runCalls >= runBudget ? 'run budget' : 'monthly cap'} reached with cities still due.`);

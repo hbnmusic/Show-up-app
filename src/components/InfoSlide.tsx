@@ -1,12 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { C, F } from '@/constants/theme';
+import { usePriceUi } from '@/hooks/usePriceUi';
 import { factsFor, timeLabel } from '@/lib/showText';
 import { formatDay, wall } from '@/lib/time';
 import type { Show } from '@/lib/types';
 
 /** Last slide on every card: the facts, legible at phone size. */
 export function InfoSlide({ show, width, height }: { show: Show; width: number; height: number }) {
+  const priceUi = usePriceUi();
   const acts = [...show.acts].sort((a, b) => a.order - b.order);
   const where =
     show.venue.addressVisibility === 'public'
@@ -32,7 +34,7 @@ export function InfoSlide({ show, width, height }: { show: Show; width: number; 
       <View style={styles.grid}>
         <Fact label="When" value={`${formatDay(wall(show.startsAt))}\n${timeLabel(show)}`} />
         <Fact label="Where" value={`${show.venue.name}\n${where}`} />
-        {factsFor(show).map((f) => (
+        {factsFor(show, priceUi).map((f) => (
           <Fact key={f.label} label={f.label} value={f.value} />
         ))}
       </View>

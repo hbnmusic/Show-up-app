@@ -14,6 +14,7 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { C, F } from '@/constants/theme';
+import { usePriceUi } from '@/hooks/usePriceUi';
 import { metaLine, placeLabel, showTitle, timeLabel } from '@/lib/showText';
 import { relativeDay, wall, wallNow } from '@/lib/time';
 import type { Decision, Show } from '@/lib/types';
@@ -100,6 +101,7 @@ type CardProps = {
 
 const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
   const { show, depth, width, flyerH, drag } = p;
+  const priceUi = usePriceUi();
   const isTop = depth === 0;
   const reduceMotion = useReducedMotion();
   const threshold = width * 0.35;
@@ -269,9 +271,9 @@ const Card = forwardRef<CardHandle, CardProps>(function Card(p, ref) {
           <Text style={styles.where} numberOfLines={1}>
             {placeLabel(show)}
           </Text>
-          {metaLine(show) ? (
+          {metaLine(show, priceUi) ? (
             <Text style={styles.meta} numberOfLines={1}>
-              {metaLine(show)}
+              {metaLine(show, priceUi)}
             </Text>
           ) : null}
         </Pressable>

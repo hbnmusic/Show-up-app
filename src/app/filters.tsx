@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '@/components/Chip';
 import { GenreGroups } from '@/components/GenreGroups';
 import { C, F } from '@/constants/theme';
+import { usePriceUi } from '@/hooks/usePriceUi';
 import { buildQueue, WHEN_LABELS } from '@/lib/filters';
 import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
@@ -26,6 +27,7 @@ function toggle<T>(list: T[], v: T): T[] {
 }
 
 export default function FiltersScreen() {
+  const priceUi = usePriceUi();
   const { focus } = useLocalSearchParams<{ focus?: string }>();
   const filters = useApp((s) => s.filters);
   const setFilters = useApp((s) => s.setFilters);
@@ -105,11 +107,13 @@ export default function FiltersScreen() {
             />
           </Section>
         </View>
-        <Section title="Price" hint="Shows with no listed price only appear under Any">
-          {PRICES.map((p) => (
-            <Chip key={p.value} label={p.label} on={filters.price === p.value} onPress={() => setFilters({ price: p.value })} />
-          ))}
-        </Section>
+        {priceUi ? (
+          <Section title="Price" hint="Shows with no listed price only appear under Any">
+            {PRICES.map((p) => (
+              <Chip key={p.value} label={p.label} on={filters.price === p.value} onPress={() => setFilters({ price: p.value })} />
+            ))}
+          </Section>
+        ) : null}
       </ScrollView>
       <View style={styles.footer}>
         <Pressable onPress={resetFilters} hitSlop={8} accessibilityRole="button">

@@ -12,53 +12,24 @@ import { arg, flag, makeApi } from './lib/api';
 import { metroById } from '../src/lib/metros';
 import { makeGeocoder, withCoordinates } from './lib/geo';
 import { PoliteFetcher } from './lib/polite';
-import { paceAi, scanVenue, trialVenue, type PlanVenue } from './lib/scan';
+import { paceAi } from './lib/scan';
+import { runVenueScan } from './lib/scanRun';
 
 async function main() {
   const api = paceAi(makeApi());
-  const maxVenues = Number(arg('max-venues', '150'));
-  const maxTrials = Number(arg('max-trials', '40'));
-  const fetcher = new PoliteFetcher();
-  const tally: Record<string, number> = {};
-  const bump = (k: string) => (tally[k] = (tally[k] ?? 0) + 1);
-
-  if (!flag('maintenance-only')) {
-    const plan = await api('plan');
-    const scan = ((plan.scan ?? []) as PlanVenue[]).slice(0, maxVenues);
-    const trial = ((plan.trial ?? []) as (PlanVenue & { tz?: string })[]).slice(0, maxTrials);
-    console.log(`Plan: ${scan.length} venues to read, ${trial.length} candidates to try, ${plan.skippedForBudget ?? 0} skipped for budget.`);
-    const geocode = withCoordinates(makeGeocoder(), (id) => metroById(id));
-    const deadline = Date.now() + Number(arg('max-minutes', '40')) * 60_000;
-    for (const v of trial) {
-      if (Date.now() > deadline) break;
-      try {
-        const r = await trialVenue(v, fetcher, api, geocode);
-        bump(`trial_${r.decision}`);
-        if (r.decision !== 'approved') console.log(`  trial ${v.name}: ${r.decision} (${r.reasons.join('; ')})`);
-      } catch (e) {
-        bump('trial_error');
-        console.log(`  trial ${v.name}: error ${(e as Error).message}`);
-      }
-    }
-    for (const v of scan) {
-      if (Date.now() > deadline) { bump('stopped_for_time'); break; }
-      try {
-        const r = await scanVenue(v, fetcher, api);
-        bump(`scan_${r.result}`);
-        if (r.result === 'quota') { console.log('Model quota reached; leaving the rest for the next run.'); break; }
-      } catch (e) {
-        bump('scan_error');
-        console.log(`  scan ${v.name}: error ${(e as Error).message}`);
-      }
-    }
-  }
-  const m = await api('maintenance');
-  console.log(`Maintenance: ${JSON.stringify(m.reasons ?? m)}`);
-  if (flag('weekly')) {
-    const w = await api('coverage', { weekly: true });
-    console.log(String(w.summary ?? ''));
-  }
-  console.log('Totals:', JSON.stringify(tally));
+  const geocode = withCoordinates(makeGeocoder(), (id) => metroById(id));
+  const r = await runVenueScan({
+    api,
+    fetcher: new PoliteFetcher(),
+    geocode,
+    maxVenues: Number(arg('max-venues', '150')),
+    maxTrials: Number(arg('max-trials', '40')),
+    deadline: Date.now() + Number(arg('max-minutes', '40')) * 60_000,
+    weekly: flag('weekly'),
+    maintenanceOnly: flag('maintenance-only'),
+    log: (line) => console.log(line),
+  });
+  console.log(r.skipped ? `Exited cleanly: ${r.skipped}.` : `Totals: ${JSON.stringify(r.tally)}`);
 }
 
 main().catch((e) => {

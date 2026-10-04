@@ -11,7 +11,8 @@ import Svg, { Circle, Defs, G, Line, Pattern, Rect } from 'react-native-svg';
 
 import { F, hash, paletteFor, seeded, type PosterPalette } from '@/constants/theme';
 import { useFlyers } from '@/lib/flyer/store';
-import { isBlockedUrl, safeImage } from '@/lib/imageGuard';
+import { pickCardPhoto } from '@/lib/cardPhoto';
+import { useFlag } from '@/lib/flags';
 import { useShowPreviews } from '@/lib/previews';
 import { headliner, showTitle, supportActs } from '@/lib/showText';
 import { MONTHS, WEEKDAYS, formatTime, wall } from '@/lib/time';
@@ -305,17 +306,10 @@ function ZinePoster({ show, width: w, height: h, p, seed }: Props & { p: PosterP
  */
 function useCardPhoto(show: Show): { url: string; credit: string } | undefined {
   const previews = useShowPreviews(show.id);
-  // Image order: the person's own shared flyer (kept on this phone), then the venue's own page image (linked, not copied),
-  // then the Deezer artist photo, then the generated poster.
   const fpId = show.provenance?.fpId;
   const mine = useFlyers((s) => (fpId ? s.images[fpId] : undefined));
-  if (mine && !isBlockedUrl(mine)) return { url: mine, credit: '' };
-  const listed = safeImage(show.flyerImages?.[0]);
-  if (listed) return { url: listed, credit: show.flyerCredit ?? '' };
-  const first = previews?.acts.find((a) => a.order === Math.min(...show.acts.map((x) => x.order)));
-  return first && first.status === 'found' && first.confidence === 'high' && first.picture
-    ? { url: first.picture, credit: 'DEEZER' }
-    : undefined;
+  const deezerOn = useFlag('deezer_enabled');
+  return pickCardPhoto(show, mine, previews, deezerOn);
 }
 
 /** Layout D: the artist's photo behind the date and bill. Used when no promoter flyer exists. */

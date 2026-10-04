@@ -8,10 +8,12 @@ import { ensureNotificationPermission, notificationsAllowed, syncReminders } fro
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
 import { analyticsEnabled, setAnalyticsEnabled } from '@/lib/analytics';
+import { useFlag } from '@/lib/flags';
 import { PRIVACY_URL, TERMS_URL } from '@/lib/legal';
 import type { ReminderPrefs } from '@/lib/types';
 
 export default function SettingsScreen() {
+  const deezerOn = useFlag('deezer_enabled');
   const prefs = useApp((s) => s.reminderPrefs);
   const setPrefs = useApp((s) => s.setReminderPrefs);
   const autoplay = useApp((s) => s.autoplay);
@@ -173,7 +175,7 @@ export default function SettingsScreen() {
       </View>
       <Text style={styles.help}>
         Flyers without a promoter image are generated. Genre tags come from the listings providers and are broad.
-        Previews come from the Deezer public API, which allows non-commercial use only.
+        {deezerOn ? 'Previews come from the Deezer public API, which allows non-commercial use only.' : ''}
       </Text>
 
       <Pressable style={styles.reset} onPress={confirmReset}>

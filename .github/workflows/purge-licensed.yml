@@ -28,3 +28,14 @@ jobs:
       - run: gh release download listings --dir listings --clobber
       - run: npx tsx scripts/purge-licensed.ts --source ${{ inputs.source }} --dir listings
       - run: gh release upload listings listings/shows-*.json --clobber
+      # Also clears the stored JamBase ids (when the job address and token are set).
+      - name: Clear stored JamBase ids
+        env:
+          FP_JOB_URL: ${{ vars.FP_JOB_URL }}
+          JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+        run: |
+          if [ -n "$FP_JOB_URL" ] && [ -n "$JOB_TOKEN" ]; then
+            curl -fsS -X POST "$FP_JOB_URL" -H "x-job-token: $JOB_TOKEN" -H 'content-type: application/json' -d '{"action":"purge_licensed"}'
+          else
+            echo "::notice::FP_JOB_URL or JOB_TOKEN not set; run select fp.purge_licensed('jambase'); in the SQL editor."
+          fi

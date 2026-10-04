@@ -52,17 +52,17 @@ export const priceKnown = (s: Show) => !!s.price.isFree || !!s.price.notaflof ||
  * A card full of "TBA" tells nobody anything, so when the price is not
  * known a single line points to the ticket page instead.
  */
-export function factsFor(s: Show): { label: string; value: string }[] {
+export function factsFor(s: Show, priceUi = true): { label: string; value: string }[] {
   const out: { label: string; value: string }[] = [];
-  if (priceKnown(s)) out.push({ label: 'Cost', value: priceLabel(s) });
+  if (priceUi && priceKnown(s)) out.push({ label: 'Cost', value: priceLabel(s) });
   if (out.length === 0) out.push({ label: 'Cost', value: s.ticketUrl ? 'On the ticket page' : 'Ask the venue' });
   return out;
 }
 
 /** One line for the card and the Going list: only what is known. */
-export function metaLine(s: Show): string {
+export function metaLine(s: Show, priceUi = true): string {
   const parts: string[] = [];
-  if (priceKnown(s)) parts.push(priceLabel(s));
+  if (priceUi && priceKnown(s)) parts.push(priceLabel(s));
   return parts.join(' · ');
 }
 

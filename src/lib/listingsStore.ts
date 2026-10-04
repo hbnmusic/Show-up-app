@@ -9,6 +9,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
+import { flagOn } from './flags';
 import { mergeFirstParty, parseFpRows, type FpRow } from './fpMerge';
 import { applySwitchesToAll, DEFAULT_LICENSED, parseSwitches, type LicensedSwitches } from './licensed';
 import { dedupeKey, withRetained } from './listings/merge';
@@ -65,6 +66,8 @@ type ListingsState = {
   refreshCommunity: (metros?: string[]) => Promise<boolean>;
   /** Re-download first-party shows and the licensed-layer switches (after sharing a flyer, or on refresh). */
   refreshFirstParty: (metros?: string[]) => Promise<boolean>;
+  /** Rebuild the combined list after a kill switch changed (JamBase on or off), and drop cached JamBase shows when it is off. */
+  recombine: () => Promise<void>;
 };
 
 /** Shows other people added are kept as one extra feed per city, under this prefix. */
@@ -73,7 +76,11 @@ export const isCommunityFeed = (id: string) => id.startsWith(COMMUNITY_FEED);
 
 const index = (shows: Show[]): Record<string, Show> => Object.fromEntries(shows.map((s) => [s.id, s]));
 
-function combine(feeds: Record<string, MetroFeed>, fpRows: Record<string, FpRow[]> = {}, switches: LicensedSwitches = DEFAULT_LICENSED) {
+/** The older licensed switch and the jambase_enabled kill switch both have to allow JamBase. */
+const effective = (sw: LicensedSwitches): LicensedSwitches => ({ ...sw, jambase_listings: sw.jambase_listings && flagOn('jambase_enabled') });
+
+function combine(feeds: Record<string, MetroFeed>, fpRows: Record<string, FpRow[]> = {}, rawSwitches: LicensedSwitches = DEFAULT_LICENSED) {
+  const switches = effective(rawSwitches);
   const byId = new Map<string, Show>();
   const entries = Object.entries(feeds);
   // Provider listings first (with the licensed-layer switches applied and first-party shows merged in, one card per show),
@@ -97,7 +104,7 @@ function combine(feeds: Record<string, MetroFeed>, fpRows: Record<string, FpRow[
   const shows = [...byId.values()];
   const list = entries.filter(([id]) => !isCommunityFeed(id)).map(([, f]) => f);
   const generatedAt = list.map((f) => f.generatedAt).filter(Boolean).sort().pop() ?? null;
-  const attribution = [...new Set(list.flatMap((f) => f.attribution))];
+  const attribution = [...new Set(list.flatMap((f) => f.attribution))].filter((a) => switches.jambase_listings || !/jambase/i.test(a));
   const source: ListingsSource = list.length === 0 ? 'none' : list.some((f) => f.source === 'live') ? 'live' : 'cache';
   return { shows, byId: index(shows), generatedAt, attribution, source };
 }
@@ -197,8 +204,10 @@ export const useListings = create<ListingsState>()((set, get) => ({
           set({ checkedAt: { ...cur.checkedAt, [id]: Date.now() } });
           continue;
         }
-        const shows = withRetained(feed.shows, have?.shows ?? [], Object.keys(useApp.getState().decisions));
-        const metroFeed: MetroFeed = { generatedAt: feed.generatedAt, attribution: feed.attribution, shows, source: 'live' };
+        const jb = flagOn('jambase_enabled');
+        const dropJb = (list: Show[]) => (jb ? list : list.filter((s) => s.source.provider !== 'jambase'));
+        const shows = withRetained(dropJb(feed.shows), dropJb(have?.shows ?? []), Object.keys(useApp.getState().decisions));
+        const metroFeed: MetroFeed = { generatedAt: feed.generatedAt, attribution: jb ? feed.attribution : feed.attribution.filter((a) => !/jambase/i.test(a)), shows, source: 'live' };
         const feeds = { ...cur.feeds, [id]: metroFeed };
         set({ feeds, ...combine(feeds, cur.fpRows, cur.switches), checkedAt: { ...cur.checkedAt, [id]: Date.now() } });
         await save(id, metroFeed, Object.keys(cur.feeds));
@@ -241,6 +250,20 @@ export const useListings = create<ListingsState>()((set, get) => ({
       changed = true;
     }
     return changed;
+  },
+
+  recombine: async () => {
+    const cur = get();
+    let feeds = cur.feeds;
+    if (!flagOn('jambase_enabled')) {
+      // The next refresh would replace these anyway; clear them now so nothing from JamBase stays on the phone.
+      feeds = Object.fromEntries(
+        Object.entries(cur.feeds).map(([id, f]) => [id, { ...f, shows: f.shows.filter((s) => s.source.provider !== 'jambase'), attribution: f.attribution.filter((a) => !/jambase/i.test(a)) }]),
+      );
+      const known = Object.keys(cur.feeds);
+      for (const [id, f] of Object.entries(feeds)) if (f.shows.length !== cur.feeds[id].shows.length) await save(id, f, known);
+    }
+    set({ feeds, ...combine(feeds, cur.fpRows, cur.switches) });
   },
 
   refreshFirstParty: async (metros) => {

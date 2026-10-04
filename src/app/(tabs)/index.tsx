@@ -11,6 +11,8 @@ import { Chip } from '@/components/Chip';
 import { Deck, type DeckHandle } from '@/components/Deck';
 import { C, F } from '@/constants/theme';
 import { useAppActive, useNow } from '@/hooks/useNow';
+import { usePriceUi } from '@/hooks/usePriceUi';
+import { useFlag } from '@/lib/flags';
 import { useDeckAudio } from '@/hooks/useDeckAudio';
 import { recordDecision } from '@/lib/decide';
 import { useDeckState } from '@/lib/deckState';
@@ -35,6 +37,8 @@ export default function ShowsScreen() {
   const setFilters = useApp((s) => s.setFilters);
   const resetFilters = useApp((s) => s.resetFilters);
   const history = useApp((s) => s.history);
+  const priceUi = usePriceUi();
+  const deezerOn = useFlag('deezer_enabled');
   const filters = stored;
   const deckRef = useRef<DeckHandle>(null);
   const drag = useSharedValue(0);
@@ -52,6 +56,10 @@ export default function ShowsScreen() {
     () => buildQueue(allShows, filters, decisions, now, pinnedId),
     [allShows, filters, decisions, now, pinnedId],
   );
+  // A price filter picked earlier stops applying once the city has too few known prices to make it useful.
+  useEffect(() => {
+    if (allShows.length > 0 && !priceUi && filters.price !== 'any') setFilters({ price: 'any' });
+  }, [allShows.length, priceUi, filters.price, setFilters]);
   const top = queue[0];
   useEffect(() => {
     useDeckState.setState({ pinnedId: top?.id ?? null });
@@ -141,11 +149,13 @@ export default function ShowsScreen() {
           />
           <Chip label="Tonight" on={filters.when === 'tonight'} onPress={() => toggleWhen('tonight')} />
           <Chip label="This weekend" on={filters.when === 'weekend'} onPress={() => toggleWhen('weekend')} />
-          <Chip
-            label="Free"
-            on={filters.price === 'free'}
-            onPress={() => setFilters({ price: filters.price === 'free' ? 'any' : 'free' })}
-          />
+          {priceUi ? (
+            <Chip
+              label="Free"
+              on={filters.price === 'free'}
+              onPress={() => setFilters({ price: filters.price === 'free' ? 'any' : 'free' })}
+            />
+          ) : null}
           <Chip
             label={filters.genres.length ? `Genre · ${filters.genres.length}` : 'Genre'}
             on={filters.genres.length > 0}
@@ -169,6 +179,7 @@ export default function ShowsScreen() {
               router.push(`/show/${s.id}`);
             }}
             renderAudio={(show, isTop) => {
+              if (!deezerOn) return null; // Deezer is switched off: no audio bar, no error text
               if (isTop) {
                 return (
                   <AudioBar

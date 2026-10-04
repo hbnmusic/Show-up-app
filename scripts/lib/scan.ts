@@ -12,7 +12,7 @@ export type PlanVenue = { id: string; metro: string; name: string; website?: str
 export type Api = (action: string, body?: Record<string, unknown>) => Promise<Record<string, any>>;
 export type Geocode = (v: PlanVenue) => Promise<boolean | null>;
 
-export type ScanResult = { venueId: string; result: 'ingested' | 'ai' | 'unchanged' | 'not_modified' | 'robots' | 'bot_wall' | 'error' | 'quota' | 'no_text' };
+export type ScanResult = { venueId: string; result: 'ingested' | 'ai' | 'unchanged' | 'not_modified' | 'robots' | 'bot_wall' | 'error' | 'quota' | 'no_text' | 'ai_paused' };
 
 /**
  * Keeps model requests under the free-tier per-minute limit (15/min): at least `gapMs` between the starts of two
@@ -189,6 +189,7 @@ export async function scanVenue(v: PlanVenue, f: PoliteFetcher, api: Api): Promi
     return out('unchanged');
   }
   const res = await api('extract_ai', { venueId: v.id, url: page.url, text: clip(text), run: { fetchOk: true, contentHash: hash, ...fetchInfo } });
+  if (res.status === 'paused') return out('ai_paused'); // the AI switch is off: nothing was recorded, so this page is read again later
   return out(res.status === 'quota' ? 'quota' : 'ai');
 }
 
@@ -237,6 +238,7 @@ export async function trialVenue(v: PlanVenue, f: PoliteFetcher, api: Api, geoco
     const res = await api('extract_ai', { venueId: v.id, url: page.url, text: clip(pageText), run: { fetchOk: true, contentHash: await sha256Hex(pageText), ...(eventsUrl ? {} : { etag: r.etag, lastModified: r.lastModified }) } });
     checks.aiEventsWithEvidence = Number(res.ingested ?? 0);
     if (res.status === 'quota') return { venueId: v.id, decision: 'deferred', reasons: ['quota'] }; // try again on a later run
+    if (res.status === 'paused') return { venueId: v.id, decision: 'deferred', reasons: ['ai_paused'] };
   }
   return finish(checks);
 }

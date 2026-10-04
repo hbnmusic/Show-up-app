@@ -13,12 +13,18 @@ import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { DarkTheme, Stack, ThemeProvider, router, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { C } from '@/constants/theme';
 import { initAnalytics } from '@/lib/analytics';
+import { runFlagEffects } from '@/lib/flagEffects';
+import { useFlags } from '@/lib/flags';
+import { clearPreviews } from '@/lib/previews';
+import { cancelRetentionNotifications } from '@/lib/retention/cancel';
 import { track } from '@/lib/analyticsCore';
 import { useAuth } from '@/lib/auth';
 import { extractUrl } from '@/lib/community/form';
@@ -96,6 +102,31 @@ export default function RootLayout() {
   useEffect(() => {
     useAuth.getState().init();
     useFlyers.getState().load();
+  }, []);
+
+  // Kill switches: read the saved values at launch, then fetch (at most every 15 minutes, also when the app returns to the front).
+  useEffect(() => {
+    const apply = () =>
+      runFlagEffects(useFlags.getState().flags, {
+        recombine: () => useListings.getState().recombine(),
+        clearDeezer: async () => {
+          clearPreviews();
+          await Image.clearMemoryCache().catch(() => {});
+          await Image.clearDiskCache().catch(() => {});
+        },
+        cancelNotifications: async () => void (await cancelRetentionNotifications()),
+        getMarker: async () => (await AsyncStorage.getItem('pull-up-deezer-cleared-v1').catch(() => null)) === '1',
+        setMarker: (v) => AsyncStorage.setItem('pull-up-deezer-cleared-v1', v ? '1' : '0').catch(() => {}),
+      }).catch(() => {});
+    const refresh = () => useFlags.getState().refresh().then((changed) => (changed ? apply() : undefined));
+    useFlags.getState().load().then(async () => {
+      await apply();
+      await refresh();
+    });
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') refresh();
+    });
+    return () => sub.remove();
   }, []);
 
   // Check shared flyers for results now and whenever the app comes to the front (local notices only; there is no push service).
