@@ -45,7 +45,7 @@ export default function FiltersScreen() {
     if (!r.ok) {
       setLocNote(
         r.reason === 'denied'
-          ? 'Location is off for Pull Up. Turn it on in your phone settings, or pick a city.'
+          ? 'Location is off for Come Thru. Turn it on in your phone settings, or pick a city.'
           : "Couldn't get a location fix. Pick a city instead.",
       );
       return;

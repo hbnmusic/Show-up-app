@@ -1,6 +1,6 @@
 # Kill switches (internal; for the project owner)
 
-Seven on/off switches let you stop one part of Pull Up from your Supabase dashboard, without a new app release. They are
+Seven on/off switches let you stop one part of Come Thru from your Supabase dashboard, without a new app release. They are
 for emergencies: a provider asks you to stop, a bill or quota problem, abuse, a bug that is hurting people.
 
 Everything is ON by default. A switch you never touch does nothing.

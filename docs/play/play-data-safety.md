@@ -82,7 +82,7 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
 8. **Gemini free-tier terms checked on 2026-10-03** (ai.google.dev/gemini-api/terms): Google uses content submitted to the unpaid services and the
    responses to improve its products; human reviewers may read, annotate and process input and output (disconnected from the account, key and
    project); the terms say not to submit sensitive, confidential or personal information; and the unpaid services may not be used in an
-   application "directed towards or likely to be accessed by individuals under the age of 18". Pull Up is 18+ (Terms, store rating, sign-in
+   application "directed towards or likely to be accessed by individuals under the age of 18". Come Thru is 18+ (Terms, store rating, sign-in
    text), but a public app can still be reached by minors, so the owner must decide whether that risk is acceptable. The only way out is a
    paid service, which this project does not use (stop and decide before enabling billing).
 9. **Local retention notifications ("new shows", "shows tonight").** Created on the phone by a background task (Expo background task on

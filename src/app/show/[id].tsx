@@ -291,7 +291,7 @@ export default function ShowDetail() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowLabel}>Reminders</Text>
                 <Text style={styles.rowDetail}>
-                  {notifOk ? 'Uses your defaults in Settings' : 'Notifications are off for Pull Up in Android settings'}
+                  {notifOk ? 'Uses your defaults in Settings' : 'Notifications are off for Come Thru in Android settings'}
                 </Text>
               </View>
               <Switch
@@ -409,7 +409,7 @@ export default function ShowDetail() {
         ) : null}
 
         <Text style={styles.note}>
-          {show.source.provider === 'jambase' ? 'Listing from JamBase. ' : show.source.provider === 'manual' ? 'Listing added by hand. ' : show.source.provider === 'community' ? 'Added by the Pull Up community and confirmed by a second person; not checked by the venue. ' : ''}
+          {show.source.provider === 'jambase' ? 'Listing from JamBase. ' : show.source.provider === 'manual' ? 'Listing added by hand. ' : show.source.provider === 'community' ? 'Added by the Come Thru community and confirmed by a second person; not checked by the venue. ' : ''}
           {sourcesNote(show) ? `${sourcesNote(show)} ` : ''}
           Times and prices can change; check the listing before you go.{deezerOn ? ' Previews come from Deezer and may not be the right artist when names are common.' : ''}
         </Text>

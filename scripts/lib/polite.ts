@@ -6,7 +6,7 @@
 import { isAllowed, parseRobots, robotsFromStatus, type RobotsRules } from '../../supabase/functions/_shared/robots';
 
 export const CONTACT_URL = process.env.BOT_CONTACT_URL ?? 'https://hbnmusic.github.io/Show-up-app/bot.html';
-export const USER_AGENT = `PullUpBot/1.0 (+${CONTACT_URL})`;
+export const USER_AGENT = `ComeThruBot/1.0 (+${CONTACT_URL})`;
 export const MIN_DELAY_MS = Number(process.env.SCAN_MIN_DELAY_MS ?? 3000);
 
 export type FetchRes = { status: number; headers: { get(n: string): string | null }; text(): Promise<string> };

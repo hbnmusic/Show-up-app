@@ -3,7 +3,7 @@
  * Used by the phone first; the link-fetch function is the fallback when the phone cannot get it. Only the image
  * address and the caption text are returned. Nothing else on the page is read and the page is not stored.
  */
-export const BOT_UA = 'PullUpBot/1.0 (+https://hbnmusic.github.io/Show-up-app/bot.html)';
+export const BOT_UA = 'ComeThruBot/1.0 (+https://hbnmusic.github.io/Show-up-app/bot.html)';
 
 export type Preview = { imageUrl?: string; caption?: string; title?: string };
 

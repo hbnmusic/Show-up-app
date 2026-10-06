@@ -1,4 +1,4 @@
--- Pull Up crowd-submitted shows.
+-- Come Thru crowd-submitted shows.
 -- Run this whole file once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 -- It is safe to run again; objects that already exist are left alone or replaced.
 --

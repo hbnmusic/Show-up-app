@@ -16,7 +16,7 @@ export default function AboutScreen() {
   const deezerOn = useFlag('deezer_enabled');
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.name}>Pull Up</Text>
+      <Text style={styles.name}>Come Thru</Text>
       <Text style={styles.sub}>Version {Constants.expoConfig?.version ?? "1.0.0"} · For ages 18 and up</Text>
 
       <Text style={styles.section}>HELP AND POLICIES</Text>
@@ -43,7 +43,7 @@ export default function AboutScreen() {
         {deezerOn ? (
           <Text style={[styles.body, { paddingTop: 0 }]}>
             30-second audio previews and artist photos: Deezer public API (deezer.com). Previews are for personal,
-            non-commercial listening. Deezer is not affiliated with Pull Up.
+            non-commercial listening. Deezer is not affiliated with Come Thru.
           </Text>
         ) : null}
         <Text style={[styles.body, { paddingTop: 0 }]}>

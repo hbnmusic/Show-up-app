@@ -62,7 +62,7 @@ export default function SettingsScreen() {
     try {
       if (!(await notificationsAllowed()) && !(await ensureNotificationPermission())) {
         setAllowed(false);
-        setTestNote('Notifications are off for Pull Up. Turn them on in your phone settings to get a test.');
+        setTestNote('Notifications are off for Come Thru. Turn them on in your phone settings to get a test.');
         return;
       }
       setAllowed(true);
@@ -76,7 +76,7 @@ export default function SettingsScreen() {
               ? 'These notifications are not on for your city yet, so no test was sent.'
               : r.reason === 'no_city'
                 ? 'Pick a city first, then try again.'
-                : 'Notifications are off for Pull Up. Turn them on in your phone settings to get a test.',
+                : 'Notifications are off for Come Thru. Turn them on in your phone settings to get a test.',
       );
     } finally {
       setTesting(false);
@@ -84,7 +84,7 @@ export default function SettingsScreen() {
   };
 
   const confirmReset = () =>
-    Alert.alert('Reset Pull Up?', 'This clears your Going list, passes, filters and settings on this phone.', [
+    Alert.alert('Reset Come Thru?', 'This clears your Going list, passes, filters and settings on this phone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',
@@ -114,7 +114,7 @@ export default function SettingsScreen() {
       <Text style={styles.section}>REMINDERS</Text>
       {!allowed && Platform.OS !== 'web' ? (
         <Pressable style={styles.banner} onPress={askPermission}>
-          <Text style={styles.bannerText}>Notifications are off for Pull Up. Tap to turn them on.</Text>
+          <Text style={styles.bannerText}>Notifications are off for Come Thru. Tap to turn them on.</Text>
         </Pressable>
       ) : null}
       <View style={styles.card}>
@@ -177,7 +177,7 @@ export default function SettingsScreen() {
       {!notifOn ? <Text style={styles.help}>These notifications are paused for everyone right now.</Text> : null}
       {notifOn && !cityNotifs ? <Text style={styles.help}>These two notifications are not on for your city yet.</Text> : null}
       <Text style={styles.help}>
-        Pull Up makes these on your phone from the listings it already downloaded; nothing about you is sent anywhere to make them. They are best effort: your phone decides when apps may run in the background, so one can arrive late or not at all, especially with battery saving on. No more than one a day, none at night, and they stop for two weeks if you ignore several in a row.
+        Come Thru makes these on your phone from the listings it already downloaded; nothing about you is sent anywhere to make them. They are best effort: your phone decides when apps may run in the background, so one can arrive late or not at all, especially with battery saving on. No more than one a day, none at night, and they stop for two weeks if you ignore several in a row.
       </Text>
 
       <Text style={styles.section}>LISTINGS</Text>

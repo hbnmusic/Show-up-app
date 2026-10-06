@@ -5,7 +5,7 @@ change; pick the closest match [inference].
 
 | Question area | Answer | Why |
 | --- | --- | --- |
-| App category | The closest of "Social / communication" or "All other app types". Choose "Social / communication" if you want the conservative answer, because people can submit content that others see. | Pull Up is a listings app with limited user-submitted shows. |
+| App category | The closest of "Social / communication" or "All other app types". Choose "Social / communication" if you want the conservative answer, because people can submit content that others see. | Come Thru is a listings app with limited user-submitted shows. |
 | Violence (any kind, including cartoon or fantasy) | No | None in the app. |
 | Blood or gore | No | |
 | Sexual content or nudity | No | The app contains none. Flyer images come from providers and are not reviewed by us (see note). |

@@ -1,4 +1,4 @@
--- Upgrade an existing Pull Up project (one that already ran the first schema.sql) to the compliance layer.
+-- Upgrade an existing Come Thru project (one that already ran the first schema.sql) to the compliance layer.
 -- Run once in the Supabase SQL editor. Safe to run twice. Fresh projects should run schema.sql instead.
 
 -- Authorship survives account deletion for confirmed shows.

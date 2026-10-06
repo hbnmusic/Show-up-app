@@ -54,7 +54,7 @@ export function rowsToSeeds(rows: Row[]): SeedVenue[] {
 async function main() {
   let seeds: SeedVenue[] = [];
   if (flag('wikidata')) {
-    const res = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql()), { headers: { 'user-agent': 'PullUpBot/1.0 (https://hbnmusic.github.io/Show-up-app/bot.html)', accept: 'application/sparql-results+json' } });
+    const res = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql()), { headers: { 'user-agent': 'ComeThruBot/1.0 (https://hbnmusic.github.io/Show-up-app/bot.html)', accept: 'application/sparql-results+json' } });
     if (!res.ok) throw new Error(`Wikidata HTTP ${res.status}`);
     seeds = rowsToSeeds(((await res.json()) as { results: { bindings: Row[] } }).results.bindings);
   }

@@ -17,7 +17,7 @@ export async function addToCalendar(show: Show): Promise<boolean> {
     `Lineup: ${fullBill(show) || show.title || ''}`,
     metaLine(show, currentPriceUi()),
     show.ticketUrl ? `Listing: ${show.ticketUrl}` : '',
-    `Open in Pull Up: pullup://show/${show.id}`,
+    `Open in Come Thru: comethru://show/${show.id}`,
   ]
     .filter(Boolean)
     .join('\n');

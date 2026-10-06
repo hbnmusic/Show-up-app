@@ -1,5 +1,5 @@
 /**
- * The steps between "something was shared to Pull Up" and "recognised text sent for processing".
+ * The steps between "something was shared to Come Thru" and "recognised text sent for processing".
  * Written against injected dependencies so every branch is tested without a phone. The flyer image never leaves the phone:
  * only prepared text (see prepare.ts) is sent.
  */

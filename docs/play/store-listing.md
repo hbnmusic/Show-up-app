@@ -2,8 +2,8 @@
 
 ## Text
 
-**App name** (max 30): `Pull Up`
-Alternative if the name is taken: `Pull Up: Live Music Finder`
+**App name** (max 30): `Come Thru`
+Alternative if the name is taken: `Come Thru: Live Music Finder`
 
 **Short description** (max 80; this one is 66):
 ```
@@ -14,7 +14,7 @@ Swipe through local shows, hear previews, and keep a list of gigs.
 ```
 Find your next show without scrolling through listings.
 
-Pull Up turns upcoming concerts in about 45 US and Canadian metro areas into a deck of cards. Swipe right on shows you want to go to, swipe left to pass, and spread two fingers (or tap the info) for the details.
+Come Thru turns upcoming concerts in about 45 US and Canadian metro areas into a deck of cards. Swipe right on shows you want to go to, swipe left to pass, and spread two fingers (or tap the info) for the details.
 
 HEAR WHO'S PLAYING
 The top card plays a 30-second preview of the headliner and steps through the rest of the bill, so you can tell in a few seconds whether a show is for you.

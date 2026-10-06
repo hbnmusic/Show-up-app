@@ -140,7 +140,7 @@ export default function FlyerScreen() {
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Share a flyer</Text>
-      <Text style={styles.body}>Pull Up reads the text on your phone. The picture itself is never uploaded.</Text>
+      <Text style={styles.body}>Come Thru reads the text on your phone. The picture itself is never uploaded.</Text>
 
       {!intakeOn && flagsLoaded ? (
         <View style={styles.card}>

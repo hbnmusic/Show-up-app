@@ -4,7 +4,7 @@ The app hides the community features until it is built with a Supabase project a
 Nothing else in the app depends on this.
 
 1. **Create the project.** supabase.com → New project (free plan). Choose a region near most users
-   and save the database password somewhere safe. Pull Up never uses it.
+   and save the database password somewhere safe. Come Thru never uses it.
 2. **Create the tables.** SQL Editor → New query → paste all of `supabase/schema.sql` → Run.
    Running it twice is harmless. (If the project already ran an older `schema.sql`, paste
    `supabase/migrations/002_compliance.sql` instead; it adds terms acceptance, blocking, user reports, field
@@ -13,7 +13,7 @@ Nothing else in the app depends on this.
    (new people) and **Magic Link** (returning people) so the body shows `{{ .Token }}`, for example:
 
    ```html
-   <h2>Your Pull Up code</h2>
+   <h2>Your Come Thru code</h2>
    <p>Enter this code in the app: <strong>{{ .Token }}</strong></p>
    ```
 4. **Add the address and key to the build.** Project Settings → API: copy the Project URL and the
@@ -59,5 +59,5 @@ Soft launch: New York and Los Angeles have `soft_launch = true` in `fp.metro_con
 - One person with two email addresses can confirm their own submission. Trusted/banned lists and the
   report threshold are the defenses; if abuse shows up, require confirmations from accounts that are
   more than a few days old.
-- The share button on Instagram only passes a link. Pull Up cannot read the post's caption or flyer, so
+- The share button on Instagram only passes a link. Come Thru cannot read the post's caption or flyer, so
   the person types in the details and the link is kept as the source.

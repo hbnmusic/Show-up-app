@@ -97,7 +97,7 @@ jobs:
           if jarsigner -verify -verbose -certs "$aab" | grep -qi "CN=Android Debug"; then
             echo "::error::The bundle is signed with the debug key."; exit 1
           fi
-          cp "$aab" "pull-up-${{ inputs.version_code || github.run_number }}.aab"
+          cp "$aab" "come-thru-${{ inputs.version_code || github.run_number }}.aab"
 
       - name: Remove the keystore
         if: always()
@@ -105,6 +105,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: pull-up-play-bundle-${{ inputs.version_code || github.run_number }}
-          path: pull-up-*.aab
+          name: come-thru-play-bundle-${{ inputs.version_code || github.run_number }}
+          path: come-thru-*.aab
           retention-days: 30

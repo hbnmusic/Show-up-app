@@ -69,7 +69,7 @@ function useNotificationRouting() {
   }, []);
 }
 
-/** A post or link shared to Pull Up from another app (Instagram's Share button, a browser) opens the add-a-show form. */
+/** A post or link shared to Come Thru from another app (Instagram's Share button, a browser) opens the add-a-show form. */
 /** Records which screens people open (the screen name only, never a show id). */
 function ScreenTracker() {
   const pathname = usePathname();

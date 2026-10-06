@@ -12,7 +12,7 @@ export function TermsGate({ onAccept, error, note }: { onAccept: () => Promise<b
       <Text style={styles.title}>Before you add or confirm shows</Text>
       {note ? <Text style={styles.body}>{note}</Text> : null}
       <Text style={styles.body}>
-        You must be 18 or older to use Pull Up. Shows you add are visible to other people. Only add real events, do not post anything offensive, misleading or
+        You must be 18 or older to use Come Thru. Shows you add are visible to other people. Only add real events, do not post anything offensive, misleading or
         private, and do not add shows you do not know to be real. Reports and blocks are available on every community
         show, and we may remove content or accounts that break these rules.
       </Text>

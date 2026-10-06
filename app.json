@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "Pull Up",
-    "slug": "pull-up",
+    "name": "Come Thru",
+    "slug": "come-thru",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "pullup",
+    "scheme": "comethru",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0C0B0A",
     "ios": {
-      "bundleIdentifier": "com.hbnmusic.pullup",
+      "bundleIdentifier": "com.hbnmusic.comethru",
       "supportsTablet": false
     },
     "android": {
-      "package": "com.hbnmusic.pullup",
+      "package": "com.hbnmusic.comethru",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0C0B0A",
@@ -65,7 +65,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Pull Up uses your approximate location once, on this phone, to pick the nearest city. It is never sent to a server."
+          "locationWhenInUsePermission": "Come Thru uses your approximate location once, on this phone, to pick the nearest city. It is never sent to a server."
         }
       ],
       [
