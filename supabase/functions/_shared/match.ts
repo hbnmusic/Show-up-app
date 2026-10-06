@@ -74,7 +74,7 @@ export function cluster(cands: readonly Candidate[]): Candidate[][] {
   return groups;
 }
 
-export type Field = 'start' | 'doors' | 'price' | 'ticketUrl' | 'status' | 'lineup' | 'venue' | 'age' | 'genres' | 'image';
+export type Field = 'start' | 'doors' | 'price' | 'ticketUrl' | 'status' | 'lineup' | 'venue' | 'genres' | 'image';
 
 /** Highest priority first. Status is handled separately (cancel and move flags). */
 export const PRIORITY: Record<Exclude<Field, 'status'>, SourceType[]> = {
@@ -84,7 +84,6 @@ export const PRIORITY: Record<Exclude<Field, 'status'>, SourceType[]> = {
   ticketUrl: ['venue_site', 'jambase', 'flyer'],
   lineup: ['venue_site', 'jambase', 'flyer'],
   venue: ['venue_site', 'jambase', 'flyer'],
-  age: ['venue_site', 'jambase', 'flyer'],
   genres: ['venue_site', 'flyer', 'jambase'],
   image: ['venue_site', 'jambase', 'flyer'],
 };
@@ -111,7 +110,6 @@ export type MergedShow = {
   ticketUrl?: string;
   status: ShowStatus;
   genres: Candidate['genres'];
-  agePolicy?: string;
   imageUrl?: string;
   fieldSource: Partial<Record<Field, SourceType>>;
   conflicts: Conflict[];
@@ -168,7 +166,6 @@ export function mergeGroup(group: readonly Candidate[]): MergedShow {
   out.doorsLocal = pick(g, PRIORITY.doors, (c) => c.doorsLocal, (v) => v, 'doors', out);
   out.price = pick(g, PRIORITY.price, (c) => (hasPrice(c) ? c.price : undefined), (v) => priceText(v) ?? '', 'price', out);
   out.ticketUrl = pick(g, PRIORITY.ticketUrl, (c) => c.ticketUrl, (v) => v, 'ticketUrl', out);
-  out.agePolicy = pick(g, PRIORITY.age, (c) => c.agePolicy, (v) => v.toLowerCase(), 'age', out);
   out.imageUrl = pick(g, PRIORITY.image, (c) => c.imageUrl, (v) => v, 'image', out);
 
   // Status: a cancel or move flag from JamBase counts, then the venue's own site; a disagreement is flagged.

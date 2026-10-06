@@ -27,5 +27,6 @@ Notes:
 - Flyer and event images are loaded from JamBase, venue websites and Deezer. We do not review them. If any image is inappropriate, it comes
   from the provider; you cannot remove it, but you can hide the show via `supabase/MODERATION.md` if it is a community show.
 - **Target audience** (Play Console → App content → Target audience): the app's minimum age is 18 (Terms, Privacy Policy and in-app text).
-  Select only the **16–17** and **18 and over** groups. Do not select any group under 16, which avoids the extra requirements for
-  apps that appeal to children. Note the Play age groups are 13–15, 16–17 and 18+ [inference], so 18+ maps to the last one (18 and over only).
+  Select **18 and over only**. Do not tick 16–17 or any younger group: ticking any group under 18 states that the app is meant for people
+  under 18, which contradicts the Terms and brings extra Play requirements. Play's other groups are 5 and under, 6–8, 9–12, 13–15 and
+  16–17 [inference: names as remembered; the form lists them]. When asked whether the app appeals to children, answer No.

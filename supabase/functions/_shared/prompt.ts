@@ -11,7 +11,7 @@ export const FLYER_SYSTEM = `You read text recognised from a photo or screenshot
 Set is_flyer=false if the text is not an announcement of one or more live music events. Set is_safe=false if it contains hateful, sexual or violent content, or private personal information.
 One flyer can list several events (a tour: one event per date and city). Return one event per show.
 ${FIELD_RULES}
-Fields: headliner (the top-billed act), supports (other acts in the order printed), venue, address (only if printed), city, date (exactly as printed, for example "FRI OCT 16" or "vendredi 16 octobre"), weekday (as printed, if separate), doors, start (show or music start time), price (as printed), age_policy (for example "all ages", "18+", "19+"), ticket_url (only a full link or domain printed on the flyer), genre (only if a genre word is printed).
+Fields: headliner (the top-billed act), supports (other acts in the order printed), venue, address (only if printed), city, date (exactly as printed, for example "FRI OCT 16" or "vendredi 16 octobre"), weekday (as printed, if separate), doors, start (show or music start time), price (as printed), ticket_url (only a full link or domain printed on the flyer), genre (only if a genre word is printed).
 Flyers may be in English, French or both. Understand French weekdays and months, "20 h" or "20h30" times, "$" and "CAD" prices, "porte"/"portes" (doors) and "spectacle" (show). Keep values in the language printed.`;
 
 export function buildFlyerPrompt(opts: {
@@ -33,7 +33,7 @@ ${opts.text}
 
 export const VENUE_SYSTEM = `You read the text of a venue's own events page and return its upcoming live music events as JSON.
 Return one event per show, in the order they appear on the page, at most 60. Only include live music or performances on a stage; skip classes, private events, venue tours, merchandise and navigation text.
-For each event give: headliner (top-billed act), supports (other acts in printed order), date (exactly as printed, with the year if printed), weekday (if printed separately), start (show time as printed), doors (as printed), price (as printed), age_policy (as printed), ticket_url (only a link printed on the page), genre (only a genre word printed on the page), and evidence: one short quote copied exactly from the page that contains the headliner and the date.
+For each event give: headliner (top-billed act), supports (other acts in printed order), date (exactly as printed, with the year if printed), weekday (if printed separately), start (show time as printed), doors (as printed), price (as printed), ticket_url (only a link printed on the page), genre (only a genre word printed on the page), and evidence: one short quote copied exactly from the page that contains the headliner and the date.
 Use null for anything the page does not state. Never infer or guess: do not add a genre from a band name, do not invent a year, price or time. If the page lists no upcoming events, return an empty events array.`;
 
 export function buildVenuePrompt(opts: { venue: string; metro: MetroContext; today: string; text: string }): string {

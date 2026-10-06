@@ -174,7 +174,7 @@ const lic = (o: Partial<Show> = {}): Show => ({
 });
 const row = (o: Partial<FpRow> = {}): FpRow => ({
   id: 'r1', metro: 'nyc', venueId: 'v1', venueName: 'Parkside Hall', city: 'Brooklyn', address: '100 Example Ave, Brooklyn, NY', addressMode: 'registry', localDate: '2026-10-16', startLocal: '20:00', doorsLocal: '19:00',
-  startsAt: '2026-10-16T20:00:00-04:00', doorsAt: '2026-10-16T19:00:00-04:00', lat: 40.71, lng: -73.96, headliner: 'Velvet Automaton', supports: ['Gentle Moth', 'Tin Orchard'], price: { min: 15, max: 18 }, ticketUrl: 'https://parksidehall.example/velvet', status: 'scheduled', genres: ['Indie Rock'], agePolicy: 'All ages', imageUrl: 'https://parksidehall.example/velvet.jpg',
+  startsAt: '2026-10-16T20:00:00-04:00', doorsAt: '2026-10-16T19:00:00-04:00', lat: 40.71, lng: -73.96, headliner: 'Velvet Automaton', supports: ['Gentle Moth', 'Tin Orchard'], price: { min: 15, max: 18 }, ticketUrl: 'https://parksidehall.example/velvet', status: 'scheduled', genres: ['Indie Rock'], imageUrl: 'https://parksidehall.example/velvet.jpg',
   conflicts: [], sources: [{ sourceType: 'venue_site', licence: 'first_party', url: 'https://parksidehall.example/events', fetchedAt: '2026-10-02T00:00:00Z' }], unconfirmed: false, pending: false, author: null, ...o,
 });
 

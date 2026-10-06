@@ -30,7 +30,6 @@ export type Candidate = {
   ticketUrl?: string;
   status?: ShowStatus;
   genres: AppGenre[];
-  agePolicy?: string;
   /** Street address, only ever copied from the venue registry, never from a flyer. */
   address?: string;
   addressMode: 'registry' | 'withheld';

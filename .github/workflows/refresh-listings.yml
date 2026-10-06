@@ -38,9 +38,13 @@ permissions:
 concurrency:
   group: refresh-listings
 
+# Runs JavaScript actions that still declare Node 20 (supabase/setup-cli v1) on Node 24 as well.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       GH_TOKEN: ${{ github.token }}
@@ -56,10 +60,10 @@ jobs:
             echo "have=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: steps.key.outputs.have == 'true'
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         if: steps.key.outputs.have == 'true'
         with:
           node-version: 22
@@ -131,7 +135,7 @@ jobs:
 
       - name: Keep a few raw records for checking the mapping
         if: steps.key.outputs.have == 'true' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: listings-raw-sample
           path: listings/raw-sample.*.json

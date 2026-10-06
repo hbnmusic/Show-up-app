@@ -10,9 +10,13 @@ on:
         description: 'Cities (comma separated ids)'
         default: 'nyc,la'
 
+# Runs JavaScript actions that still declare Node 20 (supabase/setup-cli v1) on Node 24 as well.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   report:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
@@ -20,8 +24,8 @@ jobs:
       FP_JOB_URL: ${{ vars.FP_JOB_URL }}
       JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -32,7 +36,7 @@ jobs:
           { echo '```'; cat report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           # Also as one annotation, so the report can be read from the run's page and through the API.
           echo "::notice title=Readiness report::$(awk '{printf "%s%%0A", $0}' report.txt)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: readiness-report
           path: |

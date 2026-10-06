@@ -9,13 +9,17 @@ Nothing else in the app depends on this.
    Running it twice is harmless. (If the project already ran an older `schema.sql`, paste
    `supabase/migrations/002_compliance.sql` instead; it adds terms acceptance, blocking, user reports, field
    validation and account deletion, and is also safe to run twice.)
-3. **Make the email contain the code.** Authentication → Emails → Templates. Edit both **Confirm signup**
-   (new people) and **Magic Link** (returning people) so the body shows `{{ .Token }}`, for example:
+3. **Make the email contain the code, and name the app.** Authentication → Emails → Templates. Edit both **Confirm signup**
+   (new people) and **Magic Link** (returning people; the app signs in with a 6-digit code). For each one set the **Subject** to
+   `Your Come Thru code` and make the body show `{{ .Token }}`, for example:
 
    ```html
    <h2>Your Come Thru code</h2>
    <p>Enter this code in the app: <strong>{{ .Token }}</strong></p>
    ```
+
+   Replace any wording that still uses the app's earlier names or says "Supabase" in the other templates too (Change Email Address, Reset Password, Invite,
+   Reauthentication). The app does not send those, but they exist. The project name itself (Project Settings → General) is not shown to users.
 4. **Add the address and key to the build.** Project Settings → API: copy the Project URL and the
    `anon` (or "publishable") key. In GitHub: repo → Settings → Secrets and variables → Actions →
    **Variables** tab → New repository variable, twice:
@@ -23,9 +27,12 @@ Nothing else in the app depends on this.
    the app); the rules in `schema.sql` are what protect the data. **Never** put the `service_role`
    key anywhere in this repo or in the app.
 5. **Run the build** (push to main, or Actions → Android APK → Run workflow) and install it.
-6. **Email sending limit.** The built-in sender is limited to a handful of emails per hour for the
-   whole project. That is enough for you and one test account. Before inviting other people, add a
-   custom SMTP sender (Authentication → Emails → SMTP Settings; Resend and Brevo both have free tiers).
+6. **Email sending: set up your own SMTP sender before any tester signs in.** Supabase's built-in sender only delivers to
+   addresses that belong to members of your Supabase organization (anyone else gets "Email address not authorized") and is rate-limited
+   to a handful of emails per hour for the whole project. It also shows the sender "Supabase Auth", which cannot be renamed. So: Authentication →
+   Emails → SMTP Settings → enable custom SMTP (Resend and Brevo both have free tiers; the sending domain must be verified with the
+   provider) and set **Sender name** to `Come Thru` and **Sender email** to an address on your domain (for example `login@yourdomain`).
+   Then Authentication → Rate Limits: raise "emails per hour" above the default 30 if you expect more than that.
 
 ## Running it
 

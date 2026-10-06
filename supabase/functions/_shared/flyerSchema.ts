@@ -7,7 +7,7 @@ import { appearsIn } from './text.ts';
 
 export type Field = { value: string; source: string; confidence: number };
 
-export const SINGLE_FIELDS = ['headliner', 'venue', 'address', 'city', 'date', 'weekday', 'doors', 'start', 'price', 'age_policy', 'ticket_url', 'genre'] as const;
+export const SINGLE_FIELDS = ['headliner', 'venue', 'address', 'city', 'date', 'weekday', 'doors', 'start', 'price', 'ticket_url', 'genre'] as const;
 export type SingleField = (typeof SINGLE_FIELDS)[number];
 
 export type ParsedEvent = { fields: Partial<Record<SingleField, Field>>; supports: Field[] };
@@ -103,7 +103,7 @@ export const VENUE_RESPONSE_SCHEMA = {
       type: 'ARRAY',
       items: {
         type: 'OBJECT',
-        properties: { headliner: S, supports: { type: 'ARRAY', items: { type: 'STRING' } }, date: S, weekday: S, start: S, doors: S, price: S, age_policy: S, ticket_url: S, genre: S, evidence: S },
+        properties: { headliner: S, supports: { type: 'ARRAY', items: { type: 'STRING' } }, date: S, weekday: S, start: S, doors: S, price: S, ticket_url: S, genre: S, evidence: S },
         required: ['headliner', 'date', 'evidence'],
       },
     },
@@ -141,7 +141,7 @@ export function parseVenueOutput(raw: unknown, pageText: string): ParsedFlyer {
         return { value, source: evidence, confidence: 0.9 };
       };
       const fields: ParsedEvent['fields'] = { headliner: { value: headliner, source: evidence, confidence: 0.9 } };
-      for (const [k, check] of [['date', false], ['weekday', false], ['start', true], ['doors', true], ['price', true], ['age_policy', false], ['ticket_url', true], ['genre', true]] as const) {
+      for (const [k, check] of [['date', false], ['weekday', false], ['start', true], ['doors', true], ['price', true], ['ticket_url', true], ['genre', true]] as const) {
         const got = mk(e[k], check);
         if (got) fields[k] = got;
       }

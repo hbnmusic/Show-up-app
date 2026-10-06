@@ -33,7 +33,6 @@ export type FpRow = {
   ticketUrl?: string | null;
   status: 'scheduled' | 'cancelled' | 'moved';
   genres: string[];
-  agePolicy?: string | null;
   imageUrl?: string | null;
   conflicts: Conflict[];
   sources: FpSourceRef[];
@@ -77,7 +76,7 @@ export function parseFpRows(raw: unknown): FpRow[] {
       lat: typeof r.lat === 'number' ? r.lat : null, lng: typeof r.lng === 'number' ? r.lng : null,
       headliner, supports: Array.isArray(r.supports) ? r.supports.filter((x): x is string => typeof x === 'string').slice(0, 8) : [],
       price: isObj(r.price) ? (r.price as FpRow['price']) : null, ticketUrl: str(r.ticketUrl), status,
-      genres: Array.isArray(r.genres) ? r.genres.filter((x): x is string => typeof x === 'string') : [], agePolicy: str(r.agePolicy), imageUrl: str(r.imageUrl),
+      genres: Array.isArray(r.genres) ? r.genres.filter((x): x is string => typeof x === 'string') : [], imageUrl: str(r.imageUrl),
       conflicts: Array.isArray(r.conflicts) ? (r.conflicts as Conflict[]) : [],
       sources: Array.isArray(r.sources) ? (r.sources.filter(isObj) as unknown as FpSourceRef[]) : [],
       unconfirmed: r.unconfirmed === true, pending: r.pending === true, author: str(r.author) ?? null,
@@ -97,7 +96,7 @@ function fpCandidates(r: FpRow): Candidate[] {
   return [{
     sourceType, licence: 'first_party', sourceUrl: url, fetchedAt: r.sources[0]?.fetchedAt ?? '', metro: r.metro, venueId: r.venueId, venueName: r.venueName, city: r.city ?? undefined,
     localDate: r.localDate, startLocal: hhmm(r.startLocal), doorsLocal: hhmm(r.doorsLocal), headliner: r.headliner, supports: r.supports,
-    price: r.price ?? undefined, ticketUrl: r.ticketUrl ?? undefined, status: r.status, genres: r.genres as Candidate['genres'], agePolicy: r.agePolicy ?? undefined,
+    price: r.price ?? undefined, ticketUrl: r.ticketUrl ?? undefined, status: r.status, genres: r.genres as Candidate['genres'],
     address: r.address ?? undefined, addressMode: r.addressMode, imageUrl: r.imageUrl ?? undefined,
   }];
 }
@@ -127,7 +126,7 @@ function fromRow(r: FpRow): Show {
 }
 
 function fpMergedFields(r: FpRow) {
-  return { headliner: r.headliner, supports: r.supports, price: r.price ?? undefined, ticketUrl: r.ticketUrl ?? undefined, genres: r.genres, status: r.status, doorsLocal: hhmm(r.doorsLocal), agePolicy: r.agePolicy ?? undefined, venueName: r.venueName, localDate: r.localDate };
+  return { headliner: r.headliner, supports: r.supports, price: r.price ?? undefined, ticketUrl: r.ticketUrl ?? undefined, genres: r.genres, status: r.status, doorsLocal: hhmm(r.doorsLocal), venueName: r.venueName, localDate: r.localDate };
 }
 
 type Fields = ReturnType<typeof fpMergedFields> & { startLocal?: string; imageUrl?: string };
@@ -174,7 +173,7 @@ export function mergeFirstParty(licensed: Show[], rows: FpRow[], metro: string):
       sources: m.sources.map((x) => ({ type: x.sourceType, licensed: x.licence !== 'first_party', url: x.url })), line: sourcesLine(m), conflicts: m.conflicts, fieldSource: m.fieldSource,
       fpId: r.id, pending: r.pending, unconfirmed: r.unconfirmed,
     };
-    merged.set(hit.s.id, build(r, hit.s, { headliner: m.headliner, supports: m.supports, price: m.price, ticketUrl: m.ticketUrl, genres: m.genres, status: m.status, doorsLocal: m.doorsLocal, agePolicy: m.agePolicy, venueName: m.venueName, localDate: m.localDate, startLocal: m.startLocal, imageUrl: m.imageUrl }, prov, m.fieldSource.image ?? 'venue_site'));
+    merged.set(hit.s.id, build(r, hit.s, { headliner: m.headliner, supports: m.supports, price: m.price, ticketUrl: m.ticketUrl, genres: m.genres, status: m.status, doorsLocal: m.doorsLocal, venueName: m.venueName, localDate: m.localDate, startLocal: m.startLocal, imageUrl: m.imageUrl }, prov, m.fieldSource.image ?? 'venue_site'));
   }
   const out: Show[] = licensed.map((s) => merged.get(s.id) ?? s);
   const taken = new Set(out.map(dedupeKey));

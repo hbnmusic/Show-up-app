@@ -20,7 +20,6 @@ export type RawEvent = {
   status?: ShowStatus;
   price?: ParsedPrice;
   genre?: string;
-  agePolicy?: string;
 };
 
 export type Tier = 'jsonld' | 'ical' | 'rss' | 'widget' | 'ai';
@@ -270,7 +269,6 @@ export function rawToCandidate(
       ticketUrl: raw.ticketUrl,
       status: raw.status ?? 'scheduled',
       genres: mapStatedGenres(raw.genre),
-      agePolicy: raw.agePolicy,
       address: venue.address,
       addressMode: venue.address ? 'registry' : 'withheld',
       imageUrl: safeImage(raw.image),

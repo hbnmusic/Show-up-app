@@ -115,7 +115,7 @@ export class PgStore implements Store {
         update fp.shows set key = ${m.key}, venue_id = ${m.venueId}::uuid, venue_name = ${cut(m.venueName, 160)}, city = ${cut(m.city, 80)},
           address = ${addr}, address_mode = ${m.addressMode}, local_date = ${m.localDate}::date, start_local = ${m.startLocal ?? null}, doors_local = ${m.doorsLocal ?? null},
           headliner = ${cut(m.headliner, 160)}, supports = ${vals.supports}::text::jsonb, price = ${vals.price}::text::jsonb, ticket_url = ${ticket}, status = ${m.status},
-          genres = ${m.genres.slice(0, 3)}::text[], age_policy = ${cut(m.agePolicy, 40)}, image_url = ${image}, field_source = ${vals.field_source}::text::jsonb,
+          genres = ${m.genres.slice(0, 3)}::text[], image_url = ${image}, field_source = ${vals.field_source}::text::jsonb,
           conflicts = ${vals.conflicts}::text::jsonb, sources = ${vals.sources}::text::jsonb, visibility = ${o.visibility}, unconfirmed = false,
           submitter = coalesce(submitter, ${o.submitter}::uuid), confidence = greatest(coalesce(confidence, 0), ${o.confidence ?? 0}),
           corroborated = ${o.corroborated}, updated_at = now()
@@ -123,9 +123,9 @@ export class PgStore implements Store {
     } else {
       const r = await this.sql`
         insert into fp.shows (key, metro, venue_id, venue_name, city, address, address_mode, local_date, start_local, doors_local, headliner, supports, price,
-          ticket_url, status, genres, age_policy, image_url, field_source, conflicts, sources, visibility, submitter, confidence, corroborated)
+          ticket_url, status, genres, image_url, field_source, conflicts, sources, visibility, submitter, confidence, corroborated)
         values (${m.key}, ${m.metro}, ${m.venueId}::uuid, ${cut(m.venueName, 160)}, ${cut(m.city, 80)}, ${addr}, ${m.addressMode}, ${m.localDate}::date, ${m.startLocal ?? null}, ${m.doorsLocal ?? null},
-          ${cut(m.headliner, 160)}, ${vals.supports}::text::jsonb, ${vals.price}::text::jsonb, ${ticket}, ${m.status}, ${m.genres.slice(0, 3)}::text[], ${cut(m.agePolicy, 40)}, ${image},
+          ${cut(m.headliner, 160)}, ${vals.supports}::text::jsonb, ${vals.price}::text::jsonb, ${ticket}, ${m.status}, ${m.genres.slice(0, 3)}::text[], ${image},
           ${vals.field_source}::text::jsonb, ${vals.conflicts}::text::jsonb, ${vals.sources}::text::jsonb, ${o.visibility}, ${o.submitter}::uuid, ${o.confidence ?? null}, ${o.corroborated})
         returning id::text as id`;
       id = r[0].id as string;

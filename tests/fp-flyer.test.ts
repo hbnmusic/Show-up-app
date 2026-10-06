@@ -22,7 +22,7 @@ describe('flyer extraction', () => {
     assert.equal(c.doorsLocal, '19:00');
     assert.equal(c.startLocal, '20:00');
     assert.deepEqual(c.price, { min: 15, max: 18 });
-    assert.equal(c.agePolicy, 'ALL AGES');
+    assert.ok(!('agePolicy' in c));
     assert.equal(c.ticketUrl, 'https://parksidehall.example/velvet');
     assert.equal(c.address, '100 Example Ave, Brooklyn, NY');
     assert.equal(c.addressMode, 'registry');

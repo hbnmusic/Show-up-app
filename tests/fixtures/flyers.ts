@@ -21,8 +21,8 @@ export const f = (value: string, source: string, confidence = 0.95) => ({ value,
 export const none = null;
 
 type Ev = Record<string, unknown>;
-export const ev = (o: { headliner?: ReturnType<typeof f> | null; supports?: ReturnType<typeof f>[]; venue?: ReturnType<typeof f> | null; address?: ReturnType<typeof f> | null; city?: ReturnType<typeof f> | null; date?: ReturnType<typeof f> | null; weekday?: ReturnType<typeof f> | null; doors?: ReturnType<typeof f> | null; start?: ReturnType<typeof f> | null; price?: ReturnType<typeof f> | null; age_policy?: ReturnType<typeof f> | null; ticket_url?: ReturnType<typeof f> | null; genre?: ReturnType<typeof f> | null }): Ev => ({
-  headliner: null, venue: null, address: null, city: null, date: null, weekday: null, doors: null, start: null, price: null, age_policy: null, ticket_url: null, genre: null, supports: [], ...o,
+export const ev = (o: { headliner?: ReturnType<typeof f> | null; supports?: ReturnType<typeof f>[]; venue?: ReturnType<typeof f> | null; address?: ReturnType<typeof f> | null; city?: ReturnType<typeof f> | null; date?: ReturnType<typeof f> | null; weekday?: ReturnType<typeof f> | null; doors?: ReturnType<typeof f> | null; start?: ReturnType<typeof f> | null; price?: ReturnType<typeof f> | null; ticket_url?: ReturnType<typeof f> | null; genre?: ReturnType<typeof f> | null }): Ev => ({
+  headliner: null, venue: null, address: null, city: null, date: null, weekday: null, doors: null, start: null, price: null, ticket_url: null, genre: null, supports: [], ...o,
 });
 export const resp = (events: Ev[], flags: { is_flyer?: boolean; is_safe?: boolean } = {}) => ({ is_flyer: true, is_safe: true, events, ...flags });
 
@@ -48,7 +48,6 @@ IG @velvetautomaton`,
       doors: f('7PM', 'DOORS 7PM'),
       start: f('8PM', 'SHOW 8PM'),
       price: f('$15 ADV / $18 DOOR', '$15 ADV / $18 DOOR'),
-      age_policy: f('ALL AGES', 'ALL AGES'),
       ticket_url: f('parksidehall.example/velvet', 'parksidehall.example/velvet'),
     }),
   ]),
@@ -133,6 +132,6 @@ export const UNSUPPORTED_FIELDS = {
 /** A recorded model answer for a venue page (compact schema). */
 export const vev = (o: { headliner: string; date: string; evidence?: string; start?: string | null; price?: string | null; weekday?: string | null; supports?: string[] }) => ({
   headliner: o.headliner, supports: o.supports ?? [], date: o.date, weekday: o.weekday ?? null, start: o.start ?? null, doors: null, price: o.price ?? null,
-  age_policy: null, ticket_url: null, genre: null, evidence: o.evidence ?? `${o.date} ${o.headliner}`,
+  ticket_url: null, genre: null, evidence: o.evidence ?? `${o.date} ${o.headliner}`,
 });
 export const vresp = (events: Record<string, unknown>[]) => ({ is_safe: true, events });

@@ -1,6 +1,6 @@
 # Play Console: Data safety answers (draft)
 
-Fill in Play Console → App content → Data safety. These answers come from an audit of the code in this repo on 2026-10-02.
+Fill in Play Console → App content → Data safety. These answers come from an audit of the code in this repo on 2026-10-02, corrected on 2026-10-06 (Device or other IDs and User IDs rows).
 Re-check them whenever the app gains a new network call, SDK or permission. Statements about how Google's form is interpreted are
 [inference] from Google's published guidance as remembered; confirm against the form's help text as you fill it in.
 
@@ -21,12 +21,13 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
 | Play category → type | Collected? | Shared? | Purpose | Required or optional | Encrypted in transit | Deletable by user |
 | --- | --- | --- | --- | --- | --- | --- |
 | Personal info → Email address | Yes: the sign-in email (Community), and the optional contact email typed into the feedback form | No | Account management; Developer communications (feedback reply) | Optional | Yes | Sign-in email: yes, in-app or web. Feedback contact email: on request by email |
+| Personal info → User IDs (the Supabase user id of a signed-in account, and of the anonymous account created when someone shares a flyer without signing in; no email on an anonymous account) | Yes, only after sign-in or a flyer share | No | App functionality; Account management; fraud prevention, security and compliance | Optional (Community and flyer sharing only) | Yes | Yes: delete account removes the account and its flyer jobs |
 | App activity → Other user-generated content (shows people submit: bands, venue, date, price, links, genres) | Yes | No (see note 1) | App functionality | Optional | Yes | Yes for shows no one else confirmed; shows another person confirmed stay without the author (stated in the privacy policy and on the deletion page) |
 | App activity → Other actions (confirmations, reports, blocks, Terms acceptance with version and time) | Yes | No | App functionality; fraud prevention, security and compliance | Optional | Yes | Yes |
 | App activity → Other user-generated content (flyer text and shared links) | Yes, only when someone shares a flyer | **Yes: recognised text only, to Google (Gemini API free tier)** (note 6) | App functionality | Optional | Yes | Yes: deleting the account deletes flyer jobs; OCR text is cleared 14 days after processing |
 | Location → Approximate location | **No** (note 2) | No | n/a | n/a | n/a | n/a |
 | Location → Precise location | No (permission removed from the app) | No | n/a | n/a | n/a | n/a |
-| Device or other IDs | No | No | n/a | n/a | n/a | n/a |
+| Device or other IDs | **Yes**: the random install id and the random going id (the two "Other identifier" rows below). Not an advertising id, not a hardware id (IMEI, serial, Android id). Tick the category and fill in those two rows | No | see rows below | | | |
 | Messages, photos, videos, audio, files, contacts, calendar, health, financial info | No | No | n/a | n/a | n/a | n/a |
 | App activity → App interactions (screens viewed, swipes, filters, feature use; see `src/lib/analyticsCore.ts`) | Yes | No | Analytics | Optional (Settings switch; on by default) | Yes | Yes: turning the switch off deletes the events already sent |
 | Device or other IDs → Other identifier (random install id made by the app; not an advertising id, not a device id, not linked to the account) | Yes | No | Analytics; App functionality (rate limiting feedback) | Optional | Yes | Yes (same switch deletes the events; feedback rows keep it until deleted on request) |
@@ -52,8 +53,9 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
    and photos, and loads listings from GitHub and images from venue websites and Deezer servers. No account data goes to them.
    Artist names from public listings are not personal data. IP addresses seen by these servers are the ordinary web-request exchange;
    Google's help text says to declare data a third party receives through the app's code unless an exception applies [inference]. The
-   conservative answer is to leave Device or other IDs as "No" because the app collects no identifier, and rely on the privacy policy
-   (which discloses it). Re-read the form's exceptions before submitting.
+   app also sends its own random install id and going id (declared under Device or other IDs above), so that category is **Yes**. The IP
+   address that Deezer, GitHub and image hosts see is the ordinary web-request exchange; the conservative course is to rely on the
+   Privacy Policy, which discloses it. Re-read the form's exceptions before submitting.
 4. **No ads and no third-party analytics or tracking SDKs.** Usage statistics are first-party: the app calls `log_events` on your own Supabase project (readable only by you). The event list is `EVENT_NAMES` in `src/lib/analyticsCore.ts`, and the server rejects any other name. Add a new data type here before adding events that carry anything new.
 5. **Data on the device** (Going list, passes, filters, saved listings, session token) is stored in app storage, and `allowBackup` is
    false, so it is not copied to Google Drive backups.
@@ -97,15 +99,16 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
 10. **Going counts ("N going").** The app sends a random going id (made on the phone, stored only there, separate from the analytics install id and
     from any account), the show id, and the show's date to `set_going`; Supabase stores one row per going id per show. Clients cannot read the
     tables; only the three functions exist (`set_going`, `forget_my_going`, `get_going_counts`). Counts are shown only when 16 or more; rows are
-    deleted 7 days after the show; the Settings switch deletes this phone's rows. The count is of installs, not people. Items to confirm in the
-    form (uncertain, [inference] from Google's help text as remembered):
-    - Whether the going id belongs under **Device or other IDs** (declared above, conservatively) or only under App activity. It is not a persistent
-      device identifier and not linked to the account, but it does identify one install.
-    - Whether "Collected" is right for data that is only counted: it is stored, so the form treats it as collected. Not shared with third parties
-      (Supabase is our processor).
-    - "Optional": the form wants this where users can switch collection off; the switch is in Settings, default on, so the first Going is sent before
-      the person has changed anything. An inline one-time note and the Privacy Policy disclose it, but Google may expect disclosure before collection
-      in the app's own UI; consider whether the note is enough or whether the default should be OFF in the Play build.
-    - Whether data is "deletable by user": yes via the switch or Reset; account deletion does not touch it (not linked), which the policy states.
-    - Sharing a show to a friend is plain text through the share sheet; nothing is sent to us, so no new row. The analytics event `show_shared`
-      (surface and completed true/false only) falls under the existing "app interactions" answer.
+    deleted 7 days after the show; the Settings switch deletes this phone's rows. The count is of installs, not people. Recommended answers, assuming the Going switch
+    stays **default ON** with the one-time inline note (decided 2026-10-06; wording of Google's form is [inference] from memory, confirm in the form):
+
+    | Question | Recommended answer | Reason and residual risk |
+    | --- | --- | --- |
+    | Is the going id under Device or other IDs? | Yes, declare it (as the table above does), together with the analytics install id | It identifies one install and is stored on the server; not an advertising id, not linked to the account. Declaring it costs nothing and avoids a mismatch. |
+    | Collected or only counted? | **Collected** | It is stored on our server (one row per going id per show), so the form treats it as collected. |
+    | Shared with third parties? | **No** | Supabase is our processor; no one else receives it. |
+    | Required or optional? | **Optional (users can choose)** | The Settings switch "Include my Going in public counts" turns it off and deletes this phone's rows. Residual risk: with default ON the first Going is sent before the person has used the switch. The inline note (shown once, at the first Going, with a link to Settings) and the Privacy Policy are the disclosure; Google may judge that disclosure should come before collection. If a review objects, the fix is a Play-build default of OFF, a one-line change. |
+    | Purpose | App functionality | Used only to show "N going". Not analytics, not advertising, not personalization. |
+    | Deletable by the user? | **Yes** | Switch off or Reset all data deletes this phone's rows; otherwise rows are deleted 7 days after the show. Account deletion does not touch them (not linked to the account); the Privacy Policy and deletion page say so. |
+    | Encrypted in transit? | Yes | HTTPS to Supabase. |
+    | Does a share-to-friend action collect anything? | No | The text goes through the Android share sheet; nothing is sent to us. The analytics event `show_shared` (surface and completed only) falls under "App interactions". |

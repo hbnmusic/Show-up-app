@@ -1,0 +1,43 @@
+name: Release preflight
+
+# A 30-second check you can run by hand from the Actions tab before the real release build. It runs scripts/check-release-env.sh
+# and prints, by name only, whether SUPABASE_URL, SUPABASE_ANON_KEY and the four ANDROID_* signing secrets are present, and whether
+# the keystore opens with the stored password and alias. It builds nothing and changes nothing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Runs JavaScript actions that still declare Node 20 (supabase/setup-cli v1) on Node 24 as well.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check build settings and signing secrets
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          FP_JOB_URL: ${{ vars.FP_JOB_URL }}
+          JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+          JAMBASE_API_KEY: ${{ secrets.JAMBASE_API_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+        run: |
+          set +e
+          scripts/check-release-env.sh --signing
+          code=$?
+          echo; echo "Other settings the project uses (names only)"
+          for v in FP_JOB_URL JOB_TOKEN JAMBASE_API_KEY SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF; do
+            if [ -n "${!v}" ]; then printf '%-22s set\n' "$v"; else printf '%-22s MISSING\n' "$v"; echo "::warning::$v is not set"; fi
+          done
+          exit $code
