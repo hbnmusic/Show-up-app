@@ -19,6 +19,18 @@ jobs:
           version: latest
       - name: Deploy
         run: |
-          supabase functions deploy flyer-extract --project-ref "$REF"
-          supabase functions deploy link-fetch --project-ref "$REF"
-          supabase functions deploy fp-job --project-ref "$REF" --no-verify-jwt
+          set +e
+          status=0
+          for fn in flyer-extract link-fetch fp-job; do
+            flags=""
+            [ "$fn" = "fp-job" ] && flags="--no-verify-jwt"
+            out=$(supabase functions deploy "$fn" --project-ref "$REF" $flags 2>&1)
+            code=$?
+            echo "$out"
+            if [ $code -ne 0 ]; then
+              status=1
+              # Repeat the last lines as an annotation so the reason shows on the run summary page.
+              echo "::error title=deploy $fn failed::$(echo "$out" | tail -n 8 | tr '\n' ' ' | cut -c1-900)"
+            fi
+          done
+          exit $status
