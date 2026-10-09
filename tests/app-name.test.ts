@@ -25,11 +25,11 @@ const FORBIDDEN: { label: string; rx: RegExp }[] = [
 const PREFIX = new RegExp('(?<![A-Za-z0-9])' + 'p' + 'u_' + '(?=[a-z])');
 
 /**
- * Hosting addresses that cannot change until the repository is moved. These two files are the ONLY allowed exceptions, and a hit is
+ * The listings feed address cannot change until the repository is moved. This one file is the ONLY allowed exception, and a hit is
  * accepted only when one of the 3 lines above carries the comment below.
  */
 const MOVE_COMMENT = 'remove after repo move';
-const HOSTING_ALLOWLIST = new Set(['src/lib/hosting.ts', 'supabase/functions/_shared/hosting.ts']);
+const HOSTING_ALLOWLIST = new Set(['src/lib/hosting.ts']);
 /** Migrations are history: statements keep the old function prefix (migration 024 renames them). Comments are still checked. */
 const rootDir = join(__dirname, '..');
 const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: rootDir, encoding: 'utf8' }).split('\0').filter(Boolean);
@@ -76,8 +76,8 @@ describe('app name', () => {
     assert.deepEqual(hits, [], `\n${hits.join('\n')}\n`);
   });
 
-  it('the hosting allowlist is only the two address files, each hit marked "remove after repo move"', () => {
-    assert.deepEqual([...HOSTING_ALLOWLIST].sort(), ['src/lib/hosting.ts', 'supabase/functions/_shared/hosting.ts']);
+  it('the hosting allowlist is only the one address file, each hit marked "remove after repo move"', () => {
+    assert.deepEqual([...HOSTING_ALLOWLIST].sort(), ['src/lib/hosting.ts']);
     for (const rel of HOSTING_ALLOWLIST) assert.ok(readFileSync(join(rootDir, rel), 'utf8').includes(MOVE_COMMENT));
   });
 

@@ -10,11 +10,11 @@ export const TERMS_VERSION = '2026-10-09';
 export const APP_NAME = 'Setnik';
 export const APP_SHARE_URL = SHARE_URL;
 
-/** Where docs/ is published (GitHub Pages); defined in hosting.ts. */
+/** Where the documentation pages are published (Google Sites); defined in hosting.ts. */
 export const DOCS_URL = DOCS_BASE_URL;
-export const PRIVACY_URL = `${DOCS_URL}/privacy.html`;
-export const TERMS_URL = `${DOCS_URL}/terms.html`;
-export const DELETE_ACCOUNT_URL = `${DOCS_URL}/delete-account.html`;
+export const PRIVACY_URL = `${DOCS_URL}/privacy`;
+export const TERMS_URL = `${DOCS_URL}/terms`;
+export const DELETE_ACCOUNT_URL = `${DOCS_URL}/delete-account`;
 
 /** Support address shown in the app. Replace before release (also in docs/). */
 export const SUPPORT_EMAIL = 'setnik.app@gmail.com';
@@ -25,4 +25,4 @@ export const REPORT_REASONS = ['Fake or wrong show', 'Spam or advertising', 'Off
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
 /** Copyright (DMCA) notice page. */
-export const DMCA_URL = `${DOCS_URL}/dmca.html`;
+export const DMCA_URL = `${DOCS_URL}/dmca`;

@@ -42,9 +42,8 @@ Review this before publishing: the "about 45 metro areas" figure comes from `src
 
 **Category:** Events (alternative: Music & Audio). **Tags:** concerts, live music, events.
 
-**Contact details** (required): email `setnik.app@gmail.com`; website `<DOCS_BASE_URL>/`
-**Privacy policy URL:** `<DOCS_BASE_URL>/privacy.html`
-(`<DOCS_BASE_URL>` is the value of `DOCS_BASE_URL` in `src/lib/hosting.ts`. Enter the full address in Play; changing it later means editing these Play fields.)
+**Contact details** (required): email `setnik.app@gmail.com`; website `https://sites.google.com/view/setnik`
+**Privacy policy URL:** `https://sites.google.com/view/setnik/privacy`
 
 ## Reviewer access (App access section)
 

@@ -12,7 +12,7 @@ Re-check them whenever the app gains a new network call, SDK or permission. Stat
 | Is all of the user data collected by your app encrypted in transit? | Yes (HTTPS to Supabase, GitHub, Deezer, image hosts) |
 | Do you provide a way for users to request that their data is deleted? | Yes |
 | Account creation methods | Email with a one-time code (optional; only for Community) |
-| Delete account URL | `<DOCS_BASE_URL>/delete-account.html` (`DOCS_BASE_URL` is in `src/lib/hosting.ts`; enable GitHub Pages first) |
+| Delete account URL | `https://sites.google.com/view/setnik/delete-account` |
 | Data deletion: can users request deletion of some data without deleting the account? | No (they can remove their own shows from the Community screen; that is optional to mention) |
 | Independent security review | No |
 

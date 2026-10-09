@@ -1,15 +1,13 @@
 /**
- * Every address that depends on where the repository and its GitHub Pages site live.
- * After the repository is moved to a new organization (or a custom domain is set up), change ONLY the three
- * constants below. Nothing else in the app hard-codes these addresses.
+ * Every address that depends on where the documentation site and the listings feed live.
+ * The documentation pages are published on Google Sites (the repository's docs/ folder is the source copy).
+ * Nothing else in the app hard-codes these addresses.
  */
 
-// remove after repo move
-/** Where docs/ is published (GitHub Pages), no trailing slash. */
-export const DOCS_BASE_URL = 'https://hbnmusic.github.io/Show-up-app';
+/** Where the documentation pages are published, no trailing slash. Page addresses have no .html. */
+export const DOCS_BASE_URL = 'https://sites.google.com/view/setnik';
 
-// remove after repo move
-/** The link shared with friends. Until there is a Play listing it is the docs home page. */
+/** The link shared with friends. Until there is a Play listing it is the site's home page. */
 export const SHARE_URL = DOCS_BASE_URL;
 
 // remove after repo move
