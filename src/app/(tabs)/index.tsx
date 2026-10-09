@@ -140,7 +140,7 @@ export default function ShowsScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.logo}>
-          COME THRU<Text style={{ color: C.accent }}>.</Text>
+          SETNIK<Text style={{ color: C.accent }}>.</Text>
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
           {communityEnabled ? (

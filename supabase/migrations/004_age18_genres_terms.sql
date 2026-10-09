@@ -11,7 +11,7 @@ grant execute on function public.pu_allowed_genres() to anon, authenticated;
 create or replace function public.pu_terms_version() returns text
 language sql immutable set search_path = public as $$ select '2026-10-04'::text $$;
 
--- submit_show: replace its inline genre list with pu_allowed_genres(). (Full function body is in schema.sql.)
+-- submit_show: replace its inline genre list with setnik_allowed_genres(). (Full function body is in schema.sql.)
 do $m$
 declare
   def text;

@@ -378,7 +378,7 @@ function Empty({ tab }: { tab: Tab }) {
       : tab === 'past'
         ? 'Shows you went to will land here the morning after.'
         : tab === 'submitted'
-          ? 'Flyers you share to Come Thru show up here with their status. In Instagram or your gallery, tap Share and choose Come Thru.'
+          ? 'Flyers you share to Setnik appear here with their status. In Instagram or your gallery, tap Share and choose Setnik.'
           : "Shows you pass on stay here until they happen, in case you change your mind.";
   return (
     <View style={styles.empty}>

@@ -22,13 +22,13 @@ import type { Show } from './types';
 
 export { LISTINGS_URL, listingsUrl };
 
-const CACHE_PREFIX = 'pull-up-listings-v2:';
-const FP_PREFIX = 'pull-up-fp-v1:';
-const SWITCH_KEY = 'pull-up-licensed-switches-v1';
-const DOWNLOAD_KEY = 'pull-up-feed-downloaded-v1';
+const CACHE_PREFIX = 'setnik-listings-v2:';
+const FP_PREFIX = 'setnik-fp-v1:';
+const SWITCH_KEY = 'setnik-licensed-switches-v1';
+const DOWNLOAD_KEY = 'setnik-feed-downloaded-v1';
 const INDEX_KEY = `${CACHE_PREFIX}index`;
 /** Before per-city feeds the app saved one New York feed under this key. */
-const LEGACY_KEY = 'pull-up-listings-cache-v1';
+const LEGACY_KEY = 'setnik-listings-cache-v1';
 const RECHECK_MS = 30 * 60 * 1000;
 const TIMEOUT_MS = 20_000;
 

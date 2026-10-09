@@ -1,9 +1,11 @@
+import { BOT_PAGE_URL } from './hosting.ts';
+
 /**
  * Fetch ONE public page a person shared (logged out, no cookies) and read its preview image and caption.
  * Used by the phone first; the link-fetch function is the fallback when the phone cannot get it. Only the image
  * address and the caption text are returned. Nothing else on the page is read and the page is not stored.
  */
-export const BOT_UA = 'ComeThruBot/1.0 (+https://hbnmusic.github.io/Show-up-app/bot.html)';
+export const BOT_UA = `SetnikBot/1.0 (+${BOT_PAGE_URL})`;
 
 export type Preview = { imageUrl?: string; caption?: string; title?: string };
 

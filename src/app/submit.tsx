@@ -240,7 +240,7 @@ export default function SubmitScreen() {
           {busy ? <ActivityIndicator color={C.accentInk} /> : <Text style={styles.sendText}>Add this show</Text>}
         </Pressable>
         <Text style={styles.note}>
-          Come Thru cannot read the flyer from a shared post, so type in the details. A second person has to confirm the
+          Setnik cannot read the flyer from a shared post, so type in the details. A second person has to confirm the
           show before it appears for everyone. Posting the same show twice, or posting spam, gets an account blocked.
         </Text>
       </ScrollView>

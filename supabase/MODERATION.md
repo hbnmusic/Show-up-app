@@ -89,13 +89,13 @@ To also remove a confirmed show they asked about: `delete from submissions where
 
 ## Terms changes
 
-When the Terms change in a way people must accept again: change `pu_terms_version()` (SQL) and `TERMS_VERSION` in
+When the Terms change in a way people must accept again: change `setnik_terms_version()` (SQL) and `TERMS_VERSION` in
 `src/lib/legal.ts` to the same new value, update the version on `docs/terms.html`, and ship the app update. People are asked
 to accept before they next add or confirm a show. Until the app update ships, the server rejects the new version string, so
 change the SQL last.
 
 ```sql
-create or replace function public.pu_terms_version() returns text
+create or replace function public.setnik_terms_version() returns text
 language sql immutable set search_path = public as $$ select '2027-01-01'::text $$;
 ```
 

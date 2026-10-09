@@ -146,7 +146,7 @@ begin
   update fp.source_records set submitter = null where submitter = uid;
 end $$;
 
--- Account deletion also removes flyer data: add the call at the top of pu_purge_user_content.
+-- Account deletion also removes flyer data: add the call at the top of setnik_purge_user_content.
 do $m$
 declare def text;
 begin

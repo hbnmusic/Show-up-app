@@ -1,4 +1,4 @@
-# First phone test (Come Thru)
+# First phone test (Setnik)
 
 Run this once on a real Android phone before the Play closed beta, and again after any change to the backend. Each step says what to tap,
 what you should see, and a query to paste into the Supabase SQL Editor (project `ytybkywyygorfvflbxzk`) that proves the step reached the
@@ -10,7 +10,7 @@ sends every 30 seconds and when the app goes to the background; `src/lib/going/s
 
 ## Before you start
 
-1. Install the newest `.apk` from GitHub → Releases (the top `build-N`, for example `come-thru-build-44.apk`). Uninstall any build made
+1. Install the newest `.apk` from GitHub → Releases (the top `build-N`, for example `setnik-build-44.apk`). Uninstall any build made
    before the rename first: the package id changed, so the old app is a separate app.
 2. Paste this in the SQL Editor and write down the numbers (the "before" values):
 
@@ -40,7 +40,7 @@ Expected: 7 rows, `enabled = true` on every one: `ai_extraction_enabled`, `deeze
 
 ### 1. Open the app, then check Settings for the "not set up" message
 
-- **Tap:** open Come Thru. Allow or skip any permission prompt. Tap the gear icon (top right of the Shows tab) to open Settings. Scroll to
+- **Tap:** open Setnik. Allow or skip any permission prompt. Tap the gear icon (top right of the Shows tab) to open Settings. Scroll to
   **PRIVACY AND FEEDBACK**.
 - **Expect:** a switch **Share anonymous usage data** and a row **Send feedback or report a bug**. You must **not** see the line
   **"Usage data and feedback are not set up in this build."** Also confirm that **COMMUNITY** (with **Add or confirm shows** and **My flyers**)
@@ -129,7 +129,7 @@ select id, email, created_at, last_sign_in_at, is_anonymous from auth.users orde
 select user_id, version, accepted_at from public.terms_acceptances order by accepted_at desc limit 3;
 ```
 
-Expect one `auth.users` row for your email with `is_anonymous = false`, and a `terms_acceptances` row with `version = '2026-10-04'`.
+Expect one `auth.users` row for your email with `is_anonymous = false`, and a `terms_acceptances` row with `version = '2026-10-09'`.
 
 ### 8. Add, confirm, report and block
 
@@ -145,7 +145,7 @@ select * from fp.shows where submitter is not null order by created_at desc limi
 
 ### 9. Share a flyer (image path)
 
-- **Tap:** in your gallery open a flyer image → **Share** → **Come Thru**. Choose the city if asked, and send.
+- **Tap:** in your gallery open a flyer image → **Share** → **Setnik**. Choose the city if asked, and send.
 - **Expect:** the app reads the text on the phone, then shows the flyer in **My flyers** with a status (processing, then ready or needs a look).
 - **Proof:**
 
@@ -161,7 +161,7 @@ Expect one `fp.flyer_jobs` row; `status` moves from `queued`/`processing` to `do
 
 ### 10. Share a link
 
-- **Tap:** in a browser or Instagram, share a venue event page link → **Come Thru**.
+- **Tap:** in a browser or Instagram, share a venue event page link → **Setnik**.
 - **Expect:** a second job in **My flyers**.
 - **Proof:** the query from step 9 shows a second row; `ops.events` has `link_fetch`.
 

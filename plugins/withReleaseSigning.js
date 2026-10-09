@@ -8,7 +8,7 @@
  */
 const { withAppBuildGradle } = require('expo/config-plugins');
 
-const MARKER = '// pull-up-release-signing';
+const MARKER = '// setnik-release-signing';
 
 module.exports = function withReleaseSigning(config) {
   return withAppBuildGradle(config, (cfg) => {

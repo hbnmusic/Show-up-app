@@ -142,7 +142,7 @@ export const useApp = create<AppState>()(
       resetAll: () => set({ ...initial }),
     }),
     {
-      name: 'pull-up-state-v1',
+      name: 'setnik-state-v1',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
         decisions: s.decisions,

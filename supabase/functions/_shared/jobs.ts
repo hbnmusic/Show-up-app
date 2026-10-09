@@ -45,7 +45,7 @@ export async function handleFlyerExtract(user: { id: string; anonymous: boolean 
   const metro = typeof body.metro === 'string' && metros.some((m) => m.id === body.metro) ? (body.metro as string) : null;
 
   if (await store.isBanned(user.id)) return fail(403, 'banned');
-  if (!(await sql`select public.pu_accepted_terms(${user.id}::uuid) as ok`)[0]?.ok) return fail(403, 'terms');
+  if (!(await sql`select public.setnik_accepted_terms(${user.id}::uuid) as ok`)[0]?.ok) return fail(403, 'terms');
   const limit = submitLimit(user.anonymous);
   const used = Number((await sql`select count(*) as n from fp.flyer_jobs where submitter = ${user.id}::uuid and created_at > now() - interval '24 hours'`)[0].n);
   if (used >= limit) return fail(429, 'limit', { limit });

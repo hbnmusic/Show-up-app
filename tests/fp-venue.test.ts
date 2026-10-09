@@ -118,16 +118,16 @@ describe('venue page answers', () => {
 });
 
 describe('polite fetching', () => {
-  const ua = 'ComeThruBot/1.0 (+https://example.test/bot)';
+  const ua = 'SetnikBot/1.0 (+https://example.test/bot)';
   it('follows robots.txt: our own group, the wildcard group, longest match, Allow ties, wildcards', () => {
-    const txt = `User-agent: *\nDisallow: /private/\nAllow: /private/events\nDisallow: /*.pdf$\nCrawl-delay: 5\n\nUser-agent: comethruxbot-other\nDisallow: /\n`;
+    const txt = `User-agent: *\nDisallow: /private/\nAllow: /private/events\nDisallow: /*.pdf$\nCrawl-delay: 5\n\nUser-agent: setnikxbot-other\nDisallow: /\n`;
     const r = parseRobots(txt, ua);
     assert.equal(isAllowed(r, '/events'), true);
     assert.equal(isAllowed(r, '/private/x'), false);
     assert.equal(isAllowed(r, '/private/events/2026'), true);
     assert.equal(isAllowed(r, '/menu.pdf'), false);
     assert.equal(r.crawlDelaySec, 5);
-    const ours = parseRobots(`User-agent: ComeThruBot\nDisallow: /\n\nUser-agent: *\nAllow: /`, ua);
+    const ours = parseRobots(`User-agent: SetnikBot\nDisallow: /\n\nUser-agent: *\nAllow: /`, ua);
     assert.equal(isAllowed(ours, '/events'), false);
     assert.equal(isAllowed(parseRobots('', ua), '/anything'), true);
     assert.equal(isAllowed(parseRobots('User-agent: *\nDisallow:', ua), '/x'), true);

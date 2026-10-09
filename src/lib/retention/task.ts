@@ -7,7 +7,7 @@ import * as BackgroundTask from 'expo-background-task';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
-export const RETENTION_TASK = 'pull-up-retention-check';
+export const RETENTION_TASK = 'setnik-retention-check';
 /** Minutes. The system treats this as a minimum, not a schedule. */
 export const TASK_INTERVAL_MIN = 120;
 

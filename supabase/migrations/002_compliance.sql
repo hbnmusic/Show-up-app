@@ -1,4 +1,4 @@
--- Upgrade an existing Come Thru project (one that already ran the first schema.sql) to the compliance layer.
+-- Upgrade an existing Setnik project (one that already ran the first schema.sql) to the compliance layer.
 -- Run once in the Supabase SQL editor. Safe to run twice. Fresh projects should run schema.sql instead.
 
 -- Authorship survives account deletion for confirmed shows.
@@ -11,7 +11,7 @@ alter table public.submissions
 -- Compliance layer: terms acceptance, blocking, user reports, input validation, account deletion.
 -- ===============================================================================================
 
--- Terms of Use acceptance (version + timestamp). Bump pu_terms_version() when the Terms change in a
+-- Terms of Use acceptance (version + timestamp). Bump setnik_terms_version() when the Terms change in a
 -- way people must re-accept; the app's TERMS_VERSION constant (src/lib/legal.ts) must match.
 create table if not exists public.terms_acceptances (
   user_id     uuid not null references auth.users (id) on delete cascade,

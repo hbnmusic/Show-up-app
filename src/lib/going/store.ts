@@ -11,7 +11,7 @@ import { switchOff, switchOn, type GoingLocal } from './core';
 import { EMPTY_QUEUE, type GoingQueue } from './queue';
 import { EMPTY_COUNTS, type CountsCache } from './sync';
 
-const KEY = 'pull-up-going-v1';
+const KEY = 'setnik-going-v1';
 
 type GoingStore = GoingLocal & {
   loaded: boolean;

@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "Come Thru",
-    "slug": "come-thru",
+    "name": "Setnik",
+    "slug": "setnik",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "comethru",
+    "scheme": "setnik",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0C0B0A",
     "ios": {
-      "bundleIdentifier": "com.hbnmusic.comethru",
+      "bundleIdentifier": "com.setnik.app",
       "supportsTablet": false
     },
     "android": {
-      "package": "com.hbnmusic.comethru",
+      "package": "com.setnik.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0C0B0A",
@@ -65,7 +65,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Come Thru uses your approximate location once, on this phone, to pick the nearest city. It is never sent to a server."
+          "locationWhenInUsePermission": "Setnik uses your approximate location once, on this phone, to pick the nearest city. It is never sent to a server."
         }
       ],
       [

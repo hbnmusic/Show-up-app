@@ -1,44 +1,50 @@
 # Play Console: store listing
 
+Title and short description follow Play's metadata rules: no emoji, no ALL CAPS, no repeated special characters, no price words,
+no ranking or popularity words, no call-to-action phrases. `tests/store-listing.test.ts` reads the two fields below and enforces them.
+
 ## Text
 
-**App name** (max 30): `Come Thru`
-Alternative if the name is taken: `Come Thru: Live Music Finder`
-
-**Short description** (max 80; this one is 66):
+**App name** (max 30; this one is 29):
 ```
-Swipe through local shows, hear previews, and keep a list of gigs.
+Setnik: Concerts & Live Music
+```
+
+**Short description** (max 80; this one is 73):
+```
+Hear the music, swipe through shows near you, save the ones you'll go to.
 ```
 
 **Full description** (max 4000):
 ```
-Find your next show without scrolling through listings.
+Hear the music, swipe through shows near you, and save the ones you'll go to.
 
-Come Thru turns upcoming concerts in about 45 US and Canadian metro areas into a deck of cards. Swipe right on shows you want to go to, swipe left to pass, and spread two fingers (or tap the info) for the details.
+Setnik turns upcoming concerts in about 45 US and Canadian metro areas into a deck of cards. Swipe right on shows you want to go to, swipe left to pass, and tap a card for the details.
 
 HEAR WHO'S PLAYING
 The top card plays a 30-second preview of the headliner and steps through the rest of the bill, so you can tell in a few seconds whether a show is for you.
 
-FILTER THE WAY YOU THINK
-Pick a city or use your approximate location, set how far you will travel, and filter by when, genre and price.
+SWIPE AND FILTER
+Pick a city or use your approximate location, set how far you will travel, and filter by date, genre and price.
 
-KEEP YOUR LIST
-Shows you swipe right on go to your Going list, grouped by tonight, this week and later. Add a show to your calendar with one tap, and get reminders the day before, the day of, and an hour before doors.
+SAVE THE ONES YOU'LL GO TO
+Shows you swipe right on go to your Going list, grouped by tonight, this week and later. Add a show to your calendar in one tap, and get reminders the day before, the day of, and an hour before doors.
 
-ADD SHOWS WE MISSED
-Know about a gig that is not listed? Sign in with your email (no password) and add it. A second person confirms it before it appears for everyone. You can report a show or a person, block people whose shows you do not want to see, and delete your account at any time.
+WHERE THE LISTINGS COME FROM
+Listings come from JamBase, from venues' own websites (read by Setnik), and from people in the community. If a show is missing, sign in with your email (no password) and add it; a second person confirms it before it appears for everyone. You can report a show or a person, block people whose shows you do not want to see, and delete your account at any time.
 
 PRIVATE BY DEFAULT
-No account is needed to browse. Your location, Going list and filters stay on your phone. No ads. Optional anonymous usage statistics can be switched off in Settings.
+Browsing needs no account. Your location, Going list and filters stay on your phone. There are no ads. Optional anonymous usage statistics can be switched off in Settings.
 
-For ages 18 and up. Listings come from JamBase, venue websites and people like you. Times, prices and lineups can change, so check the ticket page before you go. Previews come from Deezer and may not match when band names are common.
+For ages 18 and up. Times, prices and lineups can change, so check the ticket page before you go. Previews come from Deezer and may not match when band names are common.
 ```
 Review this before publishing: the "about 45 metro areas" figure comes from `src/lib/metros.ts`; confirm it is still accurate.
 
 **Category:** Events (alternative: Music & Audio). **Tags:** concerts, live music, events.
 
-**Contact details** (required): email `[CONTACT_EMAIL]`; website `https://hbnmusic.github.io/Show-up-app/`;
-**Privacy policy URL:** `https://hbnmusic.github.io/Show-up-app/privacy.html`
+**Contact details** (required): email `[CONTACT_EMAIL]`; website `<DOCS_BASE_URL>/`
+**Privacy policy URL:** `<DOCS_BASE_URL>/privacy.html`
+(`<DOCS_BASE_URL>` is the value of `DOCS_BASE_URL` in `src/lib/hosting.ts`. Enter the full address in Play; changing it later means editing these Play fields.)
 
 ## Reviewer access (App access section)
 
@@ -54,8 +60,8 @@ Browsing needs no sign-in. Community features need a one-time code sent by email
 
 Specs are Google's published ones as I remember them [inference]; confirm in Play Console when uploading.
 
-- [ ] **App icon** 512×512 PNG, 32-bit, up to 1 MB (use `assets/images/icon.png` if it is 1024×1024, export 512). No badges or "free" text.
-- [ ] **Feature graphic** 1024×500 PNG or JPEG, no transparency. Keep key text away from the edges.
+- [ ] **App icon** 512×512 PNG, 32-bit, up to 1 MB draft at `docs/play/assets/play-icon-512.png` (placeholder "S" monogram; replace with final art). No badges, price or ranking text.
+- [ ] **Feature graphic** 1024×500 PNG or JPEG, no transparency: draft at `docs/play/assets/feature-graphic-1024x500.png` (name only; replace with final art). No price, ranking or call-to-action text. Keep key text away from the edges.
 - [ ] **Phone screenshots**: at least 2, up to 8. 9:16 portrait, each side 320–3840 px. Suggested set, taken on a real phone with real listings:
   1. The deck on a card with the audio bar visible.
   2. A card's details (lineup, price, venue, "Report or block" row if you capture a community show).

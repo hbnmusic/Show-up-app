@@ -153,7 +153,7 @@ describe('jambase_enabled in the app', () => {
     assert.deepEqual(useListings.getState().shows.map((s) => s.id), ['c']);
     assert.deepEqual(useListings.getState().attribution, []);
     assert.equal(useListings.getState().error, null);
-    assert.ok(!(memory.get('pull-up-listings-v2:nyc') ?? '').includes('"jambase"'));
+    assert.ok(!(memory.get('setnik-listings-v2:nyc') ?? '').includes('"jambase"'));
   });
 
   it('OFF: a feed with no licensed shows at all is handled', async () => {
@@ -171,12 +171,12 @@ describe('jambase_enabled in the app', () => {
     const { useFlags } = await import('../src/lib/flags');
     globalThis.fetch = feed([mk('a'), mk('b')]);
     await useListings.getState().refresh({ force: true });
-    assert.ok((memory.get('pull-up-listings-v2:nyc') ?? '').includes('jambase'));
+    assert.ok((memory.get('setnik-listings-v2:nyc') ?? '').includes('jambase'));
     useFlags.setState({ flags: off('jambase_enabled') });
     await useListings.getState().recombine();
     assert.equal(useListings.getState().shows.length, 0);
     assert.deepEqual(useListings.getState().attribution, []);
-    assert.equal(JSON.parse(memory.get('pull-up-listings-v2:nyc')!).shows.length, 0);
+    assert.equal(JSON.parse(memory.get('setnik-listings-v2:nyc')!).shows.length, 0);
     useFlags.setState({ flags: DEFAULT_FLAGS });
     await useListings.getState().refresh({ force: true });
     assert.equal(useListings.getState().shows.length, 2);

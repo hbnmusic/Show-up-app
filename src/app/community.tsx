@@ -135,7 +135,7 @@ export default function CommunityScreen() {
             <Text style={styles.addText}>Add a show</Text>
           </Pressable>
           <Text style={styles.help}>
-            Missing a show? Add it here, or share an Instagram post or ticket link to Come Thru. It appears for everyone once
+            Missing a show? Add it here, or share an Instagram post or ticket link to Setnik. It appears for everyone once
             a second person confirms it.
           </Text>
 

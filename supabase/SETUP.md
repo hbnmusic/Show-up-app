@@ -4,17 +4,17 @@ The app hides the community features until it is built with a Supabase project a
 Nothing else in the app depends on this.
 
 1. **Create the project.** supabase.com → New project (free plan). Choose a region near most users
-   and save the database password somewhere safe. Come Thru never uses it.
+   and save the database password somewhere safe. Setnik never uses it.
 2. **Create the tables.** SQL Editor → New query → paste all of `supabase/schema.sql` → Run.
    Running it twice is harmless. (If the project already ran an older `schema.sql`, paste
    `supabase/migrations/002_compliance.sql` instead; it adds terms acceptance, blocking, user reports, field
    validation and account deletion, and is also safe to run twice.)
 3. **Make the email contain the code, and name the app.** Authentication → Emails → Templates. Edit both **Confirm signup**
    (new people) and **Magic Link** (returning people; the app signs in with a 6-digit code). For each one set the **Subject** to
-   `Your Come Thru code` and make the body show `{{ .Token }}`, for example:
+   `Your Setnik code` and make the body show `{{ .Token }}`, for example:
 
    ```html
-   <h2>Your Come Thru code</h2>
+   <h2>Your Setnik code</h2>
    <p>Enter this code in the app: <strong>{{ .Token }}</strong></p>
    ```
 
@@ -31,7 +31,7 @@ Nothing else in the app depends on this.
    addresses that belong to members of your Supabase organization (anyone else gets "Email address not authorized") and is rate-limited
    to a handful of emails per hour for the whole project. It also shows the sender "Supabase Auth", which cannot be renamed. So: Authentication →
    Emails → SMTP Settings → enable custom SMTP (Resend and Brevo both have free tiers; the sending domain must be verified with the
-   provider) and set **Sender name** to `Come Thru` and **Sender email** to an address on your domain (for example `login@yourdomain`).
+   provider) and set **Sender name** to `Setnik` and **Sender email** to an address on your domain (for example `login@yourdomain`).
    Then Authentication → Rate Limits: raise "emails per hour" above the default 30 if you expect more than that.
 
 ## Running it
@@ -66,5 +66,5 @@ Soft launch: New York and Los Angeles have `soft_launch = true` in `fp.metro_con
 - One person with two email addresses can confirm their own submission. Trusted/banned lists and the
   report threshold are the defenses; if abuse shows up, require confirmations from accounts that are
   more than a few days old.
-- The share button on Instagram only passes a link. Come Thru cannot read the post's caption or flyer, so
+- The share button on Instagram only passes a link. Setnik cannot read the post's caption or flyer, so
   the person types in the details and the link is kept as the source.

@@ -9,7 +9,7 @@ import { create } from 'zustand';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './communityConfig';
 import { DEFAULT_FLAGS, FLAG_REFRESH_MS, fetchFlagsHttp, flagsStale, isOn, parseFlags, type FlagKey, type Flags } from './flagsCore';
 
-const KEY = 'pull-up-flags-v1';
+const KEY = 'setnik-flags-v1';
 /** After a failed attempt, wait this long before trying again (the 15-minute rule applies once values have been fetched). */
 const RETRY_MS = 60 * 1000;
 

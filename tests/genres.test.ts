@@ -18,7 +18,7 @@ describe('genre buckets', () => {
 
   it('matches the genre list the server accepts', () => {
     const sql = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
-    const body = sql.slice(sql.indexOf('function public.pu_allowed_genres'));
+    const body = sql.slice(sql.indexOf('function public.setnik_allowed_genres'));
     const list = body.slice(body.indexOf('array['), body.indexOf(']::text[]'));
     const server = [...list.matchAll(/'([^']+)'/g)].map((m) => m[1]).sort();
     assert.deepEqual(server, [...ALL_GENRES].sort());

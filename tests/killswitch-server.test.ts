@@ -41,7 +41,7 @@ const deps = (provider: LlmProvider | null) => ({ sql, provider, now: NOW });
 before(async () => {
   ({ db, sql } = await freshDb());
   for (let i = 1; i <= 4; i++) await sql`insert into auth.users (id, email) values (${U(i)}::uuid, ${`u${i}@t.test`})`;
-  for (let i = 1; i <= 4; i++) await sql`insert into public.terms_acceptances (user_id, version) values (${U(i)}::uuid, '2026-10-04')`;
+  for (let i = 1; i <= 4; i++) await sql`insert into public.terms_acceptances (user_id, version) values (${U(i)}::uuid, '2026-10-09')`;
 });
 after(async () => { await db.close(); });
 beforeEach(async () => {

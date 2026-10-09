@@ -11,7 +11,7 @@ import { AppState, Platform } from 'react-native';
 import { enqueue, MAX_BATCH, setSink, track, uuid, type AnalyticsEvent, type EventName, type Props } from './analyticsCore';
 import { communityEnabled } from './communityConfig';
 
-const KEY = 'pull-up-analytics-v1';
+const KEY = 'setnik-analytics-v1';
 const SESSION_GAP_MS = 30 * 60_000;
 const FLUSH_EVERY_MS = 30_000;
 

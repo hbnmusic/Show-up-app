@@ -164,7 +164,7 @@ describe('listings refresh', () => {
     assert.equal(st.source, 'live');
     assert.deepEqual(st.shows.map((s) => s.id), ['x1', 'x2']);
     assert.match(st.attribution[0], /JamBase/);
-    assert.ok(memory.get('pull-up-listings-v2:nyc'));
+    assert.ok(memory.get('setnik-listings-v2:nyc'));
 
     // A later launch with no network starts from the saved copy.
     useListings.setState({ shows: [], byId: {}, feeds: {}, source: 'none', generatedAt: null });
@@ -237,8 +237,8 @@ describe('listings refresh', () => {
 
   it('a damaged saved copy is treated as no saved copy', async () => {
     const { useListings } = await import('../src/lib/listingsStore');
-    memory.set('pull-up-listings-v2:index', '["nyc"]');
-    memory.set('pull-up-listings-v2:nyc', '{not json');
+    memory.set('setnik-listings-v2:index', '["nyc"]');
+    memory.set('setnik-listings-v2:nyc', '{not json');
     await useListings.getState().loadCache();
     assert.equal(useListings.getState().source, 'none');
     assert.equal(useListings.getState().ready, true);
@@ -278,7 +278,7 @@ describe('listings refresh', () => {
 
   it('upgrades the single New York cache from earlier builds', async () => {
     const { useListings } = await import('../src/lib/listingsStore');
-    memory.set('pull-up-listings-cache-v1', JSON.stringify({ version: 1, generatedAt: '2026-09-30T08:00:00Z', attribution: [], shows: [mk('old1', '2026-10-05')] }));
+    memory.set('setnik-listings-cache-v1', JSON.stringify({ version: 1, generatedAt: '2026-09-30T08:00:00Z', attribution: [], shows: [mk('old1', '2026-10-05')] }));
     await useListings.getState().loadCache();
     assert.deepEqual(useListings.getState().shows.map((s) => s.id), ['old1']);
     assert.ok(useListings.getState().feeds.nyc);

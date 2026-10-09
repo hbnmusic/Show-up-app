@@ -73,7 +73,7 @@ export default function FlyersScreen() {
     <ScrollView style={styles.root} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} tintColor={C.accent} />}>
       <Text style={styles.title}>My flyers</Text>
       {jobs.length === 0 ? (
-        <Text style={styles.body}>Nothing shared yet. In Instagram or your gallery, tap Share and choose Come Thru.</Text>
+        <Text style={styles.body}>Nothing shared yet. In Instagram or your gallery, tap Share and choose Setnik.</Text>
       ) : (
         jobs.map((j) => {
           const v = viewJob(j);

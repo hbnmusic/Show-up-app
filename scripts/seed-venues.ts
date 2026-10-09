@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 
 import { METROS } from '../src/lib/metros';
+import { BOT_PAGE_URL } from '../supabase/functions/_shared/hosting';
 import type { SeedVenue } from '../supabase/functions/_shared/jobs';
 import { arg, flag, makeApi } from './lib/api';
 import { milesBetween } from './lib/geo';
@@ -54,7 +55,7 @@ export function rowsToSeeds(rows: Row[]): SeedVenue[] {
 async function main() {
   let seeds: SeedVenue[] = [];
   if (flag('wikidata')) {
-    const res = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql()), { headers: { 'user-agent': 'ComeThruBot/1.0 (https://hbnmusic.github.io/Show-up-app/bot.html)', accept: 'application/sparql-results+json' } });
+    const res = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql()), { headers: { 'user-agent': `SetnikBot/1.0 (${BOT_PAGE_URL})`, accept: 'application/sparql-results+json' } });
     if (!res.ok) throw new Error(`Wikidata HTTP ${res.status}`);
     seeds = rowsToSeeds(((await res.json()) as { results: { bindings: Row[] } }).results.bindings);
   }

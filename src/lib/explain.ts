@@ -18,13 +18,13 @@ export function explainFirst(title: string, message: string, continueLabel = 'Co
 export const LOCATION_EXPLAINER = {
   title: 'Use your location?',
   message:
-    'Come Thru uses your phone’s approximate location once, on this phone, to pick the nearest city and sort shows by distance. It is never sent to Come Thru or anyone else. You can choose a city by hand instead.',
+    'Setnik uses your phone’s approximate location once, on this phone, to pick the nearest city and sort shows by distance. It is never sent to Setnik or anyone else. You can choose a city by hand instead.',
   continueLabel: 'Continue',
 } as const;
 
 export const NOTIFICATION_EXPLAINER = {
   title: 'Allow reminders?',
   message:
-    'Come Thru can remind you about shows you mark as going: the day before, the day of, and an hour before doors. It can also tell you now and then when new shows are added in your city or when several shows are on tonight, at most once a day. All of these are created on this phone and nothing is sent to a server. You can switch each kind off in Settings.',
+    'Setnik can remind you about shows you mark as going: the day before, the day of, and an hour before doors. It can also tell you now and then when new shows are added in your city or when several shows are on tonight, at most once a day. All of these are created on this phone and nothing is sent to a server. You can switch each kind off in Settings.',
   continueLabel: 'Continue',
 } as const;

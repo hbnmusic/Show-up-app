@@ -45,7 +45,7 @@ export function makeGeocoder(doFetch: FetchFn = fetch as unknown as FetchFn, ali
     }
     try {
       const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(v.address)}&benchmark=Public_AR_Current&format=json`;
-      const res = await doFetch(url, { headers: { 'user-agent': 'ComeThruBot/1.0' }, redirect: 'follow' });
+      const res = await doFetch(url, { headers: { 'user-agent': 'SetnikBot/1.0' }, redirect: 'follow' });
       if (res.status !== 200) return null;
       const j = JSON.parse(await res.text()) as { result?: { addressMatches?: { coordinates?: { x: number; y: number } }[] } };
       const c = j.result?.addressMatches?.[0]?.coordinates;

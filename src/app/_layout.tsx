@@ -69,7 +69,7 @@ function useNotificationRouting() {
   }, []);
 }
 
-/** A post or link shared to Come Thru from another app (Instagram's Share button, a browser) opens the add-a-show form. */
+/** A post or link shared to Setnik from another app (Instagram's Share button, a browser) opens the add-a-show form. */
 /** Records which screens people open (the screen name only, never a show id). */
 function ScreenTracker() {
   const pathname = usePathname();
@@ -127,8 +127,8 @@ export default function RootLayout() {
           await Image.clearDiskCache().catch(() => {});
         },
         cancelNotifications: async () => void (await cancelRetentionNotifications()),
-        getMarker: async () => (await AsyncStorage.getItem('pull-up-deezer-cleared-v1').catch(() => null)) === '1',
-        setMarker: (v) => AsyncStorage.setItem('pull-up-deezer-cleared-v1', v ? '1' : '0').catch(() => {}),
+        getMarker: async () => (await AsyncStorage.getItem('setnik-deezer-cleared-v1').catch(() => null)) === '1',
+        setMarker: (v) => AsyncStorage.setItem('setnik-deezer-cleared-v1', v ? '1' : '0').catch(() => {}),
       }).catch(() => {});
     const refresh = () => useFlags.getState().refresh().then((changed) => (changed ? apply() : undefined));
     useFlags.getState().load().then(async () => {

@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, it } from 'node:test';
 
-// Come Thru does not carry an age or venue-type field anywhere: not in the feeds, the app model or the flyer extraction schema.
+// Setnik does not carry an age or venue-type field anywhere: not in the feeds, the app model or the flyer extraction schema.
 const ROOT = join(__dirname, '..');
 const DIRS = ['src', 'supabase/functions', 'scripts'];
 const PATTERN = /age_policy|agePolicy/;

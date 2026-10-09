@@ -1,4 +1,4 @@
--- Come Thru crowd-submitted shows.
+-- Setnik crowd-submitted shows.
 -- Run this whole file once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
 -- It is safe to run again; objects that already exist are left alone or replaced.
 --
@@ -92,7 +92,7 @@ grant select on public.confirmations, public.reports to authenticated;
 -- ---------------------------------------------------------------------------------------------
 -- Functions
 
-create or replace function public.pu_norm(t text) returns text
+create or replace function public.setnik_norm(t text) returns text
 language sql immutable as $$
   select regexp_replace(regexp_replace(lower(coalesce(t, '')), '^the ', ''), '[^a-z0-9]+', '', 'g')
 $$;
@@ -129,7 +129,7 @@ grant execute on function public.report_submission(uuid, text), public.withdraw_
 -- Compliance layer: terms acceptance, blocking, user reports, input validation, account deletion.
 -- ===============================================================================================
 
--- Terms of Use acceptance (version + timestamp). Bump pu_terms_version() when the Terms change in a
+-- Terms of Use acceptance (version + timestamp). Bump setnik_terms_version() when the Terms change in a
 -- way people must re-accept; the app's TERMS_VERSION constant (src/lib/legal.ts) must match.
 create table if not exists public.terms_acceptances (
   user_id     uuid not null references auth.users (id) on delete cascade,
@@ -177,32 +177,32 @@ do $$ begin
 end $$;
 -- user_reports has no policy on purpose: nobody can read it through the API, only you in the dashboard.
 
-create or replace function public.pu_terms_version() returns text
-language sql immutable set search_path = public as $$ select '2026-10-04'::text $$;
+create or replace function public.setnik_terms_version() returns text
+language sql immutable set search_path = public as $$ select '2026-10-09'::text $$;
 
 -- Genres a submission may carry. Keep in step with ALL_GENRES in src/lib/types.ts.
-create or replace function public.pu_allowed_genres() returns text[]
+create or replace function public.setnik_allowed_genres() returns text[]
 language sql immutable set search_path = public as $$
   select array['Punk','Hardcore','Screamo','Emo','Post-Punk','Darkwave','Industrial','Garage','Indie Rock',
     'Shoegaze','Noise Rock','Metal','Sludge & Doom','Psych','Folk','Pop','Experimental','Jazz & Improv','Electronic','Soul & Gospel',
     'Rock','Country','Blues','Hip-Hop','Classical','Latin','Reggae']::text[]
 $$;
-grant execute on function public.pu_allowed_genres() to anon, authenticated;
+grant execute on function public.setnik_allowed_genres() to anon, authenticated;
 
 -- True when the signed-in caller has blocked this author. Used by the read rule below; runs as owner so the
 -- rule works for people who cannot read user_blocks directly.
-create or replace function public.pu_blocked(author uuid) returns boolean
+create or replace function public.setnik_blocked(author uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select author is not null and exists (select 1 from public.user_blocks b where b.blocker = auth.uid() and b.blocked = author)
 $$;
-revoke all on function public.pu_blocked(uuid) from public;
-grant execute on function public.pu_blocked(uuid) to anon, authenticated;
+revoke all on function public.setnik_blocked(uuid) from public;
+grant execute on function public.setnik_blocked(uuid) to anon, authenticated;
 
 -- Hide blocked people's shows from the blocker (their own shows always stay visible to them).
 alter policy "read live, own, or queue" on public.submissions using (
   created_by = auth.uid()
   or (
-    not public.pu_blocked(created_by)
+    not public.setnik_blocked(created_by)
     and (
       (status = 'live' and starts_at > now() - interval '1 day')
       or (status = 'pending' and auth.uid() is not null and starts_at > now())
@@ -210,7 +210,7 @@ alter policy "read live, own, or queue" on public.submissions using (
   )
 );
 
-create or replace function public.pu_has_ctrl(t text) returns boolean
+create or replace function public.setnik_has_ctrl(t text) returns boolean
 language sql immutable set search_path = public as $$
   select coalesce(t ~ '[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]', false)
 $$;
@@ -219,18 +219,18 @@ create or replace function public.accept_terms(v text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'Sign in first' using errcode = 'P0001'; end if;
-  if v is distinct from public.pu_terms_version() then
+  if v is distinct from public.setnik_terms_version() then
     raise exception 'These Terms are out of date. Update the app.' using errcode = 'P0001';
   end if;
   insert into terms_acceptances (user_id, version) values (auth.uid(), v) on conflict do nothing;
   return jsonb_build_object('result', 'ok', 'version', v);
 end $$;
 
-create or replace function public.pu_accepted_terms(uid uuid) returns boolean
+create or replace function public.setnik_accepted_terms(uid uuid) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from terms_acceptances where user_id = uid and version = public.pu_terms_version())
+  select exists (select 1 from terms_acceptances where user_id = uid and version = public.setnik_terms_version())
 $$;
-revoke all on function public.pu_accepted_terms(uuid) from public, anon, authenticated;
+revoke all on function public.setnik_accepted_terms(uuid) from public, anon, authenticated;
 
 -- Create a submission, with every field checked. Returns {result: 'created'|'confirmed', id, status}.
 create or replace function public.submit_show(p jsonb) returns jsonb
@@ -247,7 +247,7 @@ declare
   nm text;
   genres text[] := '{}';
   g text;
-  allowed text[] := public.pu_allowed_genres();
+  allowed text[] := public.setnik_allowed_genres();
   metro_id text;
   title_t text;
   venue_t text;
@@ -271,7 +271,7 @@ begin
   if exists (select 1 from banned_users where user_id = uid) then
     raise exception 'This account cannot post' using errcode = 'P0001';
   end if;
-  if not public.pu_accepted_terms(uid) then
+  if not public.setnik_accepted_terms(uid) then
     raise exception 'Accept the Terms of Use first' using errcode = 'P0001';
   end if;
   if p is null or jsonb_typeof(p) <> 'object' then raise exception 'Invalid submission' using errcode = 'P0001'; end if;
@@ -292,7 +292,7 @@ begin
   if char_length(area_t) not between 1 and 80 then raise exception 'Neighborhood must be 1 to 80 characters' using errcode = 'P0001'; end if;
   if title_t is not null and char_length(title_t) > 120 then raise exception 'Event name is too long' using errcode = 'P0001'; end if;
   if addr_t is not null and char_length(addr_t) > 200 then raise exception 'Address is too long' using errcode = 'P0001'; end if;
-  if public.pu_has_ctrl(venue_t) or public.pu_has_ctrl(area_t) or public.pu_has_ctrl(title_t) or public.pu_has_ctrl(addr_t) then
+  if public.setnik_has_ctrl(venue_t) or public.setnik_has_ctrl(area_t) or public.setnik_has_ctrl(title_t) or public.setnik_has_ctrl(addr_t) then
     raise exception 'Text contains characters that are not allowed' using errcode = 'P0001';
   end if;
   if ticket_t is not null and (ticket_t !~* '^https?://[^[:space:]]+$' or char_length(ticket_t) > 500) then
@@ -308,7 +308,7 @@ begin
   end if;
   for a in select * from jsonb_array_elements(raw_acts) loop
     nm := btrim(case when jsonb_typeof(a) = 'object' then a ->> 'name' else null end);
-    if nm is null or char_length(nm) not between 1 and 100 or public.pu_has_ctrl(nm) then
+    if nm is null or char_length(nm) not between 1 and 100 or public.setnik_has_ctrl(nm) then
       raise exception 'Each band name must be 1 to 100 characters' using errcode = 'P0001';
     end if;
     acts := acts || jsonb_build_array(jsonb_build_object('name', nm));
@@ -362,7 +362,7 @@ begin
   end if;
 
   headliner := coalesce(acts -> 0 ->> 'name', title_t, '');
-  key := metro_id || '|' || left(p ->> 'starts_local', 10) || '|' || pu_norm(venue_t) || '|' || pu_norm(headliner);
+  key := metro_id || '|' || left(p ->> 'starts_local', 10) || '|' || setnik_norm(venue_t) || '|' || setnik_norm(headliner);
 
   select * into existing from submissions where dup_key = key and status in ('pending', 'live') limit 1;
   if found then
@@ -394,13 +394,13 @@ begin
   if exists (select 1 from banned_users where user_id = uid) then
     raise exception 'This account cannot post' using errcode = 'P0001';
   end if;
-  if not public.pu_accepted_terms(uid) then
+  if not public.setnik_accepted_terms(uid) then
     raise exception 'Accept the Terms of Use first' using errcode = 'P0001';
   end if;
   select * into s from submissions where id = sid for update;
   if not found or s.status = 'removed' then raise exception 'That show is no longer listed' using errcode = 'P0001'; end if;
   if s.created_by = uid then raise exception 'You cannot confirm your own submission' using errcode = 'P0001'; end if;
-  if public.pu_blocked(s.created_by) then raise exception 'That show is no longer listed' using errcode = 'P0001'; end if;
+  if public.setnik_blocked(s.created_by) then raise exception 'That show is no longer listed' using errcode = 'P0001'; end if;
   insert into confirmations (submission_id, user_id) values (sid, uid) on conflict do nothing;
   if found then
     update submissions set confirm_count = confirm_count + 1,
@@ -425,16 +425,16 @@ create or replace function public.unblock_user(target uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'Sign in first' using errcode = 'P0001'; end if;
-  perform public.pu_unblock(auth.uid(), target);
+  perform public.setnik_unblock(auth.uid(), target);
   return jsonb_build_object('result', 'ok');
 end $$;
 
-create or replace function public.pu_unblock(a uuid, b uuid) returns void
+create or replace function public.setnik_unblock(a uuid, b uuid) returns void
 language sql security definer set search_path = public as $$
   delete from user_blocks where blocker = a and blocked = b
 $$;
 
-create or replace function public.pu_remove_pending(target uuid) returns void
+create or replace function public.setnik_remove_pending(target uuid) returns void
 language sql security definer set search_path = public as $$
   update submissions set status = 'removed' where created_by = target and status = 'pending'
 $$;
@@ -454,7 +454,7 @@ begin
   if found then
     select count(*) into n from user_reports where user_reports.target = report_user.target;
     if n >= 3 then
-      perform public.pu_remove_pending(report_user.target);
+      perform public.setnik_remove_pending(report_user.target);
     end if;
   end if;
   return jsonb_build_object('result', 'ok');
@@ -470,19 +470,19 @@ create or replace function public.admin_delete_user(uid uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
   if uid is null then raise exception 'No user given' using errcode = 'P0001'; end if;
-  perform public.pu_purge_user_content(uid);
-  perform public.pu_remove_auth_user(uid);
+  perform public.setnik_purge_user_content(uid);
+  perform public.setnik_remove_auth_user(uid);
   return jsonb_build_object('result', 'ok');
 end $$;
 
-create or replace function public.pu_purge_user_content(uid uuid) returns void
+create or replace function public.setnik_purge_user_content(uid uuid) returns void
 language plpgsql security definer set search_path = public as $$
 begin
   delete from submissions where created_by = uid and not (status = 'live' and confirm_count > 0);
   update submissions set created_by = null where created_by = uid;
 end $$;
 
-create or replace function public.pu_remove_auth_user(uid uuid) returns void
+create or replace function public.setnik_remove_auth_user(uid uuid) returns void
 language sql security definer set search_path = public as $$
   delete from auth.users where id = uid
 $$;
@@ -497,14 +497,14 @@ end $$;
 revoke all on function
   public.accept_terms(text), public.submit_show(jsonb), public.confirm_submission(uuid), public.block_user(uuid),
   public.unblock_user(uuid), public.report_user(uuid, text, uuid), public.delete_my_account(), public.admin_delete_user(uuid),
-  public.pu_remove_pending(uuid), public.pu_unblock(uuid, uuid), public.pu_purge_user_content(uuid), public.pu_remove_auth_user(uuid)
+  public.setnik_remove_pending(uuid), public.setnik_unblock(uuid, uuid), public.setnik_purge_user_content(uuid), public.setnik_remove_auth_user(uuid)
   from public, anon, authenticated;
 grant execute on function
   public.accept_terms(text), public.submit_show(jsonb), public.confirm_submission(uuid), public.block_user(uuid),
   public.unblock_user(uuid), public.report_user(uuid, text, uuid), public.delete_my_account()
   to authenticated;
 -- admin_delete_user stays callable only by the database owner (you, in the SQL editor).
-grant execute on function public.pu_terms_version() to anon, authenticated;
+grant execute on function public.setnik_terms_version() to anon, authenticated;
 
 
 -- =============================================================================================
@@ -599,7 +599,7 @@ begin
   if k is null or k not in ('bug', 'idea', 'other') then raise exception 'Choose a type' using errcode = 'P0001'; end if;
   msg := btrim(coalesce(p ->> 'message', ''));
   if char_length(msg) not between 1 and 2000 then raise exception 'Message must be 1 to 2000 characters' using errcode = 'P0001'; end if;
-  if public.pu_has_ctrl(msg) then raise exception 'Message contains characters that are not allowed' using errcode = 'P0001'; end if;
+  if public.setnik_has_ctrl(msg) then raise exception 'Message contains characters that are not allowed' using errcode = 'P0001'; end if;
   mail := nullif(btrim(p ->> 'contact_email'), '');
   if mail is not null and (char_length(mail) > 200 or mail !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$') then
     raise exception 'That email address does not look right' using errcode = 'P0001';
@@ -918,11 +918,11 @@ grant execute on all functions in schema fp to service_role;
 
 -- Functions for the first-party listings layer (see 005). Safe to run twice.
 
-create or replace function public.pu_is_anonymous() returns boolean
+create or replace function public.setnik_is_anonymous() returns boolean
 language sql stable set search_path = public as $$
   select coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false)
 $$;
-grant execute on function public.pu_is_anonymous() to anon, authenticated;
+grant execute on function public.setnik_is_anonymous() to anon, authenticated;
 
 -- ---- reading ----------------------------------------------------------------------------------------------------------
 
@@ -943,7 +943,7 @@ language sql stable security definer set search_path = public, fp as $$
     select * from fp.shows
     where metro = p_metro and local_date >= current_date - 1 and visibility <> 'removed'
       and (visibility = 'public' or submitter = auth.uid())
-      and (submitter is null or submitter = auth.uid() or not public.pu_blocked(submitter))
+      and (submitter is null or submitter = auth.uid() or not public.setnik_blocked(submitter))
     order by local_date, start_local
     limit 1500
   ) s
@@ -959,8 +959,8 @@ language sql stable security definer set search_path = public, fp as $$
   from (
     select * from fp.shows
     where metro = p_metro and visibility = 'pending' and local_date >= current_date
-      and auth.uid() is not null and not public.pu_is_anonymous()
-      and submitter is distinct from auth.uid() and not public.pu_blocked(submitter)
+      and auth.uid() is not null and not public.setnik_is_anonymous()
+      and submitter is distinct from auth.uid() and not public.setnik_blocked(submitter)
       and not exists (select 1 from fp.confirmations c where c.show_id = fp.shows.id and c.user_id = auth.uid())
     order by local_date limit 50
   ) s
@@ -992,13 +992,13 @@ declare
   uid uuid := auth.uid();
   s fp.shows;
 begin
-  if uid is null or public.pu_is_anonymous() then raise exception 'Sign in first' using errcode = 'P0001'; end if;
+  if uid is null or public.setnik_is_anonymous() then raise exception 'Sign in first' using errcode = 'P0001'; end if;
   if exists (select 1 from banned_users where user_id = uid) then raise exception 'This account cannot post' using errcode = 'P0001'; end if;
-  if not public.pu_accepted_terms(uid) then raise exception 'Accept the Terms of Use first' using errcode = 'P0001'; end if;
+  if not public.setnik_accepted_terms(uid) then raise exception 'Accept the Terms of Use first' using errcode = 'P0001'; end if;
   select * into s from fp.shows where id = sid for update;
   if not found or s.visibility = 'removed' then raise exception 'That show is no longer listed' using errcode = 'P0001'; end if;
   if s.submitter = uid then raise exception 'You cannot confirm your own submission' using errcode = 'P0001'; end if;
-  if public.pu_blocked(s.submitter) then raise exception 'That show is no longer listed' using errcode = 'P0001'; end if;
+  if public.setnik_blocked(s.submitter) then raise exception 'That show is no longer listed' using errcode = 'P0001'; end if;
   insert into fp.confirmations (show_id, user_id) values (sid, uid) on conflict do nothing;
   if found then
     update fp.shows set confirm_count = confirm_count + 1, corroborated = true,
@@ -1013,7 +1013,7 @@ language plpgsql security definer set search_path = public, fp as $$
 declare uid uuid := auth.uid();
 begin
   if uid is null then raise exception 'Sign in first' using errcode = 'P0001'; end if;
-  if why is not null and (char_length(why) > 200 or public.pu_has_ctrl(why)) then raise exception 'Reason is too long' using errcode = 'P0001'; end if;
+  if why is not null and (char_length(why) > 200 or public.setnik_has_ctrl(why)) then raise exception 'Reason is too long' using errcode = 'P0001'; end if;
   insert into fp.reports (show_id, user_id, reason) values (sid, uid, why) on conflict do nothing;
   if found then
     update fp.shows set report_count = report_count + 1,
@@ -1064,11 +1064,11 @@ begin
   update fp.source_records set submitter = null where submitter = uid;
 end $$;
 
--- Account deletion also removes flyer data: add the call at the top of pu_purge_user_content.
+-- Account deletion also removes flyer data: add the call at the top of setnik_purge_user_content.
 do $m$
 declare def text;
 begin
-  select pg_get_functiondef('public.pu_purge_user_content(uuid)'::regprocedure) into def;
+  select pg_get_functiondef('public.setnik_purge_user_content(uuid)'::regprocedure) into def;
   if position('fp.purge_user' in def) = 0 then
     def := replace(def, E'begin\n', E'begin\n  perform fp.purge_user(uid);\n');
     execute def;
@@ -1088,14 +1088,14 @@ declare
 begin
   foreach f in array fns loop
     select pg_get_functiondef(f) into def;
-    if position('pu_is_anonymous' in def) = 0 then
-      def := replace(def, 'if uid is null then raise exception ''Sign in first''', 'if uid is null or public.pu_is_anonymous() then raise exception ''Sign in first''');
+    if position('setnik_is_anonymous' in def) = 0 then
+      def := replace(def, 'if uid is null then raise exception ''Sign in first''', 'if uid is null or public.setnik_is_anonymous() then raise exception ''Sign in first''');
       execute def;
     end if;
   end loop;
   select pg_get_functiondef('public.report_user(uuid,text,uuid)'::regprocedure) into def;
-  if position('pu_is_anonymous' in def) = 0 then
-    def := replace(def, 'if auth.uid() is null then raise exception ''Sign in first''', 'if auth.uid() is null or public.pu_is_anonymous() then raise exception ''Sign in first''');
+  if position('setnik_is_anonymous' in def) = 0 then
+    def := replace(def, 'if auth.uid() is null then raise exception ''Sign in first''', 'if auth.uid() is null or public.setnik_is_anonymous() then raise exception ''Sign in first''');
     execute def;
   end if;
 end
@@ -1317,7 +1317,7 @@ language sql stable security definer set search_path = public, fp as $$
     select * from fp.shows
     where metro = p_metro and local_date >= current_date - 1 and visibility <> 'removed'
       and (visibility = 'public' or submitter = auth.uid())
-      and (submitter is null or submitter = auth.uid() or not public.pu_blocked(submitter))
+      and (submitter is null or submitter = auth.uid() or not public.setnik_blocked(submitter))
     order by local_date, start_local
     limit 1500
   ) s
@@ -1340,8 +1340,8 @@ declare def text;
 begin
   select pg_get_functiondef('public.fp_public_shows(text)'::regprocedure) into def;
   if def not like '%v.status = ''approved''%' then
-    def := replace(def, 'and (submitter is null or submitter = auth.uid() or not public.pu_blocked(submitter))',
-      'and (submitter is null or submitter = auth.uid() or not public.pu_blocked(submitter))' || E'\n      and (submitter is not null or venue_id is null or exists (select 1 from fp.venues v where v.id = fp.shows.venue_id and v.status = ''approved''))');
+    def := replace(def, 'and (submitter is null or submitter = auth.uid() or not public.setnik_blocked(submitter))',
+      'and (submitter is null or submitter = auth.uid() or not public.setnik_blocked(submitter))' || E'\n      and (submitter is not null or venue_id is null or exists (select 1 from fp.venues v where v.id = fp.shows.venue_id and v.status = ''approved''))');
     execute def;
   end if;
 end $$;

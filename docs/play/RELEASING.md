@@ -16,13 +16,13 @@
    - `ANDROID_KEY_PASSWORD`
    Never commit the keystore (`.gitignore` blocks `*.jks`/`*.keystore`).
 4. **Repository variables** `SUPABASE_URL` and `SUPABASE_ANON_KEY` (Variables tab) must be set, same as for the sideload build.
-5. In Play Console, create the app (package `com.hbnmusic.comethru`) and opt in to **Play App Signing** when uploading the first bundle.
+5. In Play Console, create the app (package `com.setnik.app`) and opt in to **Play App Signing** when uploading the first bundle.
 
 ## Each release
 
 1. Actions → **Android release (Play AAB)** → Run workflow. Leave `version_code` blank to use the run number, or enter a number higher
    than every bundle you have uploaded.
-2. When it finishes, download the artifact `come-thru-play-bundle-N` and upload the `.aab` in Play Console → Testing → Internal testing
+2. When it finishes, download the artifact `setnik-play-bundle-N` and upload the `.aab` in Play Console → Testing → Internal testing
    (then promote to production when ready).
 3. Bump `expo.version` in `app.json` for user-visible versions.
 

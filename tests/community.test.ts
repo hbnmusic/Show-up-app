@@ -224,9 +224,9 @@ describe('community shows in the listings', () => {
     const dup = rowToShow(row)!;
     const fresh = rowToShow({ ...row, id: 'aaaa', venue_name: 'Hideout', acts: [{ name: 'Someone Else' }] })!;
     const feed = (shows: unknown[]) => JSON.stringify({ version: 1, generatedAt: '2026-10-01T00:00:00Z', attribution: [], shows });
-    memory.set('pull-up-listings-v2:index', JSON.stringify(['chi', 'community:chi']));
-    memory.set('pull-up-listings-v2:chi', feed([provider]));
-    memory.set('pull-up-listings-v2:community:chi', feed([dup, fresh]));
+    memory.set('setnik-listings-v2:index', JSON.stringify(['chi', 'community:chi']));
+    memory.set('setnik-listings-v2:chi', feed([provider]));
+    memory.set('setnik-listings-v2:community:chi', feed([dup, fresh]));
 
     const { useListings } = await import('../src/lib/listingsStore');
     await useListings.getState().loadCache();

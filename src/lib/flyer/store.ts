@@ -13,7 +13,7 @@ import { useAuth } from '../auth';
 import { REMINDER_CHANNEL } from '../reminders';
 import { noticesFor } from './status';
 
-const KEY = 'pull-up-flyers-v1';
+const KEY = 'setnik-flyers-v1';
 
 type Saved = { images: Record<string, string>; pendingImages: Record<string, string> };
 

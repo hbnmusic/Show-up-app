@@ -1,4 +1,4 @@
-# Come Thru
+# Setnik
 
 Swipe through upcoming shows in about 45 US and Canadian metro areas, hear a 30-second preview of
 the bands on each flyer, and keep the ones you're going to in one list with
@@ -133,7 +133,7 @@ fixtures in `tests/fixtures`.
 ## Community shows (optional)
 
 People can add shows the listings missed: from the + button, or by sharing an Instagram post or link to
-Come Thru. A new show is visible only to its author until a second person confirms it (or someone else submits
+Setnik. A new show is visible only to its author until a second person confirms it (or someone else submits
 the same show). Backed by Supabase; setup is in `supabase/SETUP.md`, the database in `supabase/schema.sql`.
 Without `SUPABASE_URL` / `SUPABASE_ANON_KEY` build variables the feature is hidden.
 

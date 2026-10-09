@@ -46,7 +46,7 @@ index 004bfb3..5d4b4bc 100644
 -            default:
 -                return TextRecognizerOptions.DEFAULT_OPTIONS;
 -        }
-+        // Come Thru bundles the Latin model only (smaller app); other scripts fall back to Latin.
++        // Setnik bundles the Latin model only (smaller app); other scripts fall back to Latin.
 +        return TextRecognizerOptions.DEFAULT_OPTIONS;
      }
  

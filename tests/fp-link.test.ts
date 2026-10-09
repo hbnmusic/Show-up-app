@@ -24,7 +24,7 @@ describe('link preview fetch', () => {
     let seen: Record<string, string> = {};
     const p = await fetchPreview('https://social.example/p/1', async (_u, init) => { seen = init.headers; return res(200, html); });
     assert.ok(p?.imageUrl);
-    assert.match(seen['user-agent'], /ComeThruBot/);
+    assert.match(seen['user-agent'], /SetnikBot/);
     assert.ok(!('cookie' in seen) && !('authorization' in seen));
   });
 

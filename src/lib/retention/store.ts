@@ -9,7 +9,7 @@ import type { Genre } from '../types';
 import { EMPTY_STATE, type NotifType, type RetentionState } from './planner';
 import type { TapRestore } from './tap';
 
-const KEY = 'pull-up-retention-v1';
+const KEY = 'setnik-retention-v1';
 
 export type NewChip = { city: string; ids: string[]; /** Filters to put back when the chip is cleared. */ restore: TapRestore | null };
 export type PendingOpen = { type: NotifType; genre: Genre | null };

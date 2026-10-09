@@ -34,7 +34,7 @@ beforeEach(async () => {
   await db.exec(`truncate fp.flyer_jobs, fp.shows, fp.venues, fp.ai_usage, fp.venue_runs, fp.widening_log, fp.licensed_links restart identity cascade; delete from public.terms_acceptances; delete from public.banned_users;`);
   await db.exec(`update fp.metro_config set last_full_scan_at = null`);
 });
-const accept = (n: number) => sql`insert into public.terms_acceptances (user_id, version) values (${U(n)}::uuid, '2026-10-04')`;
+const accept = (n: number) => sql`insert into public.terms_acceptances (user_id, version) values (${U(n)}::uuid, '2026-10-09')`;
 const deps = (provider: LlmProvider | null, now = NOW) => ({ sql, provider, now });
 const newVenue = async (name = 'Parkside Hall', metro = 'nyc', status = 'approved') =>
   (await sql`insert into fp.venues (canonical_name, metro, address, website, status, seeded_from, tier) values (${name}, ${metro}, '100 Example Ave', 'https://parksidehall.example', ${status}, 'own_site', 'A') returning id::text as id`)[0].id as string;

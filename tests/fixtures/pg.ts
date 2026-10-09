@@ -23,8 +23,8 @@ export async function freshDb(): Promise<{ db: PGlite; sql: Sql }> {
   await db.exec(readFileSync(new URL('../../supabase/migrations/022_going_flag_row.sql', import.meta.url), 'utf8'));
   await db.exec(`
     create table public.terms_acceptances (user_id uuid, version text);
-    create function public.pu_terms_version() returns text language sql as $$ select '2026-10-04'::text $$;
-    create function public.pu_accepted_terms(uid uuid) returns boolean language sql as $$ select exists (select 1 from public.terms_acceptances where user_id = uid and version = public.pu_terms_version()) $$;
+    create function public.setnik_terms_version() returns text language sql as $$ select '2026-10-09'::text $$;
+    create function public.setnik_accepted_terms(uid uuid) returns boolean language sql as $$ select exists (select 1 from public.terms_acceptances where user_id = uid and version = public.setnik_terms_version()) $$;
   `);
   const sql: Sql = async (strings, ...values) => {
     let text = '';
