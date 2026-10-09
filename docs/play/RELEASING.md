@@ -40,15 +40,9 @@ Google's stated rule is that new apps and updates must target API 36 from 2026-0
 | Placeholder | Where | Meaning |
 | --- | --- | --- |
 | `[LEGAL_NAME]` | `docs/*.html` | The person or company operating the app |
-| `[CONTACT_EMAIL]` | `docs/*.html`, `docs/play/store-listing.md` | Public contact for support, privacy and deletion requests |
-| `[JURISDICTION]` | `docs/terms.html` | Governing law, for example "the State of New York, USA" |
-| `[EFFECTIVE_DATE]` | `docs/privacy.html`, `docs/terms.html` | Date you publish |
-| `[EMAIL_PROVIDER]` | `docs/privacy.html` | Who sends sign-in emails (Supabase built-in or your SMTP provider) |
-| `[BACKUP_RETENTION_DAYS]` | `docs/delete-account.html` | Your Supabase plan's backup retention |
-| `support@example.com` | `src/lib/legal.ts` (`SUPPORT_EMAIL`) | Same address as `[CONTACT_EMAIL]` |
 
-Search with `grep -rn "\[[A-Z_]*\]" docs src/lib/legal.ts` to find any left.
-Also check `DOCS_URL` in `src/lib/legal.ts` matches your GitHub Pages address.
+Filled in on 2026-10-09: contact email setnik.app@gmail.com, effective date October 9, 2026, New Jersey, email provider Google (Gmail) through Supabase, no database backups on the free plan. Still open: `[LEGAL_NAME]` and the DMCA agent fields. Search with `grep -rn "\[[A-Z_]*\]" docs` to find any left.
+Also check `DOCS_BASE_URL` in `src/lib/hosting.ts` matches the address where the pages are published.
 
 ## Closed testing requirement
 

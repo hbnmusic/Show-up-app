@@ -17,7 +17,7 @@ export const TERMS_URL = `${DOCS_URL}/terms.html`;
 export const DELETE_ACCOUNT_URL = `${DOCS_URL}/delete-account.html`;
 
 /** Support address shown in the app. Replace before release (also in docs/). */
-export const SUPPORT_EMAIL = 'support@example.com';
+export const SUPPORT_EMAIL = 'setnik.app@gmail.com';
 export const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Setnik support')}`;
 
 /** Reasons offered when reporting a show or a person. */
