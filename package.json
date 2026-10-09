@@ -67,7 +67,7 @@
     "web": "expo start --web",
     "lint": "eslint src tests",
     "listings": "tsx scripts/fetch-listings.ts",
-    "test": "TZ=America/New_York tsx --test tests/*.test.ts",
+    "test": "env -u EXPO_PUBLIC_SUPABASE_URL -u EXPO_PUBLIC_SUPABASE_ANON_KEY TZ=America/New_York tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "postinstall": "patch-package"
   },
