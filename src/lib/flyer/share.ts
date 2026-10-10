@@ -6,6 +6,7 @@
 import { fetchPreview, isSafeUrl, type Preview } from '../../../supabase/functions/_shared/linkfetch';
 import type { Result, SubmitReply } from '../fp/api';
 import { prepareOcr, withCaption, MIN_TEXT, type OcrResult, type Prepared } from './prepare';
+import { canAddByHand } from './status';
 
 export const LINK_FAILED_MESSAGE = "Couldn't get the flyer from that link. Share a screenshot instead.";
 
@@ -27,6 +28,21 @@ export type Outcome =
   | { kind: 'too_long' }
   | { kind: 'unavailable' }
   | { kind: 'error'; code: string; message: string };
+
+/** True when the flyer could not be used and the person should be offered the form to type the details in (bands, venue, date, time). */
+export function needsManualEntry(o: Outcome): boolean {
+  switch (o.kind) {
+    case 'link_failed':
+    case 'no_text':
+    case 'too_long':
+    case 'unavailable':
+      return true;
+    case 'submitted':
+      return o.reply.status !== 'paused' && o.reply.result === 'rejected' && canAddByHand(o.reply.reason);
+    default:
+      return false;
+  }
+}
 
 const bucket = (n: number) => (n < 100 ? '<100' : n < 300 ? '<300' : n < 800 ? '<800' : '800+');
 

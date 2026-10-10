@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -5,7 +6,7 @@ import { C, F } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { deleteMyAccount } from '@/lib/community/api';
 import { confirmFpShow, fetchConfirmQueue, reportFpShow, type QueueItem } from '@/lib/fp/api';
-import { viewJob } from '@/lib/flyer/status';
+import { canAddByHand, viewJob } from '@/lib/flyer/status';
 import { useFlyers } from '@/lib/flyer/store';
 import { useListings } from '@/lib/listingsStore';
 import { DEFAULT_METRO } from '@/lib/metros';
@@ -81,6 +82,11 @@ export default function FlyersScreen() {
             <View key={j.id} style={styles.card}>
               <Text style={[styles.cardTitle, v.tone === 'no' ? { color: C.warn } : null]}>{v.title}</Text>
               <Text style={styles.body}>{v.detail}</Text>
+              {v.tone === 'no' && canAddByHand(j.reason) ? (
+                <Pressable style={styles.secondary} onPress={() => router.push('/submit')} accessibilityRole="button">
+                  <Text style={styles.secondaryText}>Add the details by hand</Text>
+                </Pressable>
+              ) : null}
             </View>
           );
         })

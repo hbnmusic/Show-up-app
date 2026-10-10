@@ -26,6 +26,10 @@ const REASONS: Record<string, string> = {
   too_far: 'The date is more than a year away.',
 };
 
+/** Reasons for which typing the details in by hand can still get the show listed (a passed date or a blocked source cannot be fixed that way). */
+const MANUAL_REASONS = new Set(['not_a_flyer', 'no_events', 'weekday_mismatch', 'quota_gave_up']);
+export const canAddByHand = (reason: string | null | undefined): boolean => !reason || MANUAL_REASONS.has(reason);
+
 export function reasonText(reason: string | null | undefined): string {
   if (!reason) return 'We could not use that flyer.';
   return REASONS[reason] ?? 'We could not use that flyer.';

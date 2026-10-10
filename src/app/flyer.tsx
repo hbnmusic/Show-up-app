@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { acceptTerms, fetchTermsAccepted } from '@/lib/community/api';
 import { linkFetchViaServer, submitFlyerText } from '@/lib/fp/api';
 import { recognizeImage } from '@/lib/flyer/ocr';
-import { handleLink, handleText, LINK_FAILED_MESSAGE, phonePreview, readFlyerImage, sendPrepared, type FlyerDeps, type Outcome } from '@/lib/flyer/share';
+import { handleLink, handleText, LINK_FAILED_MESSAGE, needsManualEntry, phonePreview, readFlyerImage, sendPrepared, type FlyerDeps, type Outcome } from '@/lib/flyer/share';
 import { useFlyers } from '@/lib/flyer/store';
 import { CONFIRMATION_RULES, FLYER_PAUSED_MESSAGE, intakeGate, reasonText, READER_PAUSED_TEXT, THANKS_BODY, THANKS_TITLE } from '@/lib/flyer/status';
 import { useFlag, useFlags } from '@/lib/flags';
@@ -135,7 +135,8 @@ export default function FlyerScreen() {
 
   // "Received" means the server accepted it for review; flyers that were read but not listed get the reason instead.
   const received = items.some((i) => i.outcome?.kind === 'submitted' && (i.outcome.reply.result === 'published' || i.outcome.reply.result === 'pending' || i.outcome.reply.result === 'processing' || i.outcome.reply.status === 'retry'));
-  const failedLink = items.find((i) => i.outcome?.kind === 'link_failed');
+  // Nothing usable came out of at least one flyer: offer the form so the details can be typed in.
+  const offerManual = items.some((i) => i.outcome && needsManualEntry(i.outcome));
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
@@ -192,9 +193,9 @@ export default function FlyerScreen() {
           <Pressable style={styles.primary} onPress={() => router.replace('/(tabs)/going')} accessibilityRole="button">
             <Text style={styles.primaryText}>See my submissions</Text>
           </Pressable>
-          {failedLink && account && !account.anonymous ? (
+          {offerManual ? (
             <Pressable style={styles.secondary} onPress={() => router.replace({ pathname: '/submit', params: { url: inputs.url, text: inputs.text } })} accessibilityRole="button">
-              <Text style={styles.secondaryText}>Add the details by hand</Text>
+              <Text style={styles.secondaryText}>Add the details by hand (bands, venue, date, time)</Text>
             </Pressable>
           ) : null}
           <Pressable style={styles.secondary} onPress={() => router.back()} accessibilityRole="button">
