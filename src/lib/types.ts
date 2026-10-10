@@ -90,7 +90,9 @@ export type Show = {
 
 export type Decision = 'going' | 'passed';
 
-export type WhenFilter = 'tonight' | 'tomorrow' | 'weekend' | 'week' | 'month' | 'all';
+export type WhenFilter = 'tonight' | 'tomorrow' | 'weekend' | 'week' | 'month' | 'all' | 'dates';
+/** One date or a range of dates, both ends included. YYYY-MM-DD on the venue's own calendar; from <= to (a single date has from === to). */
+export type DateRange = { from: string; to: string };
 export type PriceFilter = 'any' | 'free' | 'under10' | 'under20';
 
 /** The place the deck is centered on: the phone's location or a chosen city. */
@@ -98,6 +100,10 @@ export type Place = { label: string; lat: number; lng: number; metro?: string; s
 
 export type Filters = {
   when: WhenFilter;
+  /** The dates used when `when` is 'dates'. Kept when another option is chosen, so it can be switched back. */
+  dates: DateRange | null;
+  /** Only show cards that have an audio preview. Previews are looked up as cards come up, so this takes effect card by card. */
+  previewOnly: boolean;
   /** null = no location limit (shows everything in the feed). */
   place: Place | null;
   radiusMi: number;
@@ -107,6 +113,8 @@ export type Filters = {
 
 export const DEFAULT_FILTERS: Filters = {
   when: 'week',
+  dates: null,
+  previewOnly: false,
   place: null,
   radiusMi: 25,
   genres: [],

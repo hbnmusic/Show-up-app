@@ -1,4 +1,5 @@
-import type { Decision, Filters, Genre, Show, WhenFilter } from './types';
+import { rangeLabel } from './dateRange';
+import type { DateRange, Decision, Filters, Genre, Show, WhenFilter } from './types';
 import { distanceMi } from './metros';
 import { addDays, startOfDay, wall, wallNow } from './time';
 
@@ -24,7 +25,7 @@ export function isUpcoming(s: Show, now: Date): boolean {
 }
 
 /** Days are the venue's own: a show at 11 PM in Chicago is "tonight" there, whatever the phone's zone says. */
-export function inWhen(s: Show, when: WhenFilter, now: Date): boolean {
+export function inWhen(s: Show, when: WhenFilter, now: Date, dates: DateRange | null = null): boolean {
   const night = nightOf(wall(s.startsAt)).getTime();
   const tonight = nightOf(wallNow(s.startsAt, now));
   const t = tonight.getTime();
@@ -45,6 +46,13 @@ export function inWhen(s: Show, when: WhenFilter, now: Date): boolean {
       return night >= t && night < addDays(tonight, 7).getTime();
     case 'month':
       return night >= t && night < addDays(tonight, 30).getTime();
+    case 'dates': {
+      // The venue's own night, as YYYY-MM-DD. No dates chosen yet means no limit.
+      if (!dates) return true;
+      const n = new Date(night);
+      const day = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+      return day >= dates.from && day <= dates.to;
+    }
     case 'all':
       return true;
   }
@@ -80,7 +88,7 @@ function genreOk(genres: Genre[], selected: Genre[]): boolean {
 export function matchesFilters(s: Show, f: Filters, now: Date): boolean {
   return (
     isUpcoming(s, now) &&
-    inWhen(s, f.when, now) &&
+    inWhen(s, f.when, now, f.dates) &&
     placeOk(s, f) &&
     genreOk(s.genres, f.genres) &&
     priceOk(s, f.price)
@@ -96,6 +104,8 @@ export function byStart(a: Show, b: Show): number {
  * If `pinnedId` still matches it stays on top, so a filter change never
  * swaps the card someone is listening to.
  */
+export type PreviewLookup = (showId: string) => 'playable' | 'none' | 'unknown';
+
 export function buildQueue(
   shows: Show[],
   filters: Filters,
@@ -104,9 +114,13 @@ export function buildQueue(
   pinnedId?: string | null,
   /** When set, only these shows are offered (the "New" chip after a notification). */
   onlyIds?: ReadonlySet<string> | null,
+  /** Whether a show's audio preview is known: used by the "only with a preview" filter. Unknown shows stay until they are checked. */
+  previewOf?: PreviewLookup,
 ): Show[] {
+  // The "New" chip must show every new show, so the preview filter does not apply to it.
+  const needPreview = filters.previewOnly && !onlyIds && !!previewOf;
   const list = shows
-    .filter((s) => !decisions[s.id] && (!onlyIds || onlyIds.has(s.id)) && matchesFilters(s, filters, now))
+    .filter((s) => !decisions[s.id] && (!onlyIds || onlyIds.has(s.id)) && matchesFilters(s, filters, now) && !(needPreview && previewOf!(s.id) === 'none'))
     .sort(byStart);
   if (pinnedId) {
     const i = list.findIndex((s) => s.id === pinnedId);
@@ -121,6 +135,7 @@ export function buildQueue(
 export function activeFilterCount(f: Filters, defaults: Filters): number {
   let n = 0;
   if (f.when !== defaults.when) n++;
+  if (f.previewOnly !== defaults.previewOnly) n++;
   if (f.radiusMi !== defaults.radiusMi) n++;
   if (f.genres.length) n++;
   if (f.price !== 'any') n++;
@@ -134,4 +149,8 @@ export const WHEN_LABELS: Record<WhenFilter, string> = {
   week: 'Next 7 days',
   month: 'Next 30 days',
   all: 'All upcoming',
+  dates: 'Chosen dates',
 };
+
+/** The time window in words: a preset's name, or the chosen dates. */
+export const whenText = (f: Pick<Filters, 'when' | 'dates'>): string => (f.when === 'dates' && f.dates ? rangeLabel(f.dates) : WHEN_LABELS[f.when]);

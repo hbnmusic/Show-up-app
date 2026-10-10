@@ -4,17 +4,27 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
+import { DateRangePicker } from '@/components/DateRangePicker';
 import { GenreGroups } from '@/components/GenreGroups';
 import { C, F } from '@/constants/theme';
 import { usePriceUi } from '@/hooks/usePriceUi';
-import { buildQueue, WHEN_LABELS } from '@/lib/filters';
+import { rangeLabel } from '@/lib/dateRange';
+import { buildQueue, WHEN_LABELS, type PreviewLookup } from '@/lib/filters';
+import { useFlag } from '@/lib/flags';
+import { playableActs, usePreviewStore } from '@/lib/previews';
 import { useListings } from '@/lib/listingsStore';
 import { useApp } from '@/lib/store';
 import { detectPlace } from '@/lib/location';
 import { metroById } from '@/lib/metros';
-import { RADIUS_OPTIONS, type Decision, type Genre, type PriceFilter, type WhenFilter } from '@/lib/types';
+import { DEFAULT_FILTERS, RADIUS_OPTIONS, type Decision, type Genre, type PriceFilter, type WhenFilter } from '@/lib/types';
 
 const WHEN: WhenFilter[] = ['tonight', 'tomorrow', 'weekend', 'week', 'month', 'all'];
+
+/** What the preview lookups know right now (cards not yet checked count as unknown). */
+const knownPreviews: PreviewLookup = (id) => {
+  const p = usePreviewStore.getState().byShow[id];
+  return !p || p.state !== 'done' ? 'unknown' : playableActs(p).length ? 'playable' : 'none';
+};
 const PRICES: { value: PriceFilter; label: string }[] = [
   { value: 'any', label: 'Any' },
   { value: 'free', label: 'Free' },
@@ -36,6 +46,8 @@ export default function FiltersScreen() {
   const allShows = useListings((s) => s.shows);
   const [locNote, setLocNote] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(filters.when === 'dates');
+  const deezerOn = useFlag('deezer_enabled');
 
   const useMyLocation = async () => {
     setLocating(true);
@@ -69,7 +81,7 @@ export default function FiltersScreen() {
   const count = useMemo(() => {
     const d: Record<string, Decision> = {};
     for (const [id, r] of Object.entries(decisionsRec)) d[id] = r.decision;
-    return buildQueue(allShows, filters, d, new Date()).length;
+    return buildQueue(allShows, filters, d, new Date(), null, null, knownPreviews).length;
   }, [allShows, filters, decisionsRec]);
 
   return (
@@ -79,6 +91,22 @@ export default function FiltersScreen() {
           {WHEN.map((w) => (
             <Chip key={w} label={WHEN_LABELS[w]} on={filters.when === w} onPress={() => setFilters({ when: w })} />
           ))}
+          <Chip
+            label={filters.when === 'dates' && filters.dates ? rangeLabel(filters.dates) : 'Pick dates'}
+            on={filters.when === 'dates'}
+            onPress={() => {
+              const open = !pickerOpen;
+              setPickerOpen(open);
+              // Opening the calendar with dates already chosen switches back to them.
+              if (open && filters.dates && filters.when !== 'dates') setFilters({ when: 'dates' });
+            }}
+          />
+          {pickerOpen ? (
+            <DateRangePicker
+              value={filters.dates}
+              onChange={(r) => setFilters(r ? { when: 'dates', dates: r } : { when: DEFAULT_FILTERS.when, dates: null })}
+            />
+          ) : null}
         </Section>
         <View onLayout={(e) => setWhereY(e.nativeEvent.layout.y)}>
           <Section title="Where" hint={locNote ?? (filters.place ? `Within ${filters.radiusMi} miles of ${filters.place.label}` : undefined)}>
@@ -107,6 +135,11 @@ export default function FiltersScreen() {
             />
           </Section>
         </View>
+        {deezerOn ? (
+          <Section title="Audio" hint="Previews are checked as cards come up, so the count can drop as you swipe">
+            <Chip label="Only shows with a preview" on={filters.previewOnly} onPress={() => setFilters({ previewOnly: !filters.previewOnly })} />
+          </Section>
+        ) : null}
         {priceUi ? (
           <Section title="Price" hint="Shows with no listed price only appear under Any">
             {PRICES.map((p) => (

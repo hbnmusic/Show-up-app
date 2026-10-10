@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { track } from './analyticsCore';
+import { cleanRange } from './dateRange';
 import {
   DEFAULT_FILTERS,
   DEFAULT_REMINDER_PREFS,
@@ -163,7 +164,9 @@ export const useApp = create<AppState>()(
         const genres = Array.isArray(saved.genres)
           ? [...new Set((saved.genres as string[]).map((g) => (g === 'Club & Techno' ? 'Electronic' : g)))]
           : [];
-        return { ...current, ...p, filters: { ...DEFAULT_FILTERS, ...saved, genres } as Filters };
+        const dates = cleanRange(saved.dates);
+        const when = saved.when === 'dates' && !dates ? DEFAULT_FILTERS.when : saved.when;
+        return { ...current, ...p, filters: { ...DEFAULT_FILTERS, ...saved, when, dates, previewOnly: saved.previewOnly === true, genres } as Filters };
       },
       onRehydrateStorage: () => () => {
         useApp.setState({ hydrated: true });

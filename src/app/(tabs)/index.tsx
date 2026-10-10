@@ -18,11 +18,12 @@ import { useFlag } from '@/lib/flags';
 import { useDeckAudio } from '@/hooks/useDeckAudio';
 import { recordDecision } from '@/lib/decide';
 import { useDeckState } from '@/lib/deckState';
-import { activeFilterCount, buildQueue, WHEN_LABELS } from '@/lib/filters';
+import { activeFilterCount, buildQueue, whenText, type PreviewLookup } from '@/lib/filters';
 import { useListings } from '@/lib/listingsStore';
 import { clearNewChip, consumePendingOpen } from '@/lib/retention/service';
 import { useRetention } from '@/lib/retention/store';
-import { playableActs, usePreviewStore } from '@/lib/previews';
+import { rangeLabel } from '@/lib/dateRange';
+import { playableActs, resolveShow, usePreviewStore } from '@/lib/previews';
 import { syncReminders } from '@/lib/reminders';
 import { useApp } from '@/lib/store';
 import { communityEnabled } from '@/lib/communityConfig';
@@ -70,10 +71,26 @@ export default function ShowsScreen() {
     if (newChip && newChip.city !== stored.place?.metro) useRetention.getState().setNewChip(null);
   }, [newChip, stored.place?.metro]);
 
-  const queue = useMemo(
-    () => buildQueue(allShows, filters, decisions, now, pinnedId, chipIds),
-    [allShows, filters, decisions, now, pinnedId, chipIds],
+  // "Only shows with a preview": a card is dropped once its previews have been looked up and none can be played.
+  const previewsByShow = usePreviewStore((s) => s.byShow);
+  const previewOf = useMemo<PreviewLookup>(
+    () => (id) => {
+      const p = previewsByShow[id];
+      return !p || p.state !== 'done' ? 'unknown' : playableActs(p).length > 0 ? 'playable' : 'none';
+    },
+    [previewsByShow],
   );
+  const queue = useMemo(
+    () => buildQueue(allShows, filters, decisions, now, pinnedId, chipIds, previewOf),
+    [allShows, filters, decisions, now, pinnedId, chipIds, previewOf],
+  );
+  // With that filter on, look up the next cards ahead of time so the ones without a preview drop out before they reach the top.
+  const lookAhead = filters.previewOnly && !chipIds ? queue.slice(0, 8) : [];
+  const lookAheadKey = lookAhead.map((x) => x.id).join('|');
+  useEffect(() => {
+    lookAhead.forEach((x) => resolveShow(x));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookAheadKey]);
   // Once every new show has been decided, the chip has nothing left to show: put the filters back.
   useEffect(() => {
     if (chipIds && queue.length === 0 && allShows.length > 0) clearNewChip();
@@ -106,7 +123,6 @@ export default function ShowsScreen() {
   const detailsPlaying = useDeckState((s) => s.detailsPlaying);
   // The details screen opened from the deck covers it, so keep the preview going unless the user plays something there.
   const audio = useDeckAudio(top, queue.slice(1, 3), (focused || (deckDetails && !detailsPlaying)) && active);
-  const previewsByShow = usePreviewStore((s) => s.byShow);
 
   // Fade the preview out as the card is dragged toward a decision.
   useAnimatedReaction(
@@ -178,6 +194,10 @@ export default function ShowsScreen() {
           {chipIds ? <Chip label="New  ✕" on onPress={clearNewChip} /> : null}
           <Chip label="Tonight" on={filters.when === 'tonight'} onPress={() => toggleWhen('tonight')} />
           <Chip label="This weekend" on={filters.when === 'weekend'} onPress={() => toggleWhen('weekend')} />
+          {filters.when === 'dates' && filters.dates ? (
+            <Chip label={rangeLabel(filters.dates)} on onPress={() => router.push('/filters')} />
+          ) : null}
+          {filters.previewOnly ? <Chip label="Has preview" on onPress={() => setFilters({ previewOnly: false })} /> : null}
           {priceUi ? (
             <Chip
               label="Free"
@@ -267,6 +287,8 @@ export default function ShowsScreen() {
           <EmptyDeck
             filtered={nFilters > 0}
             when={filters.when}
+            whenLabel={whenText(filters)}
+            previewOnly={filters.previewOnly}
             onWiden={() => setFilters({ when: filters.when === 'month' ? 'all' : 'month' })}
             onClear={resetFilters}
           />
@@ -346,14 +368,14 @@ function NoListings(p: { loading: boolean; error: string | null }) {
   );
 }
 
-function EmptyDeck(p: { filtered: boolean; when: string; onWiden: () => void; onClear: () => void }) {
+function EmptyDeck(p: { filtered: boolean; when: string; whenLabel: string; previewOnly: boolean; onWiden: () => void; onClear: () => void }) {
   const canWiden = p.when !== 'all';
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyTitle}>{p.filtered ? 'No shows match these filters' : "You're through every show"}</Text>
       <Text style={styles.emptyBody}>
         {p.filtered || canWiden
-          ? `Showing ${WHEN_LABELS[p.when as keyof typeof WHEN_LABELS].toLowerCase()}.`
+          ? `Showing ${p.whenLabel.toLowerCase()}${p.previewOnly ? ', only shows with a preview' : ''}.`
           : 'New shows appear here as listings are refreshed.'}
       </Text>
       {canWiden ? (

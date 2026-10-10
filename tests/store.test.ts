@@ -56,6 +56,21 @@ describe('saved filters from older versions', () => {
     assert.ok(!('venueTypes' in next.filters));
     assert.ok(!('age' in next.filters));
   });
+
+  it('older saves get the new date and preview fields; a damaged date range is dropped', async () => {
+    const { useApp } = await import('../src/lib/store');
+    const merge = useApp.persist.getOptions().merge!;
+    const old = merge({ filters: { when: 'week', genres: [] } }, useApp.getState()) as ReturnType<typeof useApp.getState>;
+    assert.equal(old.filters.dates, null);
+    assert.equal(old.filters.previewOnly, false);
+    const kept = merge({ filters: { when: 'dates', dates: { from: '2026-10-03', to: '2026-10-05' }, previewOnly: true, genres: [] } }, useApp.getState()) as ReturnType<typeof useApp.getState>;
+    assert.equal(kept.filters.when, 'dates');
+    assert.deepEqual(kept.filters.dates, { from: '2026-10-03', to: '2026-10-05' });
+    assert.equal(kept.filters.previewOnly, true);
+    const bad = merge({ filters: { when: 'dates', dates: { from: '2026-10-09', to: '2026-10-01' }, genres: [] } }, useApp.getState()) as ReturnType<typeof useApp.getState>;
+    assert.equal(bad.filters.when, 'week');
+    assert.equal(bad.filters.dates, null);
+  });
 });
 
 describe('going list actions', () => {
